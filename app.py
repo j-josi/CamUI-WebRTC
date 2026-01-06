@@ -87,8 +87,6 @@ media_upload_folder = os.path.join(current_dir, 'static/gallery')
 app.config['media_upload_folder'] = media_upload_folder
 os.makedirs(media_upload_folder, exist_ok=True)
 
-minimum_active_config = {"cameras": []}
-
 DEFAULT_EPOCH = datetime(1970, 1, 1)
 _MONOTONIC_START = time.monotonic()
 
@@ -113,46 +111,6 @@ media_gallery_manager = MediaGallery(media_upload_folder)
 ####################
 # Configuration Helpers
 ####################
-def load_or_initialize_config(file_path, default_config):
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as file:
-            try:
-                config = json.load(file)
-                if not config:
-                    raise ValueError("Empty configuration file")
-            except (json.JSONDecodeError, ValueError):
-                with open(file_path, 'w') as file:
-                    json.dump(default_config, file, indent=4)
-                config = default_config
-    else:
-        with open(file_path, 'w') as file:
-            json.dump(default_config, file, indent=4)
-        config = default_config
-    return config
-
-def get_active_profile():
-    return load_or_initialize_config(camera_active_profile_path, minimum_active_config)
-
-def get_profiles():
-    # TODO: move to CameraManager
-    profiles = []
-    if not os.path.exists(camera_profile_folder):
-        os.makedirs(camera_profile_folder)
-
-    for f in os.listdir(camera_profile_folder):
-        if f.endswith(".json"):
-            path = os.path.join(camera_profile_folder, f)
-            try:
-                with open(path, "r") as pf:
-                    data = json.load(pf)
-                profiles.append({
-                    "filename": f,
-                    "model": data.get("info", {}).get("model", "Unknown"),
-                    "active": (f == get_active_profile()["cameras"][0]["Config_Location"])
-                })
-            except Exception as e:
-                logger.warning(f"Error loading {f}: {e}")
-    return profiles
 
 def system_time_is_synced() -> bool:
     """Check if system time of Raspberry Pi is synced with NTP server"""
@@ -532,11 +490,11 @@ def camera(camera_num):
 
         return render_template(
             'camera.html',
-            camera=camera.camera_info,
-            settings=camera.ui_settings,
-            # last_image=last_image,
-            profiles=get_profiles(),
-            mode="desktop"
+            camera = camera.camera_info,
+            settings = camera.ui_settings,
+            # last_image = last_image,
+            profiles = camera_manager.list_profiles(),
+            mode = "desktop"
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")
@@ -707,16 +665,6 @@ def set_streaming_resolution():
 # Camera Profile routes
 ####################
 
-# @app.route("/get_camera_profile", methods=["GET"])
-# def get_camera_profile():
-#     """Fetch the current camera profile for a given camera."""
-#     camera_num = request.args.get("camera_num", type=int)
-#     camera = camera_manager.get_camera(camera_num)
-#     if camera:
-#         camera_profile = camera.camera_profile
-#         return jsonify(success=True, camera_profile=camera_profile)
-#     return jsonify(success=False, camera_profile="")
-
 @app.route('/save_profile_<int:camera_num>', methods=['POST'])
 def save_profile(camera_num):
     """Create a new camera profile."""
@@ -726,8 +674,6 @@ def save_profile(camera_num):
     if not filename:
         return jsonify({"error": "Filename is required"}), 400
 
-    # camera = camera_manager.get_camera(camera_num)
-    # success = camera.save_profile(filename)
     success = camera_manager.save_profile(camera_num, filename)
 
     if success:
@@ -741,27 +687,18 @@ def reset_profile(camera_num):
         return jsonify({"success": True, "message": "Profile reset to default values"})
     else:
         return jsonify({"success": False, "message": "Failed to reset profile to default values"}), 500
-    # TODO: create function camera_manager.reset_profile
 
-@app.route("/delete_profile_<int:camera_num>", methods=["POST"])
-def delete_profile(camera_num):
-    # TODO: create function camera_manager.delete_profile
+@app.route("/delete_profile", methods=["POST"])
+def delete_profile():
     """Delete a camera profile file."""
     data = request.get_json()
     filename = data.get("filename")
 
-    if not filename:
-        return jsonify({"success": False, "message": "No filename provided"}), 400
-
-    profile_path = os.path.join(camera_profile_folder, filename)
-    if not os.path.exists(profile_path):
-        return jsonify({"success": False, "message": "Profile not found"}), 404
-
-    try:
-        os.remove(profile_path)
-        return jsonify({"success": True, "message": "Profile deleted"})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    success = camera_manager.delete_profile(filename)
+    if success:
+        return jsonify({"success": True, "message": f"Profile {filename} deleted"})
+    else:
+        return jsonify({"success": False, "message": f"Failed to delete profile {filename}"}), 500
 
 @app.route("/fetch_metadata_<int:camera_num>")
 def fetch_metadata(camera_num):
@@ -793,9 +730,9 @@ def load_profile():
     return jsonify({"error": "Failed to load profile"}), 500
 
 @app.route("/get_profiles")
-def _get_profiles():
+def get_profiles():
     """Return a list of all saved camera profiles."""
-    return get_profiles()
+    return camera_manager.list_profiles()
 
 ####################
 # Flask routes - Media Gallery

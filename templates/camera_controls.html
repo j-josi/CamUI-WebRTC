@@ -218,7 +218,7 @@
                     </table>
 
                     <button class="btn btn-danger"
-                            onclick="requestDeleteProfile({{ camera.Num }})">
+                            onclick="requestDeleteProfile()">
                         Delete Selected Profile
                     </button>
 
@@ -291,7 +291,6 @@
 <script>
 
 let camera_num = {{ camera.Num }};
-let pendingDeleteCameraNum = null;
 let pendingDeleteFilename = null;
 
 function showProfileSection(sectionId) {
@@ -412,7 +411,7 @@ function resetProfile(cameraNum) {
     });
 }
 
-function requestDeleteProfile(cameraNum) {
+function requestDeleteProfile() {
     const selected =
         document.querySelector('input[name="selectedDeleteConfig"]:checked');
 
@@ -434,7 +433,6 @@ function requestDeleteProfile(cameraNum) {
         return;
     }
 
-    pendingDeleteCameraNum = cameraNum;
     pendingDeleteFilename = selected.value;
 
     document.getElementById("deleteProfileName").textContent =
@@ -445,8 +443,8 @@ function requestDeleteProfile(cameraNum) {
     ).show();
 }
 
-function deleteProfile(cameraNum, filename) {
-    fetch(`/delete_profile_${cameraNum}`, {
+function deleteProfile(filename) {
+    fetch(`/delete_profile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename })
@@ -479,17 +477,15 @@ function deleteProfile(cameraNum, filename) {
 }
 
 function confirmDeleteProfile() {
-    if (pendingDeleteCameraNum === null || pendingDeleteFilename === null) {
+    if (pendingDeleteFilename === null) {
         console.error("Delete confirmation without pending data");
         return;
     }
 
     deleteProfile(
-        pendingDeleteCameraNum,
         pendingDeleteFilename
     );
 
-    pendingDeleteCameraNum = null;
     pendingDeleteFilename = null;
 
     bootstrap.Modal

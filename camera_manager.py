@@ -77,6 +77,7 @@ class CameraManager:
 
         self.connected_cameras: List[dict] = []
         self.cameras: Dict[int, CameraObject] = {}
+        self.camera_active_profile = {"cameras": []}
         self.lock = threading.Lock()
 
 
@@ -271,6 +272,12 @@ class CameraManager:
         self.connected_cameras = updated_cameras
         return updated_cameras
 
+    def _is_profile_active(self, filename: str) -> bool:
+        for cam in self.camera_active_profile.get("cameras", []):
+            if cam.get("Config_Location") == filename:
+                return True
+        return False
+
     def load_profile(self, camera_num: int, profile_filename: str) -> bool:
         camera = self.get_camera(camera_num)
         if not camera:
@@ -308,6 +315,43 @@ class CameraManager:
 
         with open(self.camera_active_profile_path, "w") as f:
             json.dump(self.camera_active_profile, f, indent=4)
+
+    def get_active_profile(self) -> dict:
+        """
+        Return the content of camera-active-profile.json.
+        Always returns a valid structure.
+        """
+        return copy.deepcopy(self.camera_active_profile)
+
+    def list_profiles(self) -> List[dict]:
+        """
+        Return a list of available camera profiles with metadata.
+        """
+        profiles = []
+
+        if not os.path.exists(self.camera_profile_folder):
+            os.makedirs(self.camera_profile_folder)
+
+        for filename in sorted(os.listdir(self.camera_profile_folder)):
+            if not filename.endswith(".json"):
+                continue
+
+            path = os.path.join(self.camera_profile_folder, filename)
+
+            try:
+                with open(path, "r") as pf:
+                    data = json.load(pf)
+
+                profiles.append({
+                    "filename": filename,
+                    "model": data.get("info", {}).get("model", "Unknown"),
+                    "active": self._is_profile_active(filename),
+                })
+
+            except Exception as exc:
+                logger.warning("Failed to load profile %s: %s", filename, exc)
+
+        return profiles
 
     def save_profile(self, camera_num: int, profile_name: str) -> bool:
         camera = self.get_camera(camera_num)
@@ -393,6 +437,22 @@ class CameraManager:
                 profile_filename,
                 camera_num,
             )
+
+    def delete_profile(self, profile_filename: str) -> bool:
+        """Delete a camera profile file."""
+        profile_path = os.path.join(self.camera_profile_folder, profile_filename)
+
+        if not os.path.exists(profile_path):
+            logger.debug(f"Failed to delete profile {profile_filename} - file {profile_path} doesn't exist")
+            return False
+        else:
+            try:
+                os.remove(profile_path)
+                logger.info(f"Profile '{profile_filename}' deleted")
+                return True
+            except Exception as e:
+                logger.error(f"Following error occured while trying to delete profile file {profile_path}: {e}")
+                return False
 
     def reset_camera_to_defaults(self, camera_num: int) -> bool:
         camera = self.get_camera(camera_num)
