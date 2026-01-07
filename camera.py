@@ -2,55 +2,26 @@
 # System-level imports
 # =========================
 import os
-import io
 import json
-import time
-import re
-import glob
-import math
-import tempfile
-import zipfile
 import copy
 import logging
 import threading
 import subprocess
-import argparse
 
 from typing import Optional, Dict, List, Tuple, Union, Any
-from datetime import datetime, timedelta
-from threading import Condition
 
 # =========================
 # Picamera2 imports
 # =========================
 from picamera2 import Picamera2
-from picamera2.encoders import JpegEncoder
 from picamera2.encoders import H264Encoder
-from picamera2.outputs import FileOutput, PyavOutput, FfmpegOutput
+from picamera2.outputs import PyavOutput, FfmpegOutput
 from libcamera import Transform, controls
-
-# =========================
-# Image handling imports
-# =========================
-from PIL import (
-    Image,
-    ImageDraw,
-    ImageFont,
-    ImageEnhance,
-    ImageOps,
-    ExifTags,
-)
 
 # =========================
 # Logging
 # =========================
 logger = logging.getLogger(__name__)
-
-# =========================
-# Constants
-# =========================
-H264_ENCODER_MAX_VID_RES = (1920, 1080)
-
 
 class Camera:
     """
@@ -61,33 +32,20 @@ class Camera:
     - erzeugt interne Events/Hook-Calls über _on_setting_changed()
     """
 
-    # Registry of all Camera instances: {camera_num: Camera}
-    cameras: Dict[int, "Camera"] = {}
+    # =========================
+    # Constants
+    # =========================
+    MEDIAMTX_RTSP_ROOT_DOMAIN = "rtsp://127.0.0.1:8554"
 
-    # -----------------------------
-    # DEFAULT CONTROLS
-    # -----------------------------
-    DEFAULT_CONTROLS = {
-        "AfMode": 0,
-        "LensPosition": 1.0,
-        "AfRange": 0,
-        "AfSpeed": 0,
-        "ExposureTime": 33000,
-        "AnalogueGain": 1.1228070259094238,
-        "AeEnable": 1,
-        "ExposureValue": 0.0,
-        "AeConstraintMode": 0,
-        "AeExposureMode": 0,
-        "AeMeteringMode": 0,
-        "AeFlickerMode": 0,
-        "AeFlickerPeriod": 100,
-        "AwbEnable": 0,
-        "AwbMode": 0,
-        "Brightness": 0,
-        "Contrast": 1.0,
-        "Saturation": 1.0,
-        "Sharpness": 1.0,
-        "ColourTemperature": 4000,
+    MAX_VID_RESOLUTION = (1920, 1080) # h264 encoder of Picamera2 supports a max. resolution of 1920x1080
+
+    BITRATE_ENCODER_STREAM = 8_000_000
+    BITRATE_ENCODER_RECORDING = 8_000_000
+
+    DEFAULT_STATES = {
+        "is_video_streaming": False,
+        "is_video_recording": False,
+        "is_capturing_still_image": False
     }
 
     # ---------------------------------------------------
@@ -96,47 +54,30 @@ class Camera:
 
     def __init__(
         self,
-        camera: Dict,
+        camera_info: Dict,
         camera_module_info: Dict,
         upload_folder: str,
         camera_ui_settings_db_path: str,
+        configs: Dict,
+        controls: Dict,
     ) -> None:
 
-        self.camera_info = camera
+        self.camera_info = camera_info
         self.camera_module_info = camera_module_info
-        self.camera_num: int = camera["Num"]
+        self.camera_num: int = camera_info["Num"]
         self.upload_folder = upload_folder
         self.ui_settings_db_path = camera_ui_settings_db_path
-
-        self.lock = threading.Lock()
+        self.configs = configs
+        self.controls = controls
 
         self.infos = {
             "model": self.camera_info.get("Model"),
         }
+        self.states = Camera.DEFAULT_STATES
+        self.lock = threading.Lock()
 
-        self.configs = {
-            "hflip": False,
-            "vflip": False,
-            "saveRAW": False,
-            "sensor_mode": None,
-            "still_capture_resolution": 0,
-            "recording_resolution": 0,
-            "streaming_resolution": 0,
-        }
-
-        self.controls = {}
-
-        self.states = {
-            "is_video_streaming": False,
-            "is_video_recording": False,
-            "is_capturing_still_image": False,
-        }
-
-        # ------------------------------------------------
-        # Camera init
-        # ------------------------------------------------
         self.picam2 = Picamera2(self.camera_num)
-        Camera.cameras[self.camera_num] = self
+        # Camera.cameras[self.camera_num] = self
 
         # Hardware-derived capabilities
         self.sensor_modes_supported = self.picam2.sensor_modes
@@ -144,19 +85,18 @@ class Camera:
         self.video_resolutions_supported = self._generate_video_resolutions_supported()
 
         # ------------------------------------------------
-        # Encoders
+        # Picamera2 Encoders and Outputs (used for Streaming and Recording)
         # ------------------------------------------------
-        self.encoder_stream = H264Encoder(bitrate=8_000_000)
-        self.encoder_stream.audio = False
-
+        self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
+        self.encoder_stream.audio = False # TODO function to detect if microphone is available/connected
         self.output_stream = PyavOutput(
-            f"rtsp://127.0.0.1:8554/cam{self.camera_num}",
+            f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
             format="rtsp",
         )
 
-        self.encoder_recording = H264Encoder(bitrate=8_000_000)
-        self.output_recording = None
-        self.filename_recording = None
+        self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
+        self.encoder_recording.audio = False # TODO function to detect if microphone is available/connected
+        self.output_recording = FfmpegOutput("recording.mp4")
 
         self.main_stream = "recording"
         self.lores_stream = "streaming"
@@ -199,7 +139,7 @@ class Camera:
                 self.states[name] = value
                 self._on_setting_changed()
 
-    def _coerce_control_value(self, name: str, value):
+    def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values to the type expected by Picamera2."""
         current = self.controls.get(name)
 
@@ -230,38 +170,8 @@ class Camera:
             "controls": copy.deepcopy(self.controls),
             "states": copy.deepcopy(self.states),
         }
-
-    # def set_control(self, name: str, value) -> bool:
-    #     """Set a single camera control (live). Returns True if updated."""
-    #     with self.lock:
-    #         current = self.controls.get(name)
-
-    #         if current == value:
-    #             return False
-
-    #         # Convert value to the same type as current
-    #         control_type = type(current) if current is not None else None
-    #         if control_type is not None:
-    #             try:
-    #                 if control_type is int:
-    #                     value = int(value)
-    #                 elif control_type is float:
-    #                     value = float(value)
-    #                 elif control_type is bool:
-    #                     value = bool(value)
-    #             except ValueError:
-    #                 logger.warning("Failed to convert value for control %s: %s", name, value)
-
-    #         try:
-    #             self.picam2.set_controls({name: value})
-    #             self.controls[name] = value
-    #             self._on_setting_changed()
-    #             return True
-    #         except Exception as e:
-    #             logger.error("Failed to set control %s: %s", name, e, exc_info=True)
-    #             return False
     
-    def set_control(self, name, value=None) -> bool:
+    def set_control(self, name: Union[str, Dict[str, Any]], value: Any = None) -> bool:
         """
         Set camera control(s).
 
@@ -348,26 +258,12 @@ class Camera:
                 )
                 return False
 
-    def get_control(self, name: Optional[str] = None):
-        """Get a single live camera control value by name or all controls if name is None."""
+    def get_control(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
+        """Get a single live camera control value by name or all controls as dict if name is None."""
         with self.lock:
             if name:
                 return copy.deepcopy(self.controls.get(name))
             return copy.deepcopy(self.controls)
-
-    # def set_config(self, name: str, value) -> bool:
-    #     """Set a single camera configuration parameter. Returns True if updated"""
-    #     with self.lock:
-    #         current = self.configs.get(name)
-    #         if name in self.configs:
-    #             if current == value:
-    #                 return False
-    #             else:
-    #                 self.configs[name] = value
-    #                 return True
-    #         else:
-    #             logger.warning("Attempted to set unknown config parameter '%s'", name)
-    #             return False
 
     def set_config(self, name: Union[str, Dict[str, Any]], value=None) -> bool:
         """
@@ -409,21 +305,21 @@ class Camera:
             self.configs[name] = value
             return True
 
-    def get_config(self, name: Optional[str] = None):
-        """Get a single config value by name or all configs if name is None."""
+    def get_config(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
+        """Get a single config value by name or all configs as dict if name is None."""
         with self.lock:
             if name:
                 return copy.deepcopy(self.configs.get(name))
             return copy.deepcopy(self.configs)
 
-    def get_info(self, name: Optional[str] = None):
-        """Get a single info value by name or all infos if name is None."""
+    def get_info(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
+        """Get a single info value by name or all infos as dict if name is None."""
         with self.lock:
             if name:
                 return copy.deepcopy(self.infos.get(name))
             return copy.deepcopy(self.infos)
 
-    def _on_setting_changed(self):
+    def _on_setting_changed(self) -> None:
         """
         Hook called whenever a Camera changes state.
         Re-bound in camera_manager.py.
@@ -434,7 +330,7 @@ class Camera:
     # CONTROLS / SYNC
     # ===================================================
 
-    def _sync_controls_from_camera(self):
+    def _sync_controls_from_camera(self) -> None:
         """Thread-safe: synchronize current camera controls into STATE dictionary."""
         try:
             metadata = self.picam2.capture_metadata()
@@ -479,7 +375,7 @@ class Camera:
 
         return controls
 
-    def _init_camera_configuration(self):
+    def _init_camera_configuration(self) -> None:
         self.video_config = self.picam2.create_video_configuration()
         self.picam2.configure(self.video_config)
         self.picam2.start()
@@ -718,7 +614,7 @@ class Camera:
 
         logger.debug("Live controls synced with current controls")
 
-    def apply_controls(self):
+    def apply_controls(self) -> bool:
         """Thread-safe: apply all current controls (self.controls) to the camera hardware.
         To apply a camera (live) control parameter, no restart of the camera (Picamera2) recording is necessary."""
         with self.lock:
@@ -748,8 +644,8 @@ class Camera:
                 (768, 432),
             ]:
                 if (
-                    w <= H264_ENCODER_MAX_VID_RES[0]
-                    and h <= H264_ENCODER_MAX_VID_RES[1]
+                    w <= Camera.MAX_VID_RESOLUTION[0]
+                    and h <= Camera.MAX_VID_RESOLUTION[1]
                     and w <= sw
                     and h <= sh
                 ):
@@ -824,42 +720,6 @@ class Camera:
     def set_streaming_resolution(self, resolution_index: int) -> None:
         self.configs["streaming_resolution"] = int(resolution_index)
         self.reconfigure_video_pipeline()
-
-    def reset_to_default(self) -> bool:
-        """Reset camera configuration and controls to default values and apply them."""
-
-        # --- 1. Reset persistent configuration ---
-        self.configs.update({
-            "hflip": False,
-            "vflip": False,
-            "saveRAW": False,
-            "sensor_mode": 0,  # Setze explizit ersten Modus
-            "still_capture_resolution": 0,
-            "recording_resolution": 0,
-            "streaming_resolution": 0,
-        })
-        logger.debug("Reset config to defaults: %s", self.configs)
-
-        # --- 2. Reset all camera controls to known defaults ---
-        self.controls.clear()
-        self.controls.update(DEFAULT_CONTROLS)
-        logger.debug("Reset controls to defaults: %s", self.controls)
-
-        # --- 3. Reconfigure video pipeline based on defaults ---
-        if not self.reconfigure_video_pipeline():
-            logger.warning("Failed to reconfigure video pipeline during reset")
-
-        # --- 4. Apply control defaults to camera hardware ---
-        try:
-            self.apply_controls()
-        except Exception as e:
-            logger.error("Failed to apply default camera controls: %s", e, exc_info=True)
-            return False
-
-        logger.info("Camera successfully reset to default configuration and controls")
-        return True
-
-
 
     #-----
     # Camera Information Functions
@@ -939,7 +799,7 @@ class Camera:
         self.available_resolutions = sorted(set(resolutions), reverse=True)
         return self.available_resolutions
 
-    def start_streaming(self):
+    def start_streaming(self) -> None:
         with self.lock:
             if self.states["is_video_streaming"]:
                 logger.info("Skip starting stream, already active")
@@ -954,7 +814,7 @@ class Camera:
         self._set_state("is_video_streaming", True)
         logger.info("Streaming started on '%s' stream", stream_name)
 
-    def stop_streaming(self):
+    def stop_streaming(self) -> None:
         with self.lock:
             if not self.states["is_video_streaming"]:
                 logger.info("Skip stopping stream, no active stream")
@@ -965,45 +825,48 @@ class Camera:
         self._set_state("is_video_streaming", False)
         logger.info("Streaming stopped")
 
-    def start_recording(self, filename: str):
+    def start_recording(self, filename: str) -> tuple:
         with self.lock:
             if self.states["is_video_recording"]:
                 logger.info("Skip starting recording, already active")
                 return False, None
 
             path = os.path.join(self.upload_folder, filename)
-            output = FfmpegOutput(path)
+            self.output_recording.output_filename = path
 
             self.picam2.start_recording(
                 self.encoder_recording,
-                output,
+                self.output_recording,
                 name=self.get_recording_stream(),
             )
-
-            self.output_recording = output
-            self.filename_recording = filename
 
         self._set_state("is_video_recording", True)
         logger.info(f"Recording {filename} started")
         return True, filename
 
-    def stop_recording(self):
+    def stop_recording(self) -> bool:
+        success = False
+
         with self.lock:
             if not self.states["is_video_recording"]:
                 logger.info("Skip stopping recording, no active recording")
                 return False
 
-            _filename = self.filename_recording
+            try:
+                # Stop recording
+                self.picam2.stop_recording()
+                self.output_recording = None
+                self.filename_recording = None
+                success = True
+            except Exception as e:
+                logger.error(f"Failed to stop active video recording {self.output_recording.output_filename}")
 
-            # Stoppe Recording
-            self.picam2.stop_recording()
-            self.output_recording = None
-            self.filename_recording = None
-
-        self._set_state("is_video_recording", False)
-        logger.info(f"Recording {_filename} stopped")
-
-        return True
+        if success:
+            self._set_state("is_video_recording", False)
+            logger.info(f"Recording {self.output_recording.output_filename} stopped")
+            return True
+        else:
+            return False
 
     #-----
     # Camera Capture Functions
@@ -1012,25 +875,26 @@ class Camera:
         filepath = os.path.join(self.upload_folder, filename)
         sucess = False
 
-        # Sperre gleich zu Beginn für alle _state-Zugriffe
+        # Acquire lock to protect all state accesses
         with self.lock:
             if self.states["is_capturing_still_image"]:
                 logger.warning(
                     "Skip capturing still image '%s', another capture is active", filename
                 )
                 return None
-            # Markiere Capture als aktiv
+            # Mark still capture as active
             self.states["is_capturing_still_image"] = True
             was_streaming = self.states["is_video_streaming"]
 
         try:
-            # Auflösungen ermitteln
+            # Determine target resolutions
             still_index = self.configs["still_capture_resolution"]
             still_resolution = self.still_resolutions_supported[still_index]
 
             rec_index = self.configs["recording_resolution"]
             recording_resolution = self.video_resolutions_supported[rec_index]
 
+            # Select the sensor mode based on the higher resolution (streaming or recording)
             if still_resolution[0] * still_resolution[1] >= recording_resolution[0] * recording_resolution[1]:
                 mode = self._find_best_sensor_mode(still_resolution)
             else:
@@ -1043,18 +907,18 @@ class Camera:
                 controls={"FrameDurationLimits": (100, 10_000_000_000)},
             )
 
-            # Aufnahme/Stream stoppen, ohne _state zu ändern
+            # Stop recording and streaming without modifying state flags
             self.stop_recording()
             self.stop_streaming()
 
-            # Kamera konfigurieren
+            # Configure camera config for still capture
             with self.lock:
                 self.picam2.stop()
                 self.picam2.configure(still_config)
                 self.configs["sensor_mode"] = self.sensor_modes_supported.index(mode)
                 self.picam2.start()
 
-            # Aufnahme durchführen
+            # Perform the actual capture
             if raw:
                 logger.debug("Capturing raw image '%s'", filepath)
                 buffers, metadata = self.picam2.switch_mode_and_capture_buffers(
@@ -1082,13 +946,14 @@ class Camera:
             logger.error("Error capturing still image '%s': %s", filepath, e, exc_info=True)
 
         finally:
-            # Lock nur für _state-Update verwenden
             with self.lock:
+                # Reset capture state flag
                 self.states["is_capturing_still_image"] = False
 
+            # Restore the video pipeline configuration
             self.reconfigure_video_pipeline()
             
-            # Streaming außerhalb des Locks starten (kann blockieren)
+            # restart streaming
             if was_streaming:
                 self.start_streaming()
             

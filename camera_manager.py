@@ -147,6 +147,8 @@ class CameraManager:
                     self.camera_module_info,
                     self.media_upload_folder,
                     self.camera_ui_settings_db_path,
+                    CameraManager.DEFAULT_CONFIG,
+                    CameraManager.DEFAULT_CONTROLS,
                 )
 
                 camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
