@@ -7,9 +7,6 @@ from typing import Dict, List, Optional
 from picamera2 import Picamera2
 from camera_object import CameraObject
 
-# Flask-SocketIO Imports
-from flask_socketio import SocketIO, emit, join_room, leave_room
-
 logger = logging.getLogger(__name__)
 
 ####################
@@ -58,7 +55,6 @@ class CameraManager:
         media_upload_folder: str,
         camera_ui_settings_db_path: str,
         camera_profile_folder: str,
-        socketio: SocketIO,
     ):
         """
         :param camera_module_info_path: Path to camera-module-info.json
@@ -66,21 +62,23 @@ class CameraManager:
         :param media_upload_folder: Path to the folder where photos and videos are stored (media gallery)
         :camera_ui_settings_db_path: Path to file storing camera controls parameter, controllable via webui
         :camera_profile_folder: Path to folder storing files of saved camera profiles (.json)
-        :socketio: Flask-SocketIO object used to snyc camera settings
         """
 
         self.camera_active_profile_path = camera_active_profile_path
         self.media_upload_folder = media_upload_folder
         self.camera_ui_settings_db_path = camera_ui_settings_db_path
         self.camera_profile_folder = camera_profile_folder
-        self.socketio = socketio
 
         self.connected_cameras: List[dict] = []
         self.cameras: Dict[int, CameraObject] = {}
         self.camera_active_profile = {"cameras": []}
         self.lock = threading.Lock()
 
-
+        # create directories, if not already existing
+        os.makedirs(self.camera_profile_folder, exist_ok=True)
+        os.makedirs(self.media_upload_folder, exist_ok=True)
+        os.makedirs(os.path.dirname(self.camera_active_profile_path), exist_ok=True)
+        
         try:
             with open(camera_module_info_path, "r") as f:
                 self.camera_module_info = json.load(f)
@@ -137,19 +135,6 @@ class CameraManager:
 
         return currently_connected
 
-    def _make_state_callback(self, camera):
-        def callback():
-            # TODO anpassen auf neue struktur
-            state = camera.get_settings()
-            room = f"camera_{camera.camera_num}"
-            # print(f"DEBUG: _make_state_callback, state: {state}, room: {room}")
-            self.socketio.emit(
-                "camera_state",
-                {"camera_num": camera.camera_num, "state": state},
-                room=room,
-            )
-        return callback
-
     def init_cameras(self):
         """Create CameraObject instances for all connected cameras."""
         self.connected_cameras = self._detect_connected_cameras()
@@ -164,7 +149,7 @@ class CameraManager:
                     self.camera_ui_settings_db_path,
                 )
 
-                camera_obj._on_state_changed = self._make_state_callback(camera_obj)
+                camera_obj._on_setting_changed = lambda cam=camera_obj: self.on_camera_setting_changed(cam)
                 self.cameras[cam_info["Num"]] = camera_obj
                 # apply/load active profile -> set camera configs and controls
                 self._load_active_profile(cam_info["Num"])
@@ -174,15 +159,12 @@ class CameraManager:
         for key, camera in self.cameras.items():
             logger.info("Initialized camera %s: %s", key, camera.camera_info)
 
-    def join_camera_room(self, sid, camera_num):
-        """ SocketIO-Client joins camera room """
-        room = f"camera_{camera_num}"
-        join_room(room, sid=sid)
-
-    def leave_camera_room(self, sid, camera_num):
-        """ SocketIO-Client leaves camera room """
-        room = f"camera_{camera_num}"
-        leave_room(room, sid=sid)
+    def on_camera_setting_changed(self, camera: CameraObject):
+        """
+        Hook for reacting to camera setting changes.
+        Intended to be overridden / rebound by application layer (app.py).
+        """
+        pass
 
     def get_camera(self, cam_num: int) -> Optional[CameraObject]:
         """
@@ -328,9 +310,6 @@ class CameraManager:
         Return a list of available camera profiles with metadata.
         """
         profiles = []
-
-        if not os.path.exists(self.camera_profile_folder):
-            os.makedirs(self.camera_profile_folder)
 
         for filename in sorted(os.listdir(self.camera_profile_folder)):
             if not filename.endswith(".json"):

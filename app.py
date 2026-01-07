@@ -81,32 +81,13 @@ camera_ui_settings_db_path = os.path.join(current_dir, 'camera_controls_db.json'
 camera_profile_folder = os.path.join(current_dir, 'static/camera_profiles')
 
 app.config['camera_profile_folder'] = camera_profile_folder
-os.makedirs(camera_profile_folder, exist_ok=True)
 
 media_upload_folder = os.path.join(current_dir, 'static/gallery')
 app.config['media_upload_folder'] = media_upload_folder
-os.makedirs(media_upload_folder, exist_ok=True)
 
 DEFAULT_EPOCH = datetime(1970, 1, 1)
 _MONOTONIC_START = time.monotonic()
 
-####################
-# Initialize CameraManager
-####################
-camera_manager = CameraManager(
-    camera_module_info_path=camera_module_info_path,
-    camera_active_profile_path=camera_active_profile_path,
-    media_upload_folder=media_upload_folder,
-    camera_ui_settings_db_path=camera_ui_settings_db_path,
-    camera_profile_folder=camera_profile_folder,
-    socketio = socketio
-)
-camera_manager.init_cameras()
-
-####################
-# Initialize Media Gallery
-####################
-media_gallery_manager = MediaGallery(media_upload_folder)
 
 ####################
 # Configuration Helpers
@@ -147,6 +128,42 @@ def generate_filename(camera_manager: CameraManager, cam_num: int, file_extensio
     else:
         return f"{timestamp}{file_extension}"
 
+def handle_camera_setting_changed(camera):
+    # TODO adjust emit structure (and frontend) to new websocket and parameter architecture/naming
+    socketio.emit(
+        "camera_state",
+        {
+            "camera_num": camera.camera_num,
+            "state": camera.get_settings(),
+        },
+        room=f"camera_{camera.camera_num}",
+    )
+
+####################
+# Initialize CameraManager
+####################
+camera_manager = CameraManager(
+    camera_module_info_path=camera_module_info_path,
+    camera_active_profile_path=camera_active_profile_path,
+    media_upload_folder=media_upload_folder,
+    camera_ui_settings_db_path=camera_ui_settings_db_path,
+    camera_profile_folder=camera_profile_folder,
+)
+camera_manager.init_cameras()
+
+"""
+Register application-level callback for camera state changes.
+
+This binds a handler that is invoked whenever a CameraObject managed by
+CameraManager updates its state, including changes to configuration
+parameters (e.g. video resolution) or live controls (e.g. ExposureTime).
+"""
+camera_manager.on_camera_setting_changed = handle_camera_setting_changed
+
+####################
+# Initialize Media Gallery
+####################
+media_gallery_manager = MediaGallery(media_upload_folder)
 
 ####################
 # SocketIO Events
@@ -166,14 +183,18 @@ def handle_message(data):
     emit("response", {"data": "Message received"}, broadcast=False)
 
 @socketio.on("join_camera_room")
-def on_join_camera(data):
+def handle_join_camera_room(data):
     camera_num = data["camera_num"]
-    camera_manager.join_camera_room(request.sid, camera_num)
+    room = f"camera_{camera_num}"
+    join_room(room)
+    logger.info("Client %s joined room %s", request.sid, room)
 
 @socketio.on("leave_camera_room")
-def on_leave_camera(data):
+def handle_leave_camera_room(data):
     camera_num = data["camera_num"]
-    camera_manager.leave_camera_room(request.sid, camera_num)
+    room = f"camera_{camera_num}"
+    leave_room(room)
+    logger.info("Client %s left room %s", request.sid, room)
 
 # Client joins camera room
 # @socketio.on("join_camera_room")

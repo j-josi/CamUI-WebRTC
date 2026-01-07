@@ -58,7 +58,7 @@ class CameraObject:
 
     - hält Canonical Camera State
     - kennt KEIN WebSocket / HTTP / Flask
-    - erzeugt interne State-Events über _on_state_changed()
+    - erzeugt interne Events/Hook-Calls über _on_setting_changed()
     """
 
     # Registry of all CameraObject instances: {camera_num: CameraObject}
@@ -193,11 +193,11 @@ class CameraObject:
     # ===================================================
 
     def _set_state(self, name: str, value: bool) -> None:
-        """Set a boolean state (internal). Calls _on_state_changed() if changed."""
+        """Set a boolean state (internal). Calls _on_setting_changed() if changed."""
         with self.lock:
             if self.states.get(name) != value:
                 self.states[name] = value
-                self._on_state_changed()
+                self._on_setting_changed()
 
     def _coerce_control_value(self, name: str, value):
         """Convert incoming control values to the type expected by Picamera2."""
@@ -255,7 +255,7 @@ class CameraObject:
     #         try:
     #             self.picam2.set_controls({name: value})
     #             self.controls[name] = value
-    #             self._on_state_changed()
+    #             self._on_setting_changed()
     #             return True
     #         except Exception as e:
     #             logger.error("Failed to set control %s: %s", name, e, exc_info=True)
@@ -312,7 +312,7 @@ class CameraObject:
                     return False
 
             if updated:
-                self._on_state_changed()
+                self._on_setting_changed()
 
             return updated
 
@@ -336,7 +336,7 @@ class CameraObject:
             try:
                 self.picam2.set_controls({name: coerced})
                 self.controls[name] = coerced
-                self._on_state_changed()
+                self._on_setting_changed()
                 return True
             except Exception as exc:
                 logger.error(
@@ -423,9 +423,9 @@ class CameraObject:
                 return copy.deepcopy(self.infos.get(name))
             return copy.deepcopy(self.infos)
 
-    def _on_state_changed(self):
+    def _on_setting_changed(self):
         """
-        Hook for infrastructure layer.
+        Hook called whenever a CameraObject changes state.
         Re-bound in camera_manager.py.
         """
         pass
