@@ -5,7 +5,7 @@ import logging
 import copy
 from typing import Dict, List, Optional
 from picamera2 import Picamera2
-from camera_object import CameraObject
+from camera import Camera
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class CameraManager:
         self.camera_profile_folder = camera_profile_folder
 
         self.connected_cameras: List[dict] = []
-        self.cameras: Dict[int, CameraObject] = {}
+        self.cameras: Dict[int, Camera] = {}
         self.camera_active_profile = {"cameras": []}
         self.lock = threading.Lock()
 
@@ -136,21 +136,21 @@ class CameraManager:
         return currently_connected
 
     def init_cameras(self):
-        """Create CameraObject instances for all connected cameras."""
+        """Create Camera instances for all connected cameras."""
         self.connected_cameras = self._detect_connected_cameras()
         self._update_active_profiles_file(self.connected_cameras)
 
         for cam_info in self.connected_cameras:
             try:
-                camera_obj = CameraObject(
+                camera = Camera(
                     cam_info,
                     self.camera_module_info,
                     self.media_upload_folder,
                     self.camera_ui_settings_db_path,
                 )
 
-                camera_obj._on_setting_changed = lambda cam=camera_obj: self.on_camera_setting_changed(cam)
-                self.cameras[cam_info["Num"]] = camera_obj
+                camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
+                self.cameras[cam_info["Num"]] = camera
                 # apply/load active profile -> set camera configs and controls
                 self._load_active_profile(cam_info["Num"])
             except Exception as e:
@@ -159,16 +159,16 @@ class CameraManager:
         for key, camera in self.cameras.items():
             logger.info("Initialized camera %s: %s", key, camera.camera_info)
 
-    def on_camera_setting_changed(self, camera: CameraObject):
+    def on_camera_setting_changed(self, camera: Camera):
         """
         Hook for reacting to camera setting changes.
         Intended to be overridden / rebound by application layer (app.py).
         """
         pass
 
-    def get_camera(self, cam_num: int) -> Optional[CameraObject]:
+    def get_camera(self, cam_num: int) -> Optional[Camera]:
         """
-        Return the CameraObject instance for the given camera number.
+        Return the Camera instance for the given camera number.
         Returns None if the request is invalid or the camera does not exist.
         """
         if not isinstance(cam_num, int):

@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 H264_ENCODER_MAX_VID_RES = (1920, 1080)
 
 
-class CameraObject:
+class Camera:
     """
     DOMAIN OBJECT
 
@@ -61,8 +61,8 @@ class CameraObject:
     - erzeugt interne Events/Hook-Calls über _on_setting_changed()
     """
 
-    # Registry of all CameraObject instances: {camera_num: CameraObject}
-    cameras: Dict[int, "CameraObject"] = {}
+    # Registry of all Camera instances: {camera_num: Camera}
+    cameras: Dict[int, "Camera"] = {}
 
     # -----------------------------
     # DEFAULT CONTROLS
@@ -136,7 +136,7 @@ class CameraObject:
         # Camera init
         # ------------------------------------------------
         self.picam2 = Picamera2(self.camera_num)
-        CameraObject.cameras[self.camera_num] = self
+        Camera.cameras[self.camera_num] = self
 
         # Hardware-derived capabilities
         self.sensor_modes_supported = self.picam2.sensor_modes
@@ -425,7 +425,7 @@ class CameraObject:
 
     def _on_setting_changed(self):
         """
-        Hook called whenever a CameraObject changes state.
+        Hook called whenever a Camera changes state.
         Re-bound in camera_manager.py.
         """
         pass
