@@ -15,38 +15,38 @@ logger = logging.getLogger(__name__)
 
 class CameraManager:
 
-    DEFAULT_CONFIG = {
-        "hflip": False,
-        "vflip": False,
-        "saveRAW": False,
-        "sensor_mode": 0,
-        "still_capture_resolution": 0,
-        "recording_resolution": 0,
-        "streaming_resolution": 0,
-    }
+    # DEFAULT_CONFIG = {
+    #     "hflip": False,
+    #     "vflip": False,
+    #     "saveRAW": False,
+    #     "sensor_mode": 0,
+    #     "still_capture_resolution": 0,
+    #     "recording_resolution": 0,
+    #     "streaming_resolution": 0,
+    # }
 
-    DEFAULT_CONTROLS = {
-    "AfMode": 0,
-    "LensPosition": 1.0,
-    "AfRange": 0,
-    "AfSpeed": 0,
-    "ExposureTime": 33000,
-    "AnalogueGain": 1.12,
-    "AeEnable": 1,
-    "ExposureValue": 0.0,
-    "AeConstraintMode": 0,
-    "AeExposureMode": 0,
-    "AeMeteringMode": 0,
-    "AeFlickerMode": 0,
-    "AeFlickerPeriod": 100,
-    "AwbEnable": 0,
-    "AwbMode": 0,
-    "Brightness": 0,
-    "Contrast": 1.0,
-    "Saturation": 1.0,
-    "Sharpness": 1.0,
-    "ColourTemperature": 4000,
-    }
+    # DEFAULT_CONTROLS = {
+    # "AfMode": 0,
+    # "LensPosition": 1.0,
+    # "AfRange": 0,
+    # "AfSpeed": 0,
+    # "ExposureTime": 33000,
+    # "AnalogueGain": 1.12,
+    # "AeEnable": 1,
+    # "ExposureValue": 0.0,
+    # "AeConstraintMode": 0,
+    # "AeExposureMode": 0,
+    # "AeMeteringMode": 0,
+    # "AeFlickerMode": 0,
+    # "AeFlickerPeriod": 100,
+    # "AwbEnable": 0,
+    # "AwbMode": 0,
+    # "Brightness": 0,
+    # "Contrast": 1.0,
+    # "Saturation": 1.0,
+    # "Sharpness": 1.0,
+    # "ColourTemperature": 4000,
+    # }
 
     def __init__(
         self,
@@ -147,8 +147,10 @@ class CameraManager:
                     self.camera_module_info,
                     self.media_upload_folder,
                     self.camera_ui_settings_db_path,
-                    CameraManager.DEFAULT_CONFIG,
-                    CameraManager.DEFAULT_CONTROLS,
+                    # CameraManager.DEFAULT_CONFIG,
+                    # CameraManager.DEFAULT_CONTROLS,
+                    # copy.deepcopy(CameraManager.DEFAULT_CONFIG),
+                    # copy.deepcopy(CameraManager.DEFAULT_CONTROLS),
                 )
 
                 camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
@@ -435,62 +437,62 @@ class CameraManager:
                 logger.error(f"Following error occured while trying to delete profile file {profile_path}: {e}")
                 return False
 
-    def reset_camera_to_defaults(self, camera_num: int) -> bool:
-        camera = self.get_camera(camera_num)
-        if not camera:
-            return False
+    # def reset_camera_to_defaults(self, camera_num: int) -> bool:
+    #     camera = self.get_camera(camera_num)
+    #     if not camera:
+    #         return False
 
-        logger.info("Resetting camera %s to default configuration", camera_num)
+    #     logger.info("Resetting camera %s to default configuration", camera_num)
 
-        was_streaming = camera.states["is_video_streaming"]
+    #     was_streaming = camera.states["is_video_streaming"]
 
-        # -------------------------------------------------
-        # 1. Stop runtime activity
-        # -------------------------------------------------
-        try:
-            camera.stop_streaming()
-            camera.stop_recording()
-        except Exception as exc:
-            logger.error(
-                "Failed to stop runtime activity for camera %s: %s",
-                camera_num,
-                exc,
-                exc_info=True,
-            )
-            return False
+    #     # -------------------------------------------------
+    #     # 1. Stop runtime activity
+    #     # -------------------------------------------------
+    #     try:
+    #         camera.stop_streaming()
+    #         camera.stop_recording()
+    #     except Exception as exc:
+    #         logger.error(
+    #             "Failed to stop runtime activity for camera %s: %s",
+    #             camera_num,
+    #             exc,
+    #             exc_info=True,
+    #         )
+    #         return False
 
-        # -------------------------------------------------
-        # 2. Apply default configs (canonical state only)
-        # -------------------------------------------------
-        updated_configs = camera.set_config(copy.deepcopy(CameraManager.DEFAULT_CONFIG))
-        if updated_configs:
-            try:
-                camera.reconfigure_video_pipeline()
-            except Exception as exc:
-                logger.error(
-                    "Failed to reconfigure pipeline for camera %s after config reset: %s",
-                    camera_num,
-                    exc,
-                    exc_info=True,
-                )
-                return False
+    #     # -------------------------------------------------
+    #     # 2. Apply default configs (canonical state only)
+    #     # -------------------------------------------------
+    #     updated_configs = camera.set_config(copy.deepcopy(CameraManager.DEFAULT_CONFIG))
+    #     if updated_configs:
+    #         try:
+    #             camera.reconfigure_video_pipeline()
+    #         except Exception as exc:
+    #             logger.error(
+    #                 "Failed to reconfigure pipeline for camera %s after config reset: %s",
+    #                 camera_num,
+    #                 exc,
+    #                 exc_info=True,
+    #             )
+    #             return False
 
-        # -------------------------------------------------
-        # 3. Apply default controls (live hardware)
-        # -------------------------------------------------
-        success = camera.set_control(copy.deepcopy(CameraManager.DEFAULT_CONTROLS))
-        if not success:
-            logger.error(
-                "Failed to apply default controls to camera %s",
-                camera_num,
-            )
-            return False
+    #     # -------------------------------------------------
+    #     # 3. Apply default controls (live hardware)
+    #     # -------------------------------------------------
+    #     success = camera.set_control(copy.deepcopy(CameraManager.DEFAULT_CONTROLS))
+    #     if not success:
+    #         logger.error(
+    #             "Failed to apply default controls to camera %s",
+    #             camera_num,
+    #         )
+    #         return False
 
-        # -------------------------------------------------
-        # 4. Restart streaming
-        # -------------------------------------------------
-        if was_streaming:
-            camera.start_streaming()
+    #     # -------------------------------------------------
+    #     # 4. Restart streaming
+    #     # -------------------------------------------------
+    #     if was_streaming:
+    #         camera.start_streaming()
 
-        logger.info("Camera %s successfully reset to defaults", camera_num)
-        return True
+    #     logger.info("Camera %s successfully reset to defaults", camera_num)
+    #     return True

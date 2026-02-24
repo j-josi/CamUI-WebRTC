@@ -48,6 +48,39 @@ class Camera:
         "is_capturing_still_image": False
     }
 
+    DEFAULT_CONFIGS = {
+        "hflip": False,
+        "vflip": False,
+        "saveRAW": False,
+        "sensor_mode": 0,
+        "still_capture_resolution": 0,
+        "recording_resolution": 0,
+        "streaming_resolution": 0,
+    }
+
+    DEFAULT_CONTROLS = {
+    "AfMode": 0,
+    "LensPosition": 1.0,
+    "AfRange": 0,
+    "AfSpeed": 0,
+    "ExposureTime": 33000,
+    "AnalogueGain": 1.12,
+    "AeEnable": 1,
+    "ExposureValue": 0.0,
+    "AeConstraintMode": 0,
+    "AeExposureMode": 0,
+    "AeMeteringMode": 0,
+    "AeFlickerMode": 0,
+    "AeFlickerPeriod": 100,
+    "AwbEnable": 0,
+    "AwbMode": 0,
+    "Brightness": 0,
+    "Contrast": 1.0,
+    "Saturation": 1.0,
+    "Sharpness": 1.0,
+    "ColourTemperature": 4000,
+    }
+
     # ---------------------------------------------------
     # INIT
     # ---------------------------------------------------
@@ -58,22 +91,22 @@ class Camera:
         camera_module_info: Dict,
         upload_folder: str,
         camera_ui_settings_db_path: str,
-        configs: Dict,
-        controls: Dict,
     ) -> None:
 
         self.camera_info = camera_info
         self.camera_module_info = camera_module_info
         self.camera_num: int = camera_info["Num"]
         self.upload_folder = upload_folder
+        self.filename_recording = None
         self.ui_settings_db_path = camera_ui_settings_db_path
-        self.configs = configs
-        self.controls = controls
+        self.configs = copy.deepcopy(Camera.DEFAULT_CONFIGS)
+        self.controls = copy.deepcopy(Camera.DEFAULT_CONTROLS)
 
         self.infos = {
             "model": self.camera_info.get("Model"),
         }
-        self.states = Camera.DEFAULT_STATES
+        # self.states = Camera.DEFAULT_STATES
+        self.states = copy.deepcopy(Camera.DEFAULT_STATES)
         self.lock = threading.Lock()
 
         self.picam2 = Picamera2(self.camera_num)
@@ -83,6 +116,9 @@ class Camera:
         self.sensor_modes_supported = self.picam2.sensor_modes
         self.still_resolutions_supported = self._generate_still_resolutions_supported()
         self.video_resolutions_supported = self._generate_video_resolutions_supported()
+
+        logger.debug(f"still resolutions supported: {self.still_resolutions_supported}")
+        logger.debug(f"video resolutions supported: {self.video_resolutions_supported}")
 
         # ------------------------------------------------
         # Picamera2 Encoders and Outputs (used for Streaming and Recording)
@@ -139,29 +175,71 @@ class Camera:
                 self.states[name] = value
                 self._on_setting_changed()
 
-    def _coerce_control_value(self, name: str, value: Any) -> Any:
-        """Convert incoming control values to the type expected by Picamera2."""
-        current = self.controls.get(name)
+    # def _coerce_control_value(self, name: str, value: Any) -> Any:
+    #     """Convert incoming control values to the type expected by Picamera2."""
+    #     current = self.controls.get(name)
 
-        if current is None:
+    #     if current is None:
+    #         return value
+
+    #     try:
+    #         if isinstance(current, bool):
+    #             return bool(int(value)) if isinstance(value, str) else bool(value)
+    #         if isinstance(current, int):
+    #             return int(value)
+    #         if isinstance(current, float):
+    #             return float(value)
+    #     except (ValueError, TypeError):
+    #         logger.warning(
+    #             "Failed to coerce control '%s' value '%s' to type %s",
+    #             name,
+    #             value,
+    #             type(current),
+    #         )
+
+    #     return value
+
+    def _coerce_control_value(self, name: str, value: Any) -> Any:
+        """Convert incoming control values based on libcamera metadata."""
+
+        meta = self.picam2.camera_controls.get(name)
+        if not meta:
             return value
 
         try:
-            if isinstance(current, bool):
-                return bool(int(value)) if isinstance(value, str) else bool(value)
-            if isinstance(current, int):
-                return int(value)
-            if isinstance(current, float):
-                return float(value)
-        except (ValueError, TypeError):
+            min_val, max_val, default_val = meta
+            expected_type = type(default_val)
+
+            # --- Typkonvertierung ---
+            if expected_type is bool:
+                coerced = bool(int(value)) if isinstance(value, str) else bool(value)
+
+            elif expected_type is int:
+                coerced = int(float(value))  # wichtig bei "500.0"
+
+            elif expected_type is float:
+                coerced = float(value)
+
+            else:
+                coerced = value
+
+            # --- Clamping ---
+            if isinstance(coerced, (int, float)):
+                if min_val is not None:
+                    coerced = max(min_val, coerced)
+                if max_val is not None:
+                    coerced = min(max_val, coerced)
+
+            return coerced
+
+        except (ValueError, TypeError) as exc:
             logger.warning(
-                "Failed to coerce control '%s' value '%s' to type %s",
+                "Failed to coerce control '%s' value '%s': %s",
                 name,
                 value,
-                type(current),
+                exc,
             )
-
-        return value
+            return default_val
 
     def get_settings(self) -> Dict:
         return {
@@ -190,6 +268,7 @@ class Camera:
 
             with self.lock:
                 for ctrl_name, raw_value in name.items():
+                    logger.debug(f"ctrl_name: {ctrl_name}, raw_value: {raw_value}")
                     if ctrl_name not in self.controls:
                         logger.warning(
                             "Attempted to set unknown camera control '%s'", ctrl_name
@@ -199,6 +278,8 @@ class Camera:
                     coerced = self._coerce_control_value(ctrl_name, raw_value)
                     current = self.controls.get(ctrl_name)
 
+                    # logger.debug(f"coerced: {coerced}, current: {current}")
+
                     # Skip if value is unchanged
                     if current == coerced:
                         continue
@@ -206,20 +287,31 @@ class Camera:
                     controls_to_apply[ctrl_name] = coerced
 
                 if not controls_to_apply:
+                    logger.debug("controls_to_apply is empty -> return False")
                     return False
 
-                try:
-                    self.picam2.set_controls(controls_to_apply)
-                    self.controls.update(controls_to_apply)
-                    updated = True
-                except Exception as exc:
-                    logger.error(
-                        "Failed to apply bulk camera controls %s: %s",
-                        controls_to_apply,
-                        exc,
-                        exc_info=True,
-                    )
-                    return False
+                # try:
+                #     self.picam2.set_controls(controls_to_apply)
+                #     self.controls.update(controls_to_apply)
+                #     updated = True
+                # except Exception as exc:
+                #     logger.error(
+                #         "Failed to apply bulk camera controls %s: %s",
+                #         controls_to_apply,
+                #         exc,
+                #         exc_info=True,
+                #     )
+                #     return False
+
+                for ctrl, value in controls_to_apply.items():
+                    try:
+                        self.picam2.set_controls({ctrl: value})
+                        self.controls[ctrl] = value
+                        logger.debug("Set control %s=%s", ctrl, value)
+                    except Exception as e:
+                        logger.error("Failed control %s=%s -> %s", ctrl, value, e)
+                        return False
+                updated = True
 
             if updated:
                 self._on_setting_changed()
@@ -235,6 +327,7 @@ class Camera:
         with self.lock:
             if name not in self.controls:
                 logger.warning("Attempted to set unknown camera control '%s'", name)
+                logger.warning(f"self.controls = {self.controls}")
                 return False
 
             coerced = self._coerce_control_value(name, value)
@@ -287,7 +380,6 @@ class Camera:
                     if self.configs.get(key) != val:
                         self.configs[key] = val
                         updated = True
-
             return updated
 
         # ---------- SINGLE MODE ----------
@@ -303,6 +395,7 @@ class Camera:
                 return False
 
             self.configs[name] = value
+            logger.debug(f"set_config() set config {name}={value}")
             return True
 
     def get_config(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
@@ -318,6 +411,85 @@ class Camera:
             if name:
                 return copy.deepcopy(self.infos.get(name))
             return copy.deepcopy(self.infos)
+
+    # def reset_camera_to_defaults(self) -> bool:
+    #     logger.info("Resetting camera %s to default configuration", self.camera_num)
+
+    #     was_streaming = self.states["is_video_streaming"]
+
+    #     # -------------------------------------------------
+    #     # 1. Stop runtime activity
+    #     # -------------------------------------------------
+    #     try:
+    #         self.stop_streaming()
+    #         self.stop_recording()
+    #     except Exception as exc:
+    #         logger.error(
+    #             "Failed to stop runtime activity for camera %s: %s",
+    #             self.camera_num,
+    #             exc,
+    #             exc_info=True,
+    #         )
+    #         return False
+
+    #     # -------------------------------------------------
+    #     # 2. Apply default configs (canonical state only)
+    #     # -------------------------------------------------
+    #     updated_configs = self.set_config(copy.deepcopy(self.DEFAULT_CONFIGS))
+    #     if updated_configs:
+    #         try:
+    #             self.reconfigure_video_pipeline()
+    #         except Exception as exc:
+    #             logger.error(
+    #                 "Failed to reconfigure pipeline for camera %s after config reset: %s",
+    #                 self.camera_num,
+    #                 exc,
+    #                 exc_info=True,
+    #             )
+    #             return False
+
+    #     # -------------------------------------------------
+    #     # 3. Reconfigure Video-Pipline and restart streaming
+    #     # -------------------------------------------------
+    #     self.reconfigure_video_pipeline()
+    #     if was_streaming:
+    #         self.start_streaming()
+
+    #     logger.info("Camera %s successfully reset to defaults", self.camera_num)
+    #     return True
+
+    #     # -------------------------------------------------
+    #     # 4. Apply default controls (live hardware)
+    #     # -------------------------------------------------
+    #     success = self.set_control(copy.deepcopy(Camera.DEFAULT_CONTROLS))
+    #     if not success:
+    #         logger.error(
+    #             "Failed to apply default controls to camera %s",
+    #             self.camera_num,
+    #         )
+    #         return False    
+
+    def reset_camera_to_defaults(self):
+
+        was_streaming = self.states["is_video_streaming"]
+
+        self.stop_streaming()
+        self.stop_recording()
+
+        # Canonical state reset
+        self.configs = copy.deepcopy(self.DEFAULT_CONFIGS)
+        self.controls = copy.deepcopy(self.DEFAULT_CONTROLS)
+
+        # Rebuild pipeline
+        self.reconfigure_video_pipeline()
+
+        # Apply live controls AFTER start
+        self.apply_controls()
+
+        if was_streaming:
+            self.start_streaming()
+        
+        return True
 
     def _on_setting_changed(self) -> None:
         """
@@ -399,11 +571,166 @@ class Camera:
         self.apply_controls()
         self.sync_ui_settings()
 
+    # def _init_ui_settings_from_db(
+    #     self,
+    #     picamera2_controls: Dict,
+    #     ui_settings_db_path: str,
+    # ) -> Dict:
+    #     if os.path.isfile(ui_settings_db_path):
+    #         try:
+    #             with open(ui_settings_db_path, "r") as f:
+    #                 cam_ctrl_json = json.load(f)
+    #         except Exception as e:
+    #             logger.error(
+    #                 "Failed to extract JSON data from '%s': %s",
+    #                 ui_settings_db_path,
+    #                 e,
+    #                 exc_info=True,
+    #             )
+    #             return {}
+
+    #         if "sections" not in cam_ctrl_json:
+    #             logger.error("'sections' key not found in cam_ctrl_json!")
+    #             return cam_ctrl_json
+    #     else:
+    #         logger.error("Controls DB file does not exist: %s", ui_settings_db_path)
+    #         return {}
+
+    #     for section in cam_ctrl_json["sections"]:
+    #         if "settings" not in section:
+    #             logger.warning(
+    #                 "Missing 'settings' key in section: %s",
+    #                 section.get("title", "Unknown"),
+    #             )
+    #             continue
+
+    #         section_enabled: bool = False
+
+    #         for setting in section["settings"]:
+    #             if not isinstance(setting, dict):
+    #                 logger.warning("Unexpected setting format: %s", setting)
+    #                 continue
+
+    #             setting_id: Optional[str] = setting.get("id")
+    #             source: Optional[str] = setting.get("source")
+    #             original_enabled: bool = setting.get("enabled", False)
+
+    #             if source == "controls":
+    #                 if setting_id in picamera2_controls:
+    #                     min_val, max_val, default_val = picamera2_controls[setting_id]
+
+    #                     logger.debug(
+    #                         "Updating control %s: min=%s max=%s default=%s",
+    #                         setting_id,
+    #                         min_val,
+    #                         max_val,
+    #                         default_val,
+    #                     )
+
+    #                     setting["min"] = min_val
+    #                     setting["max"] = max_val
+
+    #                     if default_val is not None:
+    #                         setting["default"] = default_val
+    #                     else:
+    #                         default_val = False if isinstance(min_val, bool) else min_val
+
+    #                     setting["enabled"] = original_enabled
+
+    #                     if original_enabled:
+    #                         section_enabled = True
+    #                 else:
+    #                     logger.debug(
+    #                         "Disabling control %s: not found in picamera2_controls",
+    #                         setting_id,
+    #                     )
+    #                     setting["enabled"] = False
+
+    #             elif source == "still_resolutions_supported":
+    #                 resolution_options = [
+    #                     {
+    #                         "value": i,
+    #                         "label": f"{w} x {h}",
+    #                         "enabled": True,
+    #                     }
+    #                     for i, (w, h) in enumerate(self.still_resolutions_supported)
+    #                 ]
+    #                 setting["options"] = resolution_options
+    #                 section_enabled = True
+
+    #                 logger.debug(
+    #                     "Updated %s with generated resolutions",
+    #                     setting_id,
+    #                 )
+
+    #             elif source == "video_resolutions_supported":
+    #                 resolution_options = [
+    #                     {
+    #                         "value": i,
+    #                         "label": f"{w} x {h}",
+    #                         "enabled": True,
+    #                     }
+    #                     for i, (w, h) in enumerate(self.video_resolutions_supported)
+    #                 ]
+    #                 setting["options"] = resolution_options
+    #                 section_enabled = True
+
+    #             else:
+    #                 logger.debug(
+    #                     "Skipping %s: no source specified, keeping existing values",
+    #                     setting_id,
+    #                 )
+    #                 section_enabled = True
+
+    #             if "childsettings" in setting:
+    #                 for child in setting["childsettings"]:
+    #                     child_id: Optional[str] = child.get("id")
+    #                     child_source: Optional[str] = child.get("source")
+
+    #                     if (
+    #                         child_source == "controls"
+    #                         and child_id in picamera2_controls
+    #                     ):
+    #                         min_val, max_val, default_val = picamera2_controls[child_id]
+
+    #                         logger.debug(
+    #                             "Updating child control %s: min=%s max=%s default=%s",
+    #                             child_id,
+    #                             min_val,
+    #                             max_val,
+    #                             default_val,
+    #                         )
+
+    #                         child["min"] = min_val
+    #                         child["max"] = max_val
+
+    #                         if default_val is not None:
+    #                             child["default"] = default_val
+
+    #                         child["enabled"] = child.get("enabled", False)
+
+    #                         if child["enabled"]:
+    #                             section_enabled = True
+    #                     else:
+    #                         logger.debug(
+    #                             "Skipping or disabling child setting %s",
+    #                             child_id,
+    #                         )
+
+    #         section["enabled"] = section_enabled
+
+    #     logger.debug(
+    #         "Initialized camera_profile controls: %s",
+    #     )
+    #     return cam_ctrl_json
+
+
     def _init_ui_settings_from_db(
         self,
         picamera2_controls: Dict,
         ui_settings_db_path: str,
     ) -> Dict:
+
         if os.path.isfile(ui_settings_db_path):
             try:
                 with open(ui_settings_db_path, "r") as f:
@@ -443,17 +770,12 @@ class Camera:
                 source: Optional[str] = setting.get("source")
                 original_enabled: bool = setting.get("enabled", False)
 
+                # ============================================================
+                # CONTROLS (live changeable)
+                # ============================================================
                 if source == "controls":
                     if setting_id in picamera2_controls:
                         min_val, max_val, default_val = picamera2_controls[setting_id]
-
-                        logger.debug(
-                            "Updating control %s: min=%s max=%s default=%s",
-                            setting_id,
-                            min_val,
-                            max_val,
-                            default_val,
-                        )
 
                         setting["min"] = min_val
                         setting["max"] = max_val
@@ -474,83 +796,91 @@ class Camera:
                         )
                         setting["enabled"] = False
 
-                elif source == "still_resolutions_supported":
-                    resolution_options = [
-                        {
-                            "value": i,
-                            "label": f"{w} x {h}",
-                            "enabled": True,
-                        }
-                        for i, (w, h) in enumerate(self.still_resolutions_supported)
-                    ]
-                    setting["options"] = resolution_options
-                    section_enabled = True
+                    # ============================================================
+                    # CHILD SETTINGS (optional)
+                    # ============================================================
+                    if "childsettings" in setting:
+                        for child in setting["childsettings"]:
+                            child_id: Optional[str] = child.get("id")
+                            child_source: Optional[str] = child.get("source")
+                            logger.debug(f"child_id: {child_id}, child_source: {child_source}")
 
-                    logger.debug(
-                        "Updated %s with generated resolutions",
-                        setting_id,
-                    )
+                            if child_id in picamera2_controls:
+                                min_val, max_val, default_val = picamera2_controls[child_id]
 
-                elif source == "video_resolutions_supported":
-                    resolution_options = [
-                        {
-                            "value": i,
-                            "label": f"{w} x {h}",
-                            "enabled": True,
-                        }
-                        for i, (w, h) in enumerate(self.video_resolutions_supported)
-                    ]
-                    setting["options"] = resolution_options
-                    section_enabled = True
+                                child["min"] = min_val
+                                child["max"] = max_val
 
+                                if default_val is not None:
+                                    child["default"] = default_val
+
+                                child["enabled"] = child.get("enabled", False)
+
+                                if child["enabled"]:
+                                    section_enabled = True
+                            else:
+                                child["enabled"] = False
+
+                # ============================================================
+                # CONFIGS (require restart/reconfigure picamera2 video pipeline to apply)
+                # ============================================================
+                elif source in ("configs", "configs_no_picamera_restart"):
+                    # if source == "configs":
+                    if hasattr(self, "configs") and setting_id in self.configs:
+                        current_value = self.configs.get(setting_id)
+                        setting["value"] = current_value
+                        setting["enabled"] = original_enabled
+
+                        # Special handling for supported video resolutions configs (dynamically loaded with picamera2 dependent on connected camera sensor)
+                        if setting_id in ("recording_resolution", "streaming_resolution"):
+                            setting["options"] = [
+                                {
+                                    "value": i,
+                                    "label": f"{w} x {h}",
+                                    "enabled": True,
+                                }
+                                # for i, (w, h) in enumerate(video_resolution_list)
+                                for i, (w, h) in enumerate(self.video_resolutions_supported)
+                            ]
+
+                        # Special handling for supported still resolutions configs (dynamically loaded with picamera2 dependent on connected camera sensor)
+                        elif setting_id == "still_capture_resolution":
+                            setting["options"] = [
+                                {
+                                    "value": i,
+                                    "label": f"{w} x {h}",
+                                    "enabled": True,
+                                }
+                                for i, (w, h) in enumerate(self.still_resolutions_supported)
+                            ]
+
+                        if original_enabled:
+                            section_enabled = True
+
+                    else:
+                        logger.debug(
+                            "Disabling config %s: not found in self.configs",
+                            setting_id,
+                        )
+                        setting["enabled"] = False
+
+                # ============================================================
+                # FALLBACK
+                # ============================================================
                 else:
                     logger.debug(
-                        "Skipping %s: no source specified, keeping existing values",
+                        "Skipping %s: no or unknown source specified",
                         setting_id,
                     )
-                    section_enabled = True
-
-                if "childsettings" in setting:
-                    for child in setting["childsettings"]:
-                        child_id: Optional[str] = child.get("id")
-                        child_source: Optional[str] = child.get("source")
-
-                        if (
-                            child_source == "controls"
-                            and child_id in picamera2_controls
-                        ):
-                            min_val, max_val, default_val = picamera2_controls[child_id]
-
-                            logger.debug(
-                                "Updating child control %s: min=%s max=%s default=%s",
-                                child_id,
-                                min_val,
-                                max_val,
-                                default_val,
-                            )
-
-                            child["min"] = min_val
-                            child["max"] = max_val
-
-                            if default_val is not None:
-                                child["default"] = default_val
-
-                            child["enabled"] = child.get("enabled", False)
-
-                            if child["enabled"]:
-                                section_enabled = True
-                        else:
-                            logger.debug(
-                                "Skipping or disabling child setting %s",
-                                child_id,
-                            )
+                    setting["enabled"] = original_enabled
+                    if original_enabled:
+                        section_enabled = True
 
             section["enabled"] = section_enabled
 
-        logger.debug(
-            "Initialized camera_profile controls: %s",
-        )
+        logger.debug("Initialized camera UI settings")
         return cam_ctrl_json
+
 
     # def update_settings(self, setting_id: str, setting_value, init: bool = False):
     #     """Update a camera setting or control in STATE."""
@@ -698,6 +1028,10 @@ class Camera:
             self.start_streaming()
 
         self.configs["sensor_mode"] = self.sensor_modes_supported.index(mode)
+
+        # reapply controls (picam2.configure() overrides current controls)
+        self.apply_controls()
+        
         logger.info("Video pipeline reconfigured: main=%s lores=%s", main_size, lores_size)
         return True
 
@@ -834,15 +1168,19 @@ class Camera:
             path = os.path.join(self.upload_folder, filename)
             self.output_recording.output_filename = path
 
-            self.picam2.start_recording(
-                self.encoder_recording,
-                self.output_recording,
-                name=self.get_recording_stream(),
-            )
+            try:
+                self.picam2.start_recording(
+                    self.encoder_recording,
+                    self.output_recording,
+                    name=self.get_recording_stream(),
+                )
+                self.filename_recording = filename
 
-        self._set_state("is_video_recording", True)
-        logger.info(f"Recording {filename} started")
-        return True, filename
+                self._set_state("is_video_recording", True)
+                logger.info(f"Recording {filename} started")
+                return True, filename
+            except Exception as e:
+                logger.error(f"Failed to start video recording")
 
     def stop_recording(self) -> bool:
         success = False

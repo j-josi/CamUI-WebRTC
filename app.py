@@ -34,7 +34,7 @@ from libcamera import Transform, controls
 # Initialize Logging
 ####################
 logging.basicConfig(
-    level=logging.INFO,  # Options: DEBUG | INFO | WARNING | ERROR | CRITICAL
+    level=logging.DEBUG,  # Options: DEBUG | INFO | WARNING | ERROR | CRITICAL
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -210,51 +210,160 @@ def handle_leave_camera_room(data):
         #     emit("camera_status", {"active_recording": camera.states["is_video_recording"]}, room=room_name)
 
 
+# @socketio.on("set_camera_setting")
+# def handle_set_camera_setting(data):
+#     """
+#     Receive a camera state update from the frontend and apply it via
+#     CameraObject.set_state() or set_control() depending on the path.
+    
+#     data = {
+#         "camera_num": int,
+#         "path": str,  # e.g., "hflip" or "controls.ExposureTime"
+#         "value": any
+#     }
+#     """
+#     camera_num = data.get("camera_num")
+#     path = data.get("path")
+#     value = data.get("value")
+
+#     logger.debug(f"handle_set_camera_setting - path={path}, value={value}")
+
+#     if camera_num not in camera_manager.cameras:
+#         emit("error", {"message": f"Camera {camera_num} not found"})
+#         return
+
+#     camera = camera_manager.cameras[camera_num]
+#     changed = False
+
+#     if path.startswith("controls."):
+#         # controls key
+#         control_name = path.split(".", 1)[1]
+#         changed = camera.set_control(control_name, value)
+#     elif path.startswith("configs."):
+#         # configs key
+#         config_source = path.split(".", 1)[0]
+#         config_name = path.split(".", 1)[1]
+
+#         logger.debug(f"config_source: {config_source}, config_name: {config_name}")
+#         # temp
+#         # if config_name not in ["still_capture_resolution", "recording_resolution", "streaming_resolution"]:
+#         allowed_config_sources = ["configs", "configs_no_picamera_restart"]
+#         if config_source in allowed_config_sources:
+#             logger.debug("config_name in allowed_config_sources")
+#             changed = camera.set_config(config_name, int(value))
+#             if config_source == "configs":
+#                 # restart picamera2 video pipeline
+#                 logger.debug("reconfigure video pipeline")
+#                 camera.reconfigure_video_pipeline()
+#         else:
+#             emit("error", {"message": f"unsupported source '{config_source}' configured for function handle_set_camera_setting()"})
+#             return
+#     else:
+#         logger.info(f"unsupported top-level camera setting key '{path.split(".", 1)[1]}' for function handle_set_camera_setting -> skipped to set camera setting")
+
+#     if changed:
+#         # Broadcast updated camera state to all clients in the room
+#         # TODO anpassen auf neue architektur/struktur
+#         emit(
+#             "camera_state",
+#             {"camera_num": camera_num, "state": camera.get_settings()},
+#             broadcast=True
+#         )
+
+
 @socketio.on("set_camera_setting")
 def handle_set_camera_setting(data):
     """
     Receive a camera state update from the frontend and apply it via
-    CameraObject.set_state() or set_control() depending on the path.
-    
-    data = {
-        "camera_num": int,
-        "path": str,  # e.g., "hflip" or "controls.ExposureTime"
-        "value": any
-    }
+    set_control() or set_config() depending on the path format.
+
+    Expected format:
+        "<source>.<name>"
+
+    Example:
+        "controls.ExposureTime"
+        "configs.recording_resolution"
+        "configs_no_picamera_restart.hflip"
     """
+
     camera_num = data.get("camera_num")
     path = data.get("path")
     value = data.get("value")
 
-    print(f"DEBUG: handle_set_camera_setting - path={path}, value={value}")
+    logger.debug(f"handle_set_camera_setting - path={path}, value={value}")
 
+    # -----------------------------------------------------
+    # Validate camera
+    # -----------------------------------------------------
     if camera_num not in camera_manager.cameras:
         emit("error", {"message": f"Camera {camera_num} not found"})
         return
 
     camera = camera_manager.cameras[camera_num]
 
+    # -----------------------------------------------------
+    # Validate path format
+    # -----------------------------------------------------
+    if not isinstance(path, str) or "." not in path:
+        emit("error", {"message": f"Invalid path format: '{path}'"})
+        return
+
+    source, name = path.split(".", 1)
+
+    logger.debug(f"Parsed path -> source='{source}', name='{name}'")
+
     changed = False
 
-    if path.startswith("controls."):
-        # controls key
-        control_name = path.split(".", 1)[1]
-        changed = camera.set_control(control_name, value)
-    elif path.startswith("configs."):
-        # configs key
-        config_name = path.split(".", 1)[1]
-        # temp
-        if config_name not in ["still_capture_resolution", "recording_resolution", streaming_resolution]:
-            changed = camera.set_config(config_name, value)
-    else:
-        logger.info(f"unsupported top-level camera setting key '{path.split(".", 1)[1]}' for function handle_set_camera_setting -> skipped to set camera setting")
+    # =====================================================
+    # CONTROLS (live changeable via set_control)
+    # =====================================================
+    if source.startswith("control"):
+        changed = camera.set_control(name, value)
 
+    # =====================================================
+    # CONFIGS WITH AUTO RESTART (OF PICAMERA2 VIDEO PIPELINE)
+    # =====================================================
+    elif source == "configs":
+        try:
+            changed = camera.set_config(name, int(value))
+        except (ValueError, TypeError):
+            emit("error", {"message": f"Invalid value for config '{name}'"})
+            return
+
+        if changed:
+            logger.debug("Restarting picamera2 video pipeline")
+            camera.reconfigure_video_pipeline()
+
+    # =====================================================
+    # CONFIGS WITHOUT RESTART (OF PICAMERA2 VIDEO PIPELINE)
+    # =====================================================
+    elif source == "configs_no_picamera_restart":
+        try:
+            changed = camera.set_config(name, int(value))
+        except (ValueError, TypeError):
+            emit("error", {"message": f"Invalid value for config '{name}'"})
+            return
+
+        if changed:
+            logger.debug("Config updated without automatic restart")
+
+    # =====================================================
+    # UNKNOWN SOURCE
+    # =====================================================
+    else:
+        emit("error", {"message": f"Unsupported source '{source}'"})
+        return
+
+    # -----------------------------------------------------
+    # Broadcast updated state if something changed
+    # -----------------------------------------------------
     if changed:
-        # Broadcast updated camera state to all clients in the room
-        # TODO anpassen auf neue architektur/struktur
         emit(
             "camera_state",
-            {"camera_num": camera_num, "state": camera.get_settings()},
+            {
+                "camera_num": camera_num,
+                "state": camera.get_settings()
+            },
             broadcast=True
         )
 
@@ -703,7 +812,9 @@ def save_profile(camera_num):
 
 @app.route("/reset_profile_<int:camera_num>", methods=["POST"])
 def reset_profile(camera_num):
-    success = camera_manager.reset_camera_to_defaults(camera_num)
+    cam = camera_manager.cameras[camera_num]
+    success = cam.reset_camera_to_defaults()
+    # success = camera_manager.reset_camera_to_defaults(camera_num)
     if success:
         return jsonify({"success": True, "message": "Profile reset to default values"})
     else:

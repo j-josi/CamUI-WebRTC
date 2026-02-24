@@ -125,7 +125,7 @@
 
 <script>
 
-const cameraNum = {{ camera.Num }};
+const cameraNum = JSON.parse('{{ camera.Num | tojson }}');
 const video = document.getElementById("videoFeed");
 const videoControls = document.getElementById("videoControls");
 const videoContainer = document.getElementById("videoFeedContainer");

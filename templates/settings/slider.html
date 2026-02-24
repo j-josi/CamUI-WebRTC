@@ -33,24 +33,48 @@
     {% endif %}
 
     <!-- Slider -->
-    <input type="range" class="form-range" id="{{ setting.id }}" 
-    min="{{ setting.min }}" max="{{ setting.max }}" step="{{ setting.step }}" 
-    value="{{ setting.get("value", setting.get("default")) }}"
-    data-original-step="{{ setting.step }}"
-    {% if setting.conversion and setting.conversion.enabled %}
-        data-conversion-enabled="true"
-        data-conversion-factor="{{ setting.conversion.factor }}"
-        {% if setting.conversion.step %}
-            data-conversion-step="{{ setting.conversion.step }}"
+    <input type="range"
+        class="form-range"
+        id="{{ setting.id }}"
+        min="{{ setting.min }}"
+        max="{{ setting.max }}"
+        step="{{ setting.step }}"
+        value="{{ setting.get("value", setting.get("default")) }}"
+        data-original-step="{{ setting.step }}"
+
+        {# --- Automatic data-type detection --- #}
+        {% if setting.source == "controls" %}
+            data-type="controls"
+        {% elif setting.source == "configs" %}
+            data-type="configs"
+        {% elif setting.source in ["video_resolutions_supported", "still_resolutions_supported"] %}
+            data-type="configs"
+        {% else %}
+            data-type="controls"
         {% endif %}
-    {% endif %}
-    onchange="adjustSliderSetting('{{ setting.id }}', this.value)">
+
+        {# --- Optional Conversion Support --- #}
+        {% if setting.conversion and setting.conversion.enabled %}
+            data-conversion-enabled="true"
+            data-conversion-factor="{{ setting.conversion.factor }}"
+            {% if setting.conversion.step %}
+                data-conversion-step="{{ setting.conversion.step }}"
+            {% endif %}
+        {% endif %}
+
+        onchange="adjustSliderSetting('{{ setting.id }}', this.value)">
 
     <!-- Conversion Switch -->
     {% if setting.conversion and setting.conversion.enabled %}
     <div class="form-check form-switch mt-2">
-        <input class="form-check-input" type="checkbox" id="{{ setting.id }}_conversion" checked>
-        <label class="form-check-label" for="{{ setting.id }}_conversion">Display in {{ setting.conversion.label }}</label>
+        <input class="form-check-input"
+            type="checkbox"
+            id="{{ setting.id }}_conversion"
+            checked>
+        <label class="form-check-label"
+            for="{{ setting.id }}_conversion">
+            Display in {{ setting.conversion.label }}
+        </label>
     </div>
     {% endif %}
 

@@ -24,19 +24,36 @@
     
     <div>
         {% for option in setting.options %}
-    <div class="form-check">
-        <input 
-            class="form-check-input" 
-            type="checkbox"  {# or type="radio" if needed #}
-            id="{{ setting.id }}_{{ loop.index }}" 
-            name="{{ setting.id }}" 
-            value="{{ option.value }}"
-            {% if not option.enabled %}disabled{% endif %}  
+        <div class="form-check">
+            <input 
+                class="form-check-input"
+                type="checkbox"
+                id="{{ setting.id }}_{{ loop.index }}"
+                name="{{ setting.id }}"
+                value="{{ option.value }}"
+
+                {# --- Automatic data-type detection --- #}
+                {% if setting.source == "controls" %}
+                    data-type="controls"
+                {% elif setting.source == "configs" %}
+                    data-type="configs"
+                {% elif setting.source in ["video_resolutions_supported", "still_resolutions_supported"] %}
+                    data-type="configs"
+                {% else %}
+                    data-type="controls"
+                {% endif %}
+
+                {% if not option.enabled %}disabled{% endif %}
+                onchange="updateSettingFromElement(this)"
             >
-        <label class="form-check-label" for="{{ setting.id }}_{{ loop.index }}">
-            {{ option.label }}
-        </label>
+
+            <label class="form-check-label" for="{{ setting.id }}_{{ loop.index }}">
+                {{ option.label }}
+            </label>
+        </div>
+        {% endfor %}
     </div>
+
     
 {% endfor %}
     </div>

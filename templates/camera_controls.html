@@ -711,11 +711,41 @@ function updateRadioChildVisibility(settingId) {
 //     });
 // }
 
-function updateSetting(settingId, newValue) {
+// function updateSetting(settingId, newValue) {
+//     socket.emit("set_camera_setting", {
+//         camera_num: cameraNum,
+//         path: `controls.${settingId}`,
+//         value: newValue
+//     });
+// }
+
+// function updateSettingFromElement(element) {
+//     const id = element.id || element.name;
+//     const value = element.type === "checkbox" ? element.checked : element.value;
+//     const type = element.dataset.type || "controls";
+
+//     socket.emit("set_camera_setting", {
+//         camera_num: cameraNum,
+//         path: `${type}.${id}`,
+//         value: value
+//     });
+// }
+
+function updateSettingFromElement(element) {
+
+    // Use NAME for grouped inputs (radio / checkbox groups)
+    const id = element.name ? element.name : element.id;
+
+    const value = element.type === "checkbox"
+        ? element.checked
+        : element.value;
+
+    const type = element.dataset.type || "controls";
+
     socket.emit("set_camera_setting", {
-        camera_num: cameraNum,
-        path: `controls.${settingId}`,
-        value: newValue
+        camera_num: camera_num,
+        path: `${type}.${id}`,
+        value: value
     });
 }
 
@@ -743,8 +773,11 @@ function adjustSliderSetting(settingId, value) {
     }
 
     // Always send raw value to server
-    console.log("adjustSliderSetting calls updateSetting");
-    updateSetting(settingId, value);
+    // console.log("adjustSliderSetting calls updateSetting");
+    // updateSetting(settingId, value);
+
+    console.log("adjustSliderSetting calls updateSettingFromElement");
+    updateSettingFromElement(slider);
 }
 
 document.addEventListener("DOMContentLoaded", function () {

@@ -12,6 +12,7 @@
           "type": "switch",
           "label": "Horizontal Flip",
           "enabled": true,
+          "source": "configs",
           "default": false
         },
         {
@@ -19,7 +20,8 @@
           "type": "switch",
           "label": "Vertical Flip",
           "enabled": true,
-          "default": false
+          "source": "configs",
+          "default": true
         }
       ]
     },
@@ -27,21 +29,21 @@
       "name": "Auto Focus",
       "enabled": true,
       "settings": [
-    {
-      "name": "Auto Focus Mode",
-      "id": "AfMode",
-      "info": "Manual: manually set the focus by adjusting the lens position below. Auto: auto focus once when 'Auto' is selected. Continuous: continuously auto focus without user interaction.",
-      "type": "radio",
-      "enabled": true,
-      "source": "controls",
-      "default": 0,
-      "hr": true,
-      "options": [
-        { "value": 0, "label": "Manual", "enabled": true, "show_child": true },
-        { "value": 1, "label": "Auto", "enabled": true, "show_child": false },
-        { "value": 2, "label": "Continuous", "enabled": true, "show_child": false }
-      ],
-      "childsettings": [ 
+        {
+          "name": "Auto Focus Mode",
+          "id": "AfMode",
+          "info": "Manual: manually set the focus by adjusting the lens position below. Auto: auto focus once when 'Auto' is selected. Continuous: continuously auto focus without user interaction.",
+          "type": "radio",
+          "enabled": true,
+          "source": "controls",
+          "default": 0,
+          "hr": true,
+          "options": [
+            { "value": 0, "label": "Manual", "enabled": true, "show_child": true },
+            { "value": 1, "label": "Auto", "enabled": true, "show_child": false },
+            { "value": 2, "label": "Continuous", "enabled": true, "show_child": false }
+          ],
+          "childsettings": [
             {
               "name": "Lens Position",
               "id": "LensPosition",
@@ -57,38 +59,38 @@
               "default": 0.0
             }
           ]
-    },
-    {
-      "name": "Auto Focus Range",
-      "id": "AfRange",
-      "info": "Normal: search the normal range (may exclude very closest objects). Macro: search only the closest part of the range. Full: search everything.",
-      "type": "radio",
-      "enabled": true,
-      "source": "controls",
-      "default": 0,
-      "hr": true,
-      "options": [
-        { "value": 0, "label": "Normal", "enabled": true, "show_child": true },
-        { "value": 1, "label": "Macro", "enabled": true, "show_child": false },
-        { "value": 2, "label": "Full", "enabled": true, "show_child": false }
+        },
+        {
+          "name": "Auto Focus Range",
+          "id": "AfRange",
+          "info": "Normal: search the normal range (may exclude very closest objects). Macro: search only the closest part of the range. Full: search everything.",
+          "type": "radio",
+          "enabled": true,
+          "source": "controls",
+          "default": 0,
+          "hr": true,
+          "options": [
+            { "value": 0, "label": "Normal", "enabled": true, "show_child": true },
+            { "value": 1, "label": "Macro", "enabled": true, "show_child": false },
+            { "value": 2, "label": "Full", "enabled": true, "show_child": false }
+          ]
+        },
+        {
+          "name": "Auto Focus Speed",
+          "id": "AfSpeed",
+          "info": "Normal: normal speed. Fast: try to move more quickly",
+          "type": "radio",
+          "enabled": true,
+          "source": "controls",
+          "default": 0,
+          "hr": true,
+          "options": [
+            { "value": 0, "label": "Normal", "enabled": true, "show_child": true },
+            { "value": 1, "label": "Fast", "enabled": true, "show_child": false }
+          ]
+        }
       ]
     },
-    {
-      "name": "Auto Focus Speed",
-      "id": "AfSpeed",
-      "info": "Normal: normal speed. Fast: try to move more quickly",
-      "type": "radio",
-      "enabled": true,
-      "source": "controls",
-      "default": 0,
-      "hr": true,
-      "options": [
-        { "value": 0, "label": "Normal", "enabled": true, "show_child": true },
-        { "value": 1, "label": "Fast", "enabled": true, "show_child": false }
-      ]
-    }
-  ]
-},
     {
       "name": "Gain and Exposure",
       "enabled": true,
@@ -108,10 +110,10 @@
           "default": 20000,
           "hr": true,
           "conversion": {
-              "enabled": true,
-              "label": "Seconds",
-              "factor": 1000000,
-              "step": 2
+            "enabled": true,
+            "label": "Seconds",
+            "factor": 1000000,
+            "step": 2
           }
         },
         {
@@ -351,10 +353,10 @@
         {
           "name": "Still Capture Resolution",
           "id": "still_capture_resolution",
-          "source": "still_resolutions_supported",
           "info": "Sets the resolution used when capturing a still image, independent of the sensor mode.",
           "type": "radio",
           "enabled": true,
+          "source": "configs_no_picamera_restart",
           "default": 0,
           "hr":true,
           "options": [
@@ -381,9 +383,9 @@
         "id": "recording_resolution",
         "type": "radio",
         "enabled": true,
-        "source": "video_resolutions",
         "action": "set_recording_resolution",
         "default": null,
+        "source": "configs",
         "info": "Resolution used for video recording."
         },
         {
@@ -391,12 +393,12 @@
         "id": "streaming_resolution",
         "type": "radio",
         "enabled": true,
-        "source": "video_resolutions",
         "action": "set_streaming_resolution",
         "default": null,
+        "source": "configs",
         "info": "Resolution used for the live stream. Can differ from recording resolution."
         }
-    ]
+      ]
     }
   ]
 }
