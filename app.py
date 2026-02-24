@@ -128,15 +128,15 @@ def generate_filename(camera_manager: CameraManager, cam_num: int, file_extensio
     else:
         return f"{timestamp}{file_extension}"
 
-def handle_camera_setting_changed(camera):
-    # TODO adjust emit structure (and frontend) to new websocket and parameter architecture/naming
+def handle_camera_setting_changed(camera: "Camera"):
+    logger.debug(f"Camera {camera.camera_num} changed settings")
     socketio.emit(
         "camera_state",
         {
             "camera_num": camera.camera_num,
-            "state": camera.get_settings(),
+            "state": camera.get_settings()
         },
-        room=f"camera_{camera.camera_num}",
+        room=f"camera_{camera.camera_num}"
     )
 
 ####################
@@ -182,12 +182,33 @@ def handle_message(data):
     logger.info(f"Received message from client {request.sid}: {data}")
     emit("response", {"data": "Message received"}, broadcast=False)
 
+# @socketio.on("join_camera_room")
+# def handle_join_camera_room(data):
+#     camera_num = data["camera_num"]
+#     room = f"camera_{camera_num}"
+#     join_room(room)
+#     logger.info("Client %s joined room %s", request.sid, room)
+
 @socketio.on("join_camera_room")
 def handle_join_camera_room(data):
     camera_num = data["camera_num"]
     room = f"camera_{camera_num}"
     join_room(room)
     logger.info("Client %s joined room %s", request.sid, room)
+
+    camera = camera_manager.get_camera(camera_num)
+
+    if camera:
+    # send/push initial/current camera settings/states to webui-ui (websocket)
+
+        emit(
+            "camera_state",
+            {
+                "camera_num": camera_num,
+                "state": camera.get_settings()
+            },
+            room=request.sid
+        )
 
 @socketio.on("leave_camera_room")
 def handle_leave_camera_room(data):
@@ -209,67 +230,28 @@ def handle_leave_camera_room(data):
         #     # send initial active_recording state
         #     emit("camera_status", {"active_recording": camera.states["is_video_recording"]}, room=room_name)
 
+@socketio.on("start_recording")
+def start_recording(data):
+    camera_num = data.get("camera_num")
+    camera = camera_manager.get_camera(camera_num)
 
-# @socketio.on("set_camera_setting")
-# def handle_set_camera_setting(data):
-#     """
-#     Receive a camera state update from the frontend and apply it via
-#     CameraObject.set_state() or set_control() depending on the path.
-    
-#     data = {
-#         "camera_num": int,
-#         "path": str,  # e.g., "hflip" or "controls.ExposureTime"
-#         "value": any
-#     }
-#     """
-#     camera_num = data.get("camera_num")
-#     path = data.get("path")
-#     value = data.get("value")
+    logger.debug(f"start_recording() called -> camera_num: {camera_num}")
 
-#     logger.debug(f"handle_set_camera_setting - path={path}, value={value}")
+    if not camera:
+        emit("error", {"message": "Invalid camera"})
+        return
 
-#     if camera_num not in camera_manager.cameras:
-#         emit("error", {"message": f"Camera {camera_num} not found"})
-#         return
+    filename = generate_filename(camera_manager, camera_num, ".mp4")
+    success = camera.start_recording(filename)
 
-#     camera = camera_manager.cameras[camera_num]
-#     changed = False
-
-#     if path.startswith("controls."):
-#         # controls key
-#         control_name = path.split(".", 1)[1]
-#         changed = camera.set_control(control_name, value)
-#     elif path.startswith("configs."):
-#         # configs key
-#         config_source = path.split(".", 1)[0]
-#         config_name = path.split(".", 1)[1]
-
-#         logger.debug(f"config_source: {config_source}, config_name: {config_name}")
-#         # temp
-#         # if config_name not in ["still_capture_resolution", "recording_resolution", "streaming_resolution"]:
-#         allowed_config_sources = ["configs", "configs_no_picamera_restart"]
-#         if config_source in allowed_config_sources:
-#             logger.debug("config_name in allowed_config_sources")
-#             changed = camera.set_config(config_name, int(value))
-#             if config_source == "configs":
-#                 # restart picamera2 video pipeline
-#                 logger.debug("reconfigure video pipeline")
-#                 camera.reconfigure_video_pipeline()
-#         else:
-#             emit("error", {"message": f"unsupported source '{config_source}' configured for function handle_set_camera_setting()"})
-#             return
-#     else:
-#         logger.info(f"unsupported top-level camera setting key '{path.split(".", 1)[1]}' for function handle_set_camera_setting -> skipped to set camera setting")
-
-#     if changed:
-#         # Broadcast updated camera state to all clients in the room
-#         # TODO anpassen auf neue architektur/struktur
-#         emit(
-#             "camera_state",
-#             {"camera_num": camera_num, "state": camera.get_settings()},
-#             broadcast=True
-#         )
-
+    if success:
+        logger.debug(f"sucessfully started recording: {filename}")
+        emit("recording_started", {
+            "camera_num": camera_num,
+            "filename": filename
+        }, room=f"camera_{camera_num}")
+    else:
+        emit("error", {"message": "Failed to start recording"})
 
 @socketio.on("set_camera_setting")
 def handle_set_camera_setting(data):
@@ -287,6 +269,7 @@ def handle_set_camera_setting(data):
     """
 
     camera_num = data.get("camera_num")
+    room_name = f"camera_{camera_num}"
     path = data.get("path")
     value = data.get("value")
 
@@ -351,21 +334,21 @@ def handle_set_camera_setting(data):
     # UNKNOWN SOURCE
     # =====================================================
     else:
-        emit("error", {"message": f"Unsupported source '{source}'"})
+        emit("error", {"message": f"Unsupported source '{source}'"}, room=room_name)
         return
 
     # -----------------------------------------------------
     # Broadcast updated state if something changed
     # -----------------------------------------------------
-    if changed:
-        emit(
-            "camera_state",
-            {
-                "camera_num": camera_num,
-                "state": camera.get_settings()
-            },
-            broadcast=True
-        )
+    # if changed:
+    #     emit(
+    #         "camera_state",
+    #         {
+    #             "camera_num": camera_num,
+    #             "state": camera.get_settings()
+    #         },
+    #         room=room_name
+    #     )
 
 ####################
 # Flask routes - WebUI routes
@@ -697,22 +680,22 @@ def video_webrtc_url(camera_num):
     host_ip = request.host.split(":")[0]
     return jsonify({"url": f"http://{host_ip}:{mediamtx_webrtc_port}/cam{camera_num}/whep"})
 
-@app.route("/start_recording/<int:camera_num>")
-def start_recording(camera_num):
-    """Start video recording on the specified camera."""
-    camera = camera_manager.get_camera(camera_num)
-    if not camera:
-        return jsonify(success=False, error="Invalid camera number"), 400
+# @app.route("/start_recording/<int:camera_num>")
+# def start_recording(camera_num):
+#     """Start video recording on the specified camera."""
+#     camera = camera_manager.get_camera(camera_num)
+#     if not camera:
+#         return jsonify(success=False, error="Invalid camera number"), 400
 
-    recording_filename = generate_filename(camera_manager, camera_num, ".mp4")
-    success = camera.start_recording(recording_filename)
+#     recording_filename = generate_filename(camera_manager, camera_num, ".mp4")
+#     success = camera.start_recording(recording_filename)
 
-    room_name = f"camera_{camera_num}"
-    # sync/push camera_status to all clients connected to this websocket room
-    socketio.emit("camera_status", {"active_recording": True}, room=room_name)
+#     room_name = f"camera_{camera_num}"
+#     # sync/push camera_status to all clients connected to this websocket room
+#     # socketio.emit("camera_status", {"active_recording": True}, room=room_name)
 
-    message = f"Recording of file {recording_filename} started successfully" if success else "Failed to start recording"
-    return jsonify(success=success, message=message)
+#     message = f"Recording of file {recording_filename} started successfully" if success else "Failed to start recording"
+#     return jsonify(success=success, message=message)
 
 @app.route("/stop_recording/<int:camera_num>")
 def stop_recording(camera_num):

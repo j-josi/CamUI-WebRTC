@@ -228,10 +228,15 @@ function applyStateToUI(state) {
     }
 
     // recording state
-    if (state.active_recording !== undefined) {
-        isRecording = state.active_recording;
-        updateRecordButton();
-    }
+    // if (state.active_recording !== undefined) {
+    //     isRecording = state.active_recording;
+    //     updateRecordButton();
+    // }
+
+  if (state.states && state.states.is_video_recording !== undefined) {
+      isRecording = state.states.is_video_recording;
+      updateRecordButton();
+  }
 }
 
 /* Hover Volume Slider */
@@ -259,55 +264,6 @@ async function initReader() {
     }
   });
 }
-
-// function startStatusLongPolling() {
-//     if (socket.connected) return; // disable long-polling with active websocket connection
-//     fetch(`/camera_status_long/${cameraNum}?state=${isRecording}`)
-//         .then(r => {
-//             if (!r.ok) throw new Error(`HTTP ${r.status}`);
-//             return r.json();
-//         })
-//         .then(data => {
-//             if (!data?.success) return;
-
-//             if (data.active_recording !== isRecording) {
-//                 isRecording = data.active_recording;
-
-//                 const captureBtn = document.getElementById("captureButton");
-
-//                 if (!isRecording) { // restart webrtc reader and show overlay for 2s
-//                     showOverlay();
-//                     reader?.close();
-//                     initReader();
-//                     setTimeout(() => {
-//                         hideOverlay();
-//                         // Capture wieder aktivieren
-//                         setButtonState(captureBtn, true);
-//                         setButtonState(recordBtn, true);
-//                         updateRecordButton();
-//                     }, 2000);
-//                 } else {
-//                     setButtonState(captureBtn, false);
-//                     updateRecordButton();
-//                 }
-//             }
-//             startStatusLongPolling();
-//         })
-//         .catch(err => {
-//             // Don't log abort / load failed error to console, since this is a normal behaviour when using long polls (i.e. on page refresh)
-//             if (
-//                 err.name === "AbortError" ||
-//                 err.message === "Load failed"
-//             ) {
-//                 // still & expected
-//                 setTimeout(startStatusLongPolling, 1000);
-//                 return;
-//             }
-
-//             console.error("Status poll failed:", err);
-//             setTimeout(startStatusLongPolling, 1500);
-//         });
-// }
 
 /* Helpers */
 function isPlaying(v) {
@@ -473,10 +429,14 @@ document.getElementById("captureButton").addEventListener("click", function(even
 //         });
 // }
 
+// function startVideoRecording() {
+//     fetch(`/start_recording/${cameraNum}`)
+//         .then(r => r.json())
+//         .catch(err => console.error(err));
+// }
+
 function startVideoRecording() {
-    fetch(`/start_recording/${cameraNum}`)
-        .then(r => r.json())
-        .catch(err => console.error(err));
+  socket.emit("start_recording", { camera_num: cameraNum });
 }
 
 function stopVideoRecording() {

@@ -143,17 +143,19 @@ class CameraManager:
         for cam_info in self.connected_cameras:
             try:
                 camera = Camera(
-                    cam_info,
-                    self.camera_module_info,
-                    self.media_upload_folder,
-                    self.camera_ui_settings_db_path,
+                    camera_info = cam_info,
+                    camera_module_info = self.camera_module_info,
+                    upload_folder = self.media_upload_folder,
+                    camera_ui_settings_db_path = self.camera_ui_settings_db_path,
+                    on_setting_changed=self._handle_camera_setting_changed
+
                     # CameraManager.DEFAULT_CONFIG,
                     # CameraManager.DEFAULT_CONTROLS,
                     # copy.deepcopy(CameraManager.DEFAULT_CONFIG),
                     # copy.deepcopy(CameraManager.DEFAULT_CONTROLS),
                 )
 
-                camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
+                # camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
                 self.cameras[cam_info["Num"]] = camera
                 # apply/load active profile -> set camera configs and controls
                 self._load_active_profile(cam_info["Num"])
@@ -169,6 +171,10 @@ class CameraManager:
         Intended to be overridden / rebound by application layer (app.py).
         """
         pass
+
+    def _handle_camera_setting_changed(self, camera: Camera):
+        if callable(self.on_camera_setting_changed):
+            self.on_camera_setting_changed(camera)
 
     def get_camera(self, cam_num: int) -> Optional[Camera]:
         """
