@@ -208,31 +208,57 @@ class Camera:
 
     #     return value
 
+
     def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values based on libcamera metadata."""
 
         meta = self.picam2.camera_controls.get(name)
         if not meta:
+            logger.debug(
+                f"unknown libcamera metadata for picamera2 control {name} -> failed to convert data type"
+            )
             return value
 
         try:
             min_val, max_val, default_val = meta
-            expected_type = type(default_val)
 
-            # --- Typkonvertierung ---
+            # --- Type deduction robust: min_val > max_val > default_val ---
+            if min_val is not None:
+                expected_type = type(min_val)
+            elif max_val is not None:
+                expected_type = type(max_val)
+            elif default_val is not None:
+                expected_type = type(default_val)
+            else:
+                expected_type = None  # No type can be inferred
+
+            logger.debug(
+                f"Convert data type {type(value)} -> {expected_type} for picamera2 control {name}"
+            )
+
+            # --- Type conversion ---
+            coerced = value  # Default fallback
+
             if expected_type is bool:
-                coerced = bool(int(value)) if isinstance(value, str) else bool(value)
+                if isinstance(value, str):
+                    # Strings "0"/"1" or "True"/"False"
+                    coerced = value.lower() in ("1", "true")
+                else:
+                    coerced = bool(value)
 
             elif expected_type is int:
-                coerced = int(float(value))  # wichtig bei "500.0"
+                if isinstance(value, str):
+                    # Robust conversion: e.g., "12.0" -> 12
+                    coerced = int(float(value))
+                else:
+                    coerced = int(value)
 
             elif expected_type is float:
                 coerced = float(value)
 
-            else:
-                coerced = value
+            # Complex types (Tuple, List) or None are left unchanged
 
-            # --- Clamping ---
+            # --- Clamping for numeric values ---
             if isinstance(coerced, (int, float)):
                 if min_val is not None:
                     coerced = max(min_val, coerced)
@@ -248,7 +274,62 @@ class Camera:
                 value,
                 exc,
             )
-            return default_val
+            # Fallback: if default_val is None, return the original value
+            return default_val if default_val is not None else value
+
+
+    # def _coerce_control_value(self, name: str, value: Any) -> Any:
+    #     """Convert incoming control values based on libcamera metadata."""
+
+    #     meta = self.picam2.camera_controls.get(name)
+    #     if not meta:
+    #         logger.debug(f"unknown libcamera metadata for picamera2 control {name} -> failed to convert data type")
+    #         return value
+
+    #     try:
+    #         min_val, max_val, default_val = meta
+    #         expected_type = type(default_val)
+
+    #         logger.debug(f"Convert data type {type(name)} -> {expected_type} for picamera2 control {name}")
+
+    #         # --- Type convertion ---
+    #         if expected_type is NoneType:
+    #             logger.debug(f"expected_type is None, value: {value}")
+    #             if isinstance(value, str):
+    #                 if value.isnumeric():
+    #                     coerced = float(value)
+    #             else:
+    #                 coerced = value
+
+    #         elif expected_type is bool:
+    #             coerced = bool(int(value)) if isinstance(value, str) else bool(value)
+
+    #         elif expected_type is int:
+    #             coerced = int(float(value))
+
+    #         elif expected_type is float:
+    #             coerced = float(value)
+
+    #         else:
+    #             coerced = value
+
+    #         # --- Clamping ---
+    #         if isinstance(coerced, (int, float)):
+    #             if min_val is not None:
+    #                 coerced = max(min_val, coerced)
+    #             if max_val is not None:
+    #                 coerced = min(max_val, coerced)
+
+    #         return coerced
+
+    #     except (ValueError, TypeError) as exc:
+    #         logger.warning(
+    #             "Failed to coerce control '%s' value '%s': %s",
+    #             name,
+    #             value,
+    #             exc,
+    #         )
+    #         return default_val
 
     def get_settings(self) -> Dict:
         return {

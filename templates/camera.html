@@ -159,53 +159,68 @@ socket.on("camera_state", payload => {
     applyStateToUI(payload.state);
 });
 
-// socket.on("camera_state", (payload) => {
-//     if (payload.camera_num !== cameraNum) return;
-//     applyStateToUI(payload.state);
-// });
+// function updateControl(name, value) {
+//     socket.emit("update_control", {
+//         camera_num: CAMERA_NUM,
+//         control: name,
+//         value: value
+//     });
+// }
 
-// // Receive camera status event
-// socket.on("camera_status", (data) => {
-//     if (data.active_recording !== undefined) {
-//         isRecording = data.active_recording;
-//         updateRecordButton();
+// function applyStateToUI(state) {
+//     console.log("applyStateToUI: ", state);
+//     if (!state) return;
 
-//         const captureBtn = document.getElementById("captureButton");
-//         setButtonState(captureBtn, !isRecording);
+//     // simple flags
+//     ["hflip", "vflip", "saveRAW"].forEach(key => {
+//         const el = document.getElementById(key);
+//         if (el && el.type === "checkbox") {
+//             el.checked = Boolean(state[key]);
+//         }
+//     });
 
-//         if (!isRecording) {
-//             showOverlay();
-//             reader?.close();
-//             initReader().then(() => setTimeout(hideOverlay, 1000));
+//     // controls
+//     if (state.controls) {
+//         for (const [key, value] of Object.entries(state.controls)) {
+//             const el = document.getElementById(key);
+
+//             if (!el) continue;
+
+//             if (el.type === "checkbox") {
+//                 el.checked = Boolean(value);
+//             } else {
+//                 el.value = value;
+//             }
+
+//             const label = document.getElementById("current" + key);
+//             if (label) label.textContent = `Value: ${value}`;
 //         }
 //     }
-// });
 
-function updateControl(name, value) {
-    socket.emit("update_control", {
-        camera_num: CAMERA_NUM,
-        control: name,
-        value: value
-    });
-}
+//     // resolutions
+//     if (state.resolutions) {
+//         for (const [key, value] of Object.entries(state.resolutions)) {
+//             const el = document.getElementById(`${key}_${value}`);
+//             if (el) el.checked = true;
+//         }
+//     }
+
+//   if (state.states && state.states.is_video_recording !== undefined) {
+//       isRecording = state.states.is_video_recording;
+//       updateRecordButton();
+//   }
+// }
 
 function applyStateToUI(state) {
     console.log("applyStateToUI: ", state);
     if (!state) return;
 
-    // simple flags
-    ["hflip", "vflip", "saveRAW"].forEach(key => {
-        const el = document.getElementById(key);
-        if (el && el.type === "checkbox") {
-            el.checked = Boolean(state[key]);
-        }
-    });
-
-    // controls
-    if (state.controls) {
-        for (const [key, value] of Object.entries(state.controls)) {
+    // ----------------------------
+    // CONFIGS: hflip, vflip, saveRAW, etc.
+    // ----------------------------
+    if (state.configs) {
+        for (const [key, value] of Object.entries(state.configs)) {
             const el = document.getElementById(key);
-
             if (!el) continue;
 
             if (el.type === "checkbox") {
@@ -214,29 +229,63 @@ function applyStateToUI(state) {
                 el.value = value;
             }
 
+            // optional: show current value label
             const label = document.getElementById("current" + key);
             if (label) label.textContent = `Value: ${value}`;
         }
     }
 
-    // resolutions
-    if (state.resolutions) {
-        for (const [key, value] of Object.entries(state.resolutions)) {
-            const el = document.getElementById(`${key}_${value}`);
-            if (el) el.checked = true;
+    // ----------------------------
+    // CONTROLS
+    // ----------------------------
+    if (state.controls) {
+        for (const [key, value] of Object.entries(state.controls)) {
+            const el = document.getElementById(key);
+            if (!el) continue;
+
+            if (el.type === "checkbox") {
+                el.checked = Boolean(value);
+            } else {
+                el.value = value;
+            }
+
+            // optional: show current value label
+            const label = document.getElementById("current" + key);
+            if (label) label.textContent = `Value: ${value}`;
         }
     }
 
-    // recording state
-    // if (state.active_recording !== undefined) {
-    //     isRecording = state.active_recording;
-    //     updateRecordButton();
-    // }
+    // ----------------------------
+    // STATES: video recording / streaming
+    // ----------------------------
+    if (state.states) {
+        if (state.states.is_video_recording !== undefined) {
+            isRecording = state.states.is_video_recording;
+            updateRecordButton();
+        }
 
-  if (state.states && state.states.is_video_recording !== undefined) {
-      isRecording = state.states.is_video_recording;
-      updateRecordButton();
-  }
+        if (state.states.is_video_streaming !== undefined) {
+            // optional: toggle UI / streaming indicator
+            const streamingIndicator = document.getElementById("streamingIndicator");
+            if (streamingIndicator) {
+                streamingIndicator.classList.toggle("text-success", state.states.is_video_streaming);
+                streamingIndicator.classList.toggle("text-secondary", !state.states.is_video_streaming);
+            }
+        }
+
+        if (state.states.is_capturing_still_image !== undefined) {
+            const captureBtn = document.getElementById("captureButton");
+            if (captureBtn) captureBtn.disabled = state.states.is_capturing_still_image;
+        }
+    }
+
+    // ----------------------------
+    // INFOS: model, etc. (optional)
+    // ----------------------------
+    if (state.infos) {
+        const modelEl = document.getElementById("cameraModel");
+        if (modelEl && state.infos.model) modelEl.textContent = state.infos.model;
+    }
 }
 
 /* Hover Volume Slider */
@@ -398,43 +447,6 @@ document.getElementById("captureButton").addEventListener("click", function(even
         });
 });
 
-/* ---------- Video Recording ---------- */
-// function startVideoRecording() {
-//     fetch(`/start_recording/${cameraNum}`)
-//         .then(response => response.json())
-//         .then(data => {
-//             if (data.success) {
-//                 console.log(data.message || "Recording started");
-//             } else {
-//                 console.error(data.error || data.message);
-//             }
-//         })
-//         .catch(err => {
-//             console.error("Failed to start recording:", err);
-//         });
-// }
-
-// function stopVideoRecording() {
-//     fetch(`/stop_recording/${cameraNum}`)
-//         .then(response => response.json())
-//         .then(data => {
-//             if (data.success) {
-//                 console.log(data.message || "Recording stopped");
-//             } else {
-//                 console.error(data.error || data.message);
-//             }
-//         })
-//         .catch(err => {
-//             console.error("Failed to stop recording:", err);
-//         });
-// }
-
-// function startVideoRecording() {
-//     fetch(`/start_recording/${cameraNum}`)
-//         .then(r => r.json())
-//         .catch(err => console.error(err));
-// }
-
 function startVideoRecording() {
   socket.emit("start_recording", { camera_num: cameraNum });
 }
@@ -444,7 +456,6 @@ function stopVideoRecording() {
         .then(r => r.json())
         .catch(err => console.error(err));
 }
-
 
 function updateRecordButton() {
     const btn   = document.getElementById("recordVideoButton");
@@ -469,10 +480,6 @@ function updateRecordButton() {
         text.textContent = "Record Video";
     }
 }
-
-// document.addEventListener("DOMContentLoaded", () => {
-//     startStatusLongPolling();
-// });
 
 recordBtn.addEventListener("click", () => {
     const captureBtn = document.getElementById("captureButton");
