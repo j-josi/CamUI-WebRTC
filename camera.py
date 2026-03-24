@@ -1047,7 +1047,7 @@ class Camera:
         with self.lock:
             if self.states["is_video_recording"]:
                 logger.info("Skip starting recording, already active")
-                return False, None
+                return False
 
             path = os.path.join(self.upload_folder, filename)
             self.output_recording.output_filename = path
@@ -1060,13 +1060,13 @@ class Camera:
                 )
                 success = True
             except Exception as e:
-                logger.error(f"Failed to start video recording")
+                logger.error(f"Failed to start video recording: {e}")
 
         if success:
             self.filename_recording = filename
             self._set_state("is_video_recording", True)
             logger.info(f"Recording {filename} started")
-            return True, filename
+            return True
         else:
             logger.error(f"Failed to start video recording")
             return False
@@ -1083,7 +1083,7 @@ class Camera:
             try:
                 # Stop recording
                 self.picam2.stop_recording()
-                self.output_recording = None
+                self.output_recording = FfmpegOutput("recording.mp4")
                 self.filename_recording = None
                 success = True
             except Exception as e:
