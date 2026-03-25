@@ -316,6 +316,7 @@ def handle_set_camera_setting(data):
         if changed:
             logger.debug("Restarting picamera2 video pipeline")
             camera.reconfigure_video_pipeline()
+            emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
 
     # =====================================================
     # CONFIGS WITHOUT RESTART (OF PICAMERA2 VIDEO PIPELINE)
@@ -678,7 +679,8 @@ def video_webrtc_url(camera_num):
         abort(404)
 
     host_ip = request.host.split(":")[0]
-    return jsonify({"url": f"http://{host_ip}:{mediamtx_webrtc_port}/cam{camera_num}/whep"})
+    path = f"cam{camera_num}a" if camera.audio_device else f"cam{camera_num}"
+    return jsonify({"url": f"http://{host_ip}:{mediamtx_webrtc_port}/{path}/whep"})
 
 # @app.route("/start_recording/<int:camera_num>")
 # def start_recording(camera_num):
@@ -841,6 +843,8 @@ def load_profile():
     success = camera_manager.load_profile(camera_num, profile_name)
 
     if success:
+        room_name = f"camera_{camera_num}"
+        socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
         return jsonify({"message": f"Profile '{profile_name}' loaded successfully"})
     return jsonify({"error": "Failed to load profile"}), 500
 
