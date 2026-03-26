@@ -347,11 +347,11 @@
       ]
     },
     {
-      "name": "Still Capture Resolution",
+      "name": "Photo Resolution",
       "enabled": true,
       "settings": [
         {
-          "name": "Still Capture Resolution",
+          "name": "Photo Resolution",
           "id": "still_capture_resolution",
           "info": "Sets the resolution used when capturing a still image, independent of the sensor mode.",
           "type": "radio",

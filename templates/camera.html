@@ -21,7 +21,7 @@
             style="object-fit:contain; aspect-ratio: 16 / 9;">
         </video>
 
-        <!-- videoControls -->
+        <!-- Video controls overlay (volume, fullscreen) — shown on mouse hover -->
         <div id="videoControls"
             class="position-absolute start-0 end-0 bottom-0
                     justify-content-between align-items-center
@@ -29,15 +29,15 @@
                     bg-dark bg-opacity-75 text-white shadow"
             style="display:none;">
 
-            <!-- volumeContainer -->
+            <!-- Volume control: icon + slider -->
             <div id="volumeContainer" class="d-flex align-items-center gap-2">
 
-                <!-- volumeIcon -->
+                <!-- Volume icon: click to mute/unmute -->
                 <i id="volumeIcon"
                 class="bi bi-volume-mute text-white"
                 style="font-size:2.4rem; cursor:pointer;"></i>
 
-                <!-- volumeSlider -->
+                <!-- Volume slider: shown on hover over the icon -->
                 <input type="range"
                     class="form-range"
                     id="volumeSlider"
@@ -48,14 +48,14 @@
                     style="width:100px; height:6px; display:none;">
             </div>
 
-          <!-- fullscreenButton -->
+          <!-- Fullscreen toggle button -->
           <button id="fsBtn"
                   class="btn btn-outline-light btn-sm rounded-circle">
             <i class="bi bi-fullscreen fs-4"></i>
           </button>
         </div>
 
-        <!-- Disabled autoplay FALLBACK -->
+        <!-- Autoplay blocked fallback: shown if browser prevents autoplay -->
         <div id="videoOverlay"
              class="position-absolute top-0 start-0 w-100 h-100
                     align-items-center justify-content-center
@@ -70,15 +70,15 @@
 
       {% include "animated_logo.html" %}
 
-      <!-- Capture / Metadata -->
+      <!-- Action buttons: capture image, record video, show metadata -->
       <div class="container text-center mt-4">
         <div class="row justify-content-center g-3">
 
-            <!-- Capture Image -->
+            <!-- Take Photo -->
             <div class="col-12 col-md-4">
               <button class="btn btn-lg w-100 btn-success" id="captureButton">
                   <i class="bi bi-camera fs-2"></i>
-                  <span class="fw-bold mt-1 d-block">Capture Image</span>
+                  <span class="fw-bold mt-1 d-block">Take Photo</span>
               </button>
             </div>
 
@@ -108,7 +108,7 @@
   </div>
 </div>
 
-<!-- Slider Contrast (Bootstrap compatible) -->
+<!-- Volume slider styling (Bootstrap-compatible, dark theme) -->
 <style>
 #volumeSlider {
   filter: brightness(1.2);
@@ -125,6 +125,9 @@
 
 <script>
 
+// -------------------------------------------------------
+// DOM references and state variables
+// -------------------------------------------------------
 const cameraNum = JSON.parse('{{ camera.Num | tojson }}');
 const video = document.getElementById("videoFeed");
 const videoControls = document.getElementById("videoControls");
@@ -135,9 +138,7 @@ const fsBtn = document.getElementById("fsBtn");
 const volumeSlider = document.getElementById("volumeSlider");
 const volumeIcon = document.getElementById("volumeIcon");
 const volumeContainer = document.getElementById("volumeContainer");
-const recordBtn   = document.getElementById("recordVideoButton");
-const recordIcon  = document.getElementById("recordVideoIcon");
-const recordText  = document.getElementById("recordVideoText");
+const recordBtn      = document.getElementById("recordVideoButton");
 const metadataButton = document.getElementById("metadataButton");
 const metadataButtonText = document.getElementById("metadataButtonText");
 const metadataDisplay = document.getElementById("metadataDisplay");
@@ -149,75 +150,29 @@ let mouseOverControls = false;
 let previousVolume = 0.75;
 let sliderHideTimeout = null;
 
-let socket = io();
+// -------------------------------------------------------
+// WebSocket: join the room for this camera on connect
+// -------------------------------------------------------
+const socket = io();
 
-// -------------- SocketIO --------------
 socket.emit("join_camera_room", { camera_num: cameraNum });
 
+// Apply server-pushed state to the UI whenever camera settings change
 socket.on("camera_state", payload => {
     if (payload.camera_num !== cameraNum) return;
     applyStateToUI(payload.state);
 });
 
-// function updateControl(name, value) {
-//     socket.emit("update_control", {
-//         camera_num: CAMERA_NUM,
-//         control: name,
-//         value: value
-//     });
-// }
-
-// function applyStateToUI(state) {
-//     console.log("applyStateToUI: ", state);
-//     if (!state) return;
-
-//     // simple flags
-//     ["hflip", "vflip", "saveRAW"].forEach(key => {
-//         const el = document.getElementById(key);
-//         if (el && el.type === "checkbox") {
-//             el.checked = Boolean(state[key]);
-//         }
-//     });
-
-//     // controls
-//     if (state.controls) {
-//         for (const [key, value] of Object.entries(state.controls)) {
-//             const el = document.getElementById(key);
-
-//             if (!el) continue;
-
-//             if (el.type === "checkbox") {
-//                 el.checked = Boolean(value);
-//             } else {
-//                 el.value = value;
-//             }
-
-//             const label = document.getElementById("current" + key);
-//             if (label) label.textContent = `Value: ${value}`;
-//         }
-//     }
-
-//     // resolutions
-//     if (state.resolutions) {
-//         for (const [key, value] of Object.entries(state.resolutions)) {
-//             const el = document.getElementById(`${key}_${value}`);
-//             if (el) el.checked = true;
-//         }
-//     }
-
-//   if (state.states && state.states.is_video_recording !== undefined) {
-//       isRecording = state.states.is_video_recording;
-//       updateRecordButton();
-//   }
-// }
-
+// -------------------------------------------------------
+// applyStateToUI: sync all camera settings from a state
+// object received via WebSocket to the corresponding
+// form elements in the settings panel
+// -------------------------------------------------------
 function applyStateToUI(state) {
     console.log("applyStateToUI: ", state);
     if (!state) return;
 
-    // ----------------------------
-    // CONFIGS: hflip, vflip, saveRAW, etc.
-    // ----------------------------
+    // Config settings: hflip, vflip, saveRAW, resolutions, etc.
     if (state.configs) {
         for (const [key, value] of Object.entries(state.configs)) {
             const el = document.getElementById(key);
@@ -230,16 +185,14 @@ function applyStateToUI(state) {
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;
             } else {
-                // radio group fallback: inputs use id="${key}_${value}"
+                // Fallback for radio groups: inputs use id="${key}_${value}"
                 const radio = document.getElementById(`${key}_${value}`);
                 if (radio && radio.type === "radio") radio.checked = true;
             }
         }
     }
 
-    // ----------------------------
-    // CONTROLS
-    // ----------------------------
+    // Live controls: ExposureTime, AnalogueGain, etc.
     if (state.controls) {
         for (const [key, value] of Object.entries(state.controls)) {
             const el = document.getElementById(key);
@@ -252,16 +205,14 @@ function applyStateToUI(state) {
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;
             } else {
-                // radio group fallback: inputs use id="${key}_${value}"
+                // Fallback for radio groups: inputs use id="${key}_${value}"
                 const radio = document.getElementById(`${key}_${value}`);
                 if (radio && radio.type === "radio") radio.checked = true;
             }
         }
     }
 
-    // ----------------------------
-    // STATES: video recording / streaming
-    // ----------------------------
+    // Camera states: recording active, streaming active, still capture in progress
     if (state.states) {
         if (state.states.is_video_recording !== undefined) {
             isRecording = state.states.is_video_recording;
@@ -269,7 +220,7 @@ function applyStateToUI(state) {
         }
 
         if (state.states.is_video_streaming !== undefined) {
-            // optional: toggle UI / streaming indicator
+            // Optional: update a streaming status indicator if present
             const streamingIndicator = document.getElementById("streamingIndicator");
             if (streamingIndicator) {
                 streamingIndicator.classList.toggle("text-success", state.states.is_video_streaming);
@@ -283,16 +234,16 @@ function applyStateToUI(state) {
         }
     }
 
-    // ----------------------------
-    // INFOS: model, etc. (optional)
-    // ----------------------------
+    // Camera info: model name, etc.
     if (state.infos) {
         const modelEl = document.getElementById("cameraModel");
         if (modelEl && state.infos.model) modelEl.textContent = state.infos.model;
     }
 }
 
-/* Hover Volume Slider */
+// -------------------------------------------------------
+// Volume slider: show on icon hover, hide after leaving
+// -------------------------------------------------------
 volumeIcon.addEventListener("mouseenter", () => {
   clearTimeout(sliderHideTimeout);
   volumeSlider.style.display = "block";
@@ -304,7 +255,11 @@ volumeContainer.addEventListener("mouseleave", () => {
   }, 150);
 });
 
-/* Init MediaMTXWebRTCReader */
+// -------------------------------------------------------
+// initReader: fetch the WebRTC stream URL and start the
+// MediaMTX WebRTC reader; routes to audio stream (cam0a)
+// when a USB microphone is detected
+// -------------------------------------------------------
 async function initReader() {
   const response = await fetch(`/video_webrtc_url/${cameraNum}`);
   const data = await response.json();
@@ -318,17 +273,25 @@ async function initReader() {
   });
 }
 
-/* Helpers */
+// -------------------------------------------------------
+// Utility helpers
+// -------------------------------------------------------
+
+// Returns true if the video element is currently playing
 function isPlaying(v) {
   return v.currentTime > 0 && !v.paused && !v.ended && v.readyState >= 3;
 }
 
+// Enable or disable a button with visual feedback
 function setButtonState(button, enabled) {
     button.disabled = !enabled;
-    button.classList.toggle("opacity-50", !enabled); // optional: visuelles Feedback
+    button.classList.toggle("opacity-50", !enabled);
 }
 
-/* Autoplay Fallback */
+// -------------------------------------------------------
+// Autoplay fallback: if the browser blocks autoplay,
+// show an overlay with a manual start button
+// -------------------------------------------------------
 setTimeout(() => {
   if (!isPlaying(video)) overlay.style.display = "flex";
 }, 800);
@@ -336,7 +299,10 @@ setTimeout(() => {
 video.addEventListener("playing", () => overlay.style.display = "none");
 startBtn.addEventListener("click", () => video.play().catch(() => {}));
 
-/* Controls Visibility */
+// -------------------------------------------------------
+// Video controls visibility: show on mouse move,
+// auto-hide after 2 seconds of inactivity
+// -------------------------------------------------------
 videoControls.addEventListener("mouseenter", () => mouseOverControls = true);
 videoControls.addEventListener("mouseleave", () => mouseOverControls = false);
 
@@ -350,7 +316,10 @@ function showControlsTemporarily() {
 
 videoContainer.addEventListener("mousemove", showControlsTemporarily);
 
-/* Volume Logic */
+// -------------------------------------------------------
+// Volume logic: mute/unmute on icon click, update icon
+// class based on current volume level
+// -------------------------------------------------------
 volumeIcon.addEventListener("click", () => {
   if (!video.muted) {
     previousVolume = video.volume;
@@ -369,7 +338,7 @@ volumeIcon.addEventListener("click", () => {
 
 volumeSlider.addEventListener("input", () => {
   video.volume = volumeSlider.value;
-  video.muted = video.volume == 0;
+  video.muted = video.volume === 0;
 
   volumeIcon.className = video.muted
     ? "bi bi-volume-mute text-white"
@@ -380,7 +349,10 @@ volumeSlider.addEventListener("input", () => {
   if (video.volume > 0) previousVolume = video.volume;
 });
 
-// Fullscreen
+// -------------------------------------------------------
+// Fullscreen: toggle fullscreen on the video container
+// and update the button icon accordingly
+// -------------------------------------------------------
 fsBtn.addEventListener("click", () => {
   if (!document.fullscreenElement) {
     videoContainer.requestFullscreen();
@@ -398,16 +370,19 @@ document.addEventListener("fullscreenchange", () => {
   showControlsTemporarily();
 });
 
-/* ---------- METADATA ---------- */
+// -------------------------------------------------------
+// Metadata: fetch and display live camera metadata in a
+// table; toggle visibility on repeated button clicks
+// -------------------------------------------------------
 metadataButton.addEventListener("click", () => {
-    // Wenn Metadaten bereits angezeigt, ausblenden
+    // If metadata is already visible, clear it
     if (metadataDisplay.innerHTML.trim() !== "") {
         metadataDisplay.innerHTML = "";
         metadataButtonText.textContent = "Show Metadata";
         return;
     }
 
-    // Metadaten anzeigen
+    // Fetch and render metadata as a table
     fetch(`/fetch_metadata_${cameraNum}`)
         .then(r => r.json())
         .then(data => {
@@ -420,8 +395,20 @@ metadataButton.addEventListener("click", () => {
         });
 });
 
-/* ---------- Image Capture ---------- */
-
+// -------------------------------------------------------
+// Image capture: WebSocket-driven flow
+//
+// 1. capture_start — emitted by server before capture begins
+//    (stream goes down at this point): close reader immediately
+//    and show overlay; do NOT call initReader yet
+//
+// 2. capture_done  — emitted by server after capture completes
+//    (stream is coming back up): call initReader and hide overlay
+//    as soon as the video starts playing
+//
+// Both events are emitted before/after the actual still capture
+// so the overlay timing matches the real camera state transition.
+// -------------------------------------------------------
 document.getElementById("captureButton").addEventListener("click", function(event) {
     event.preventDefault();
     socket.emit("capture_still", { camera_num: cameraNum });
@@ -437,10 +424,9 @@ socket.on("capture_start", (data) => {
 
 socket.on("capture_done", (data) => {
     if (data.camera_num !== cameraNum) return;
-    if (data.success) console.log("Photo captured:", data.image);
-    else console.error("Capture failed");
     initReader();
     const captureBtn = document.getElementById("captureButton");
+    // Fallback: hide overlay after 10s if video.playing never fires
     const fallback = setTimeout(() => {
         hideOverlay();
         setButtonState(captureBtn, true);
@@ -455,6 +441,37 @@ socket.on("capture_done", (data) => {
     });
 });
 
+// -------------------------------------------------------
+// Stream reinit: emitted by server after a pipeline restart
+// (e.g. resolution change). The stream is already down when
+// this event arrives, so initReader is called immediately.
+// Overlay is hidden as soon as the video starts playing.
+// -------------------------------------------------------
+socket.on("stream_reinit", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    reader?.close();
+    showOverlay();
+    setButtonState(document.getElementById("captureButton"), false);
+    setButtonState(recordBtn, false);
+    initReader();
+    // Fallback: hide overlay after 10s if video.playing never fires
+    const fallback = setTimeout(() => {
+        hideOverlay();
+        setButtonState(document.getElementById("captureButton"), true);
+        setButtonState(recordBtn, true);
+    }, 10000);
+    video.addEventListener("playing", function onPlaying() {
+        clearTimeout(fallback);
+        hideOverlay();
+        setButtonState(document.getElementById("captureButton"), true);
+        setButtonState(recordBtn, true);
+        video.removeEventListener("playing", onPlaying);
+    });
+});
+
+// -------------------------------------------------------
+// Video recording
+// -------------------------------------------------------
 function startVideoRecording() {
   socket.emit("start_recording", { camera_num: cameraNum });
 }
@@ -465,22 +482,22 @@ function stopVideoRecording() {
         .catch(err => console.error(err));
 }
 
+// Update the record button appearance based on the current recording state
 function updateRecordButton() {
-    const btn   = document.getElementById("recordVideoButton");
-    const icon  = document.getElementById("recordVideoIcon");
-    const text  = document.getElementById("recordVideoText");
+    const icon = document.getElementById("recordVideoIcon");
+    const text = document.getElementById("recordVideoText");
 
     if (isRecording) {
-        btn.classList.remove("btn-danger");
-        btn.classList.add("btn-warning");
+        recordBtn.classList.remove("btn-danger");
+        recordBtn.classList.add("btn-warning");
 
         icon.classList.remove("bi-record-circle");
         icon.classList.add("bi-stop-circle");
 
         text.textContent = "Stop Recording";
     } else {
-        btn.classList.remove("btn-warning");
-        btn.classList.add("btn-danger");
+        recordBtn.classList.remove("btn-warning");
+        recordBtn.classList.add("btn-danger");
 
         icon.classList.remove("bi-stop-circle");
         icon.classList.add("bi-record-circle");
@@ -496,14 +513,16 @@ recordBtn.addEventListener("click", () => {
         stopVideoRecording();
     } else {
         startVideoRecording();
+        // Disable capture button while recording is active
         setButtonState(captureBtn, false);
     }
 });
 
-/* ---------- Cleanup ---------- */
+// -------------------------------------------------------
+// Cleanup and startup
+// -------------------------------------------------------
 window.addEventListener("beforeunload", () => reader?.close());
 
-/* ---------- Start ---------- */
 initReader();
 video.volume = 0;
 </script>
