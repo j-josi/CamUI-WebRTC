@@ -230,6 +230,31 @@ def handle_leave_camera_room(data):
         #     # send initial active_recording state
         #     emit("camera_status", {"active_recording": camera.states["is_video_recording"]}, room=room_name)
 
+@socketio.on("capture_still")
+def handle_capture_still(data):
+    camera_num = data.get("camera_num")
+    camera = camera_manager.get_camera(camera_num)
+    if not camera:
+        emit("error", {"message": "Camera not found"})
+        return
+
+    room_name = f"camera_{camera_num}"
+    emit("capture_start", {"camera_num": camera_num}, room=room_name)
+    socketio.start_background_task(_do_capture_still, camera_num, room_name)
+
+def _do_capture_still(camera_num, room_name):
+    camera = camera_manager.get_camera(camera_num)
+    if not camera:
+        socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
+        return
+    image_filename = generate_filename(camera_manager, camera_num, ".jpg")
+    success = camera.capture_still(image_filename, camera.configs["saveRAW"])
+    socketio.emit("capture_done", {
+        "camera_num": camera_num,
+        "success": success,
+        "image": image_filename if success else None,
+    }, room=room_name)
+
 @socketio.on("start_recording")
 def start_recording(data):
     camera_num = data.get("camera_num")

@@ -420,31 +420,35 @@ metadataButton.addEventListener("click", () => {
 
 document.getElementById("captureButton").addEventListener("click", function(event) {
     event.preventDefault();
-    const button = this;
+    socket.emit("capture_still", { camera_num: cameraNum });
+});
 
-    // Disable 'captureButton' and 'recordBtn'
-    setButtonState(button, false);
+socket.on("capture_start", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    setButtonState(document.getElementById("captureButton"), false);
     setButtonState(recordBtn, false);
-
-    showOverlay();
     reader?.close();
+    showOverlay();
+});
 
-    fetch(`/capture_still_${cameraNum}`, { method: "POST" })
-        .then(r => r.json())
-        .then(data => {
-            if(data.success) console.log('Photo Captured:', data.image);
-            else console.error('Capture error:', data.message);
-        })
-        .catch(err => console.error("Capture error:", err))
-        .finally(() => {
-            initReader();
-            setTimeout(() => {
-                hideOverlay();
-                // Re-Enable 'captureButton' and 'recordBtn'
-                setButtonState(button, true);
-                setButtonState(recordBtn, true);
-            }, 1000);
-        });
+socket.on("capture_done", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    if (data.success) console.log("Photo captured:", data.image);
+    else console.error("Capture failed");
+    initReader();
+    const captureBtn = document.getElementById("captureButton");
+    const fallback = setTimeout(() => {
+        hideOverlay();
+        setButtonState(captureBtn, true);
+        setButtonState(recordBtn, true);
+    }, 10000);
+    video.addEventListener("playing", function onPlaying() {
+        clearTimeout(fallback);
+        hideOverlay();
+        setButtonState(captureBtn, true);
+        setButtonState(recordBtn, true);
+        video.removeEventListener("playing", onPlaying);
+    });
 });
 
 function startVideoRecording() {

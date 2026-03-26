@@ -42,27 +42,21 @@
 
 <script>
 document.getElementById("captureButton").addEventListener("click", function() {
-    let button = document.getElementById("captureButton");
-    button.disabled = true;
-    showOverlay();
+    socket.emit("capture_still", { camera_num: {{ camera.Num }} });
+});
 
-    fetch("/capture_still_{{ camera.Num }}", { method: "POST" })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('Photo Captured:', data.image);
-            reloadvideoFeed();
-        } else {
-            console.error("Capture error:", data.message);
-        }
-    })
-    .catch(error => {
-        console.error("Capture error:", error);
-    })
-    .finally(() => {
-        button.disabled = false;
-        hideOverlay();
-    });
+socket.on("capture_start", (data) => {
+    if (data.camera_num !== {{ camera.Num }}) return;
+    document.getElementById("captureButton").disabled = true;
+    showOverlay();
+});
+
+socket.on("capture_done", (data) => {
+    if (data.camera_num !== {{ camera.Num }}) return;
+    if (data.success) console.log("Photo captured:", data.image);
+    else console.error("Capture failed");
+    hideOverlay();
+    document.getElementById("captureButton").disabled = false;
 });
 
 function reloadvideoFeed() {
