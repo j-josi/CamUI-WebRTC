@@ -412,7 +412,7 @@ def home():
         (camera.camera_info, camera.get_camera_module_spec())
         for camera in camera_manager.cameras.values()
     ]
-    return render_template('home.html', active_page='home')
+    return render_template('home.html')
 
 @app.route('/camera_info_<int:camera_num>')
 def camera_info(camera_num):
@@ -452,7 +452,7 @@ def camera_info(camera_num):
 @app.route("/about")
 def about():
     """Render the about page."""
-    return render_template("about.html", active_page='about')
+    return render_template("about.html")
 
 @app.route('/system_settings')
 def system_settings():
@@ -893,7 +893,6 @@ def media_gallery():
     return render_template(
         'media_gallery.html',
         media_type=media_type,
-        active_page='media_gallery'
     )
 
 @app.route('/get_media_slice')

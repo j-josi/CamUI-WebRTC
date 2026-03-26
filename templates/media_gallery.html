@@ -4,14 +4,15 @@
 <div class="container-xxl">
 
     <!-- Sticky Filter + Bulk Actions -->
-    <div class="sticky-top bg-white shadow-sm" style="top:66px; z-index:1020;">
+    <div class="sticky-top bg-body shadow-sm" style="top:66px; z-index:1020;">
         <!-- Media Type Tabs -->
+        {% set tab_labels = {"all": "All", "image": "Photo", "video": "Video"} %}
         <ul class="nav nav-tabs mb-2">
             {% for t in ["all", "image", "video"] %}
             <li class="nav-item">
                 <a class="nav-link {% if media_type == t %}active{% endif %}"
                 href="?type={{ t }}">
-                    {{ t|capitalize }}
+                    {{ tab_labels[t] }}
                 </a>
             </li>
             {% endfor %}
