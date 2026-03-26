@@ -232,6 +232,17 @@ function applyStateToUI(state) {
             const captureBtn = document.getElementById("captureButton");
             if (captureBtn) captureBtn.disabled = state.states.is_capturing_still_image;
         }
+
+        // Disable all pipeline-restart settings (data-type="configs") during
+        // recording or still capture — changing these requires a pipeline restart
+        // which would interrupt the active recording or capture.
+        const pipelineBusy = state.states.is_video_recording || state.states.is_capturing_still_image;
+        if (pipelineBusy !== undefined) {
+            document.querySelectorAll("[data-type='configs']").forEach(el => {
+                el.disabled = pipelineBusy;
+                el.closest(".mb-3")?.classList.toggle("opacity-50", pipelineBusy);
+            });
+        }
     }
 
     // Camera info: model name, etc.

@@ -332,6 +332,10 @@ def handle_set_camera_setting(data):
     # CONFIGS WITH AUTO RESTART (OF PICAMERA2 VIDEO PIPELINE)
     # =====================================================
     elif source == "configs":
+        if camera.states["is_video_recording"] or camera.states["is_capturing_still_image"]:
+            emit("error", {"message": "Cannot change pipeline settings during recording or capture"})
+            return
+
         try:
             changed = camera.set_config(name, int(value))
         except (ValueError, TypeError):
