@@ -1,5 +1,19 @@
 {# Navbar #}
 
+{# Battery data provided by app.py via context processor (inject_battery_status).
+   battery_percent (int) is required — icon is hidden if None or not provided.
+   battery_runtime_min (int, minutes) is optional — tooltip is hidden if None or not provided. #}
+{% if battery_runtime_min is defined and battery_runtime_min is not none %}
+  {% set _bh = battery_runtime_min // 60 %}
+  {% set _bm = battery_runtime_min % 60 %}
+  {% set battery_runtime_str = _bh ~ "h " ~ "%02d" | format(_bm) ~ "min" %}
+{% endif %}
+{% if battery_percent is defined and battery_percent is not none %}
+  {% set battery_icon       = "bi-battery" %}
+  {% set battery_color      = "text-danger" if battery_percent <= 10 else "" %}
+  {% set battery_text_color = "text-danger" if battery_percent <= 10 else "" %}
+{% endif %}
+
 <style>
   /* In dark mode the navbar bg-dark matches the page background — use a
      slightly lighter shade to keep the navbar visually distinct. */
@@ -21,11 +35,47 @@
   .navbar .nav-pills .nav-link.active {
     color: white;
   }
+  .tooltip-nowrap .tooltip-inner {
+    white-space: nowrap;
+    max-width: none;
+  }
+  /* Explicit colour for battery display — ensures visibility regardless of nesting */
+  .navbar .battery-display {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .navbar .battery-display.text-danger {
+    color: var(--bs-danger) !important;
+  }
 </style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+      new bootstrap.Tooltip(el);
+    });
+  });
+</script>
 
 <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo" height="40" class="d-inline-block align-top">      </a>
+      {# Battery icon shown only on mobile (next to the toggler, outside the collapse).
+         ms-auto pushes it flush against the toggler button. #}
+      {% if battery_percent is defined and battery_percent is not none %}
+      <span class="d-flex d-md-none ms-auto me-2 align-items-center nav-link py-0 battery-display {{ battery_color }}"
+            {% if battery_runtime_min is defined and battery_runtime_min is not none %}
+            data-bs-toggle="tooltip"
+            data-bs-placement="bottom"
+            data-bs-custom-class="tooltip-nowrap"
+            title="Estimated runtime: {{ battery_runtime_str }}"
+            {% endif %}>
+        <span class="position-relative d-inline-block">
+          <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
+          <span class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
+                style="font-size: 0.65rem; padding-right: 0.25em;">{{ battery_percent }}%</span>
+        </span>
+      </span>
+      {% endif %}
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -90,7 +140,25 @@
           </li>
         </ul>
 
-        <ul class="navbar-nav ms-auto">
+        <ul class="navbar-nav ms-auto align-items-md-center">
+          {# Battery icon shown only on desktop (inside the collapse) #}
+          {% if battery_percent is defined and battery_percent is not none %}
+          <li class="nav-item d-none d-md-flex">
+            <span class="nav-link battery-display {{ battery_color }}"
+                  {% if battery_runtime_min is defined and battery_runtime_min is not none %}
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="bottom"
+                  data-bs-custom-class="tooltip-nowrap"
+                  title="Estimated runtime: {{ battery_runtime_str }}"
+                  {% endif %}>
+              <span class="position-relative d-inline-block">
+                <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
+                <span class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
+                      style="font-size: 0.65rem; padding-right: 0.25em;">{{ battery_percent }}%</span>
+              </span>
+            </span>
+          </li>
+          {% endif %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i id="theme-icon" class="bi bi-brightness-high-fill"></i>

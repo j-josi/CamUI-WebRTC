@@ -399,6 +399,17 @@ def inject_camera_list():
     ]
     return dict(camera_list=camera_list, navbar=True)
 
+@app.context_processor
+def inject_battery_status():
+    """Inject battery status into templates.
+    TODO: Replace hardcoded values with real ADC readings once the battery
+          monitor script is ready. Set battery_percent=None to hide the icon.
+    """
+    return dict(
+        battery_percent=78,
+        battery_runtime_min=192,  # Optional: set to None to hide tooltip (192 min = 3h 12min)
+    )
+
 @app.route('/set_theme/<theme>')
 def set_theme(theme):
     """Set the user-selected theme in the session."""
