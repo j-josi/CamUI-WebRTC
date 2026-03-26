@@ -1305,6 +1305,7 @@ class Camera:
             still_config = self.picam2.create_still_configuration(
                 buffer_count=1,
                 main={"size": still_resolution},
+                transform=Transform(hflip=self.configs["hflip"], vflip=self.configs["vflip"]),
                 sensor={"output_size": mode["size"], "bit_depth": mode["bit_depth"]},
                 controls={"FrameDurationLimits": (100, 10_000_000_000)},
             )
