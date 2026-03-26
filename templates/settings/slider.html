@@ -47,6 +47,8 @@
             data-type="controls"
         {% elif setting.source == "configs" %}
             data-type="configs"
+        {% elif setting.source == "configs_no_picamera_restart" %}
+            data-type="configs_no_picamera_restart"
         {% elif setting.source in ["video_resolutions_supported", "still_resolutions_supported"] %}
             data-type="configs"
         {% else %}

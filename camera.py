@@ -474,6 +474,11 @@ class Camera:
                     if self.configs.get(key) != val:
                         self.configs[key] = val
                         updated = True
+
+            if updated:
+                self.sync_ui_settings()
+                self._on_setting_changed()
+
             return updated
 
         # ---------- SINGLE MODE ----------
@@ -490,7 +495,10 @@ class Camera:
 
             self.configs[name] = value
             logger.debug(f"set_config() set config {name}={value}")
-            return True
+
+        self.sync_ui_settings()
+        self._on_setting_changed()
+        return True
 
     def get_config(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
         """Get a single config value by name or all configs as dict if name is None."""

@@ -221,17 +221,19 @@ function applyStateToUI(state) {
     if (state.configs) {
         for (const [key, value] of Object.entries(state.configs)) {
             const el = document.getElementById(key);
-            if (!el) continue;
-
-            if (el.type === "checkbox") {
-                el.checked = Boolean(value);
+            if (el) {
+                if (el.type === "checkbox") {
+                    el.checked = Boolean(value);
+                } else {
+                    el.value = value;
+                }
+                const label = document.getElementById("current" + key);
+                if (label) label.textContent = `Value: ${value}`;
             } else {
-                el.value = value;
+                // radio group fallback: inputs use id="${key}_${value}"
+                const radio = document.getElementById(`${key}_${value}`);
+                if (radio && radio.type === "radio") radio.checked = true;
             }
-
-            // optional: show current value label
-            const label = document.getElementById("current" + key);
-            if (label) label.textContent = `Value: ${value}`;
         }
     }
 
@@ -241,17 +243,19 @@ function applyStateToUI(state) {
     if (state.controls) {
         for (const [key, value] of Object.entries(state.controls)) {
             const el = document.getElementById(key);
-            if (!el) continue;
-
-            if (el.type === "checkbox") {
-                el.checked = Boolean(value);
+            if (el) {
+                if (el.type === "checkbox") {
+                    el.checked = Boolean(value);
+                } else {
+                    el.value = value;
+                }
+                const label = document.getElementById("current" + key);
+                if (label) label.textContent = `Value: ${value}`;
             } else {
-                el.value = value;
+                // radio group fallback: inputs use id="${key}_${value}"
+                const radio = document.getElementById(`${key}_${value}`);
+                if (radio && radio.type === "radio") radio.checked = true;
             }
-
-            // optional: show current value label
-            const label = document.getElementById("current" + key);
-            if (label) label.textContent = `Value: ${value}`;
         }
     }
 
