@@ -21,6 +21,24 @@
   </main>
 
   <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  {% if navbar %}
+  <script type="text/javascript" src="{{ url_for('static', filename='js/socketio/socket.io.min.js') }}"></script>
+  <script>
+    (function () {
+      var _batterySocket = io();
+      _batterySocket.on("battery_state", function (data) {
+        var pct = data.percent;
+        var isDanger = pct <= 10;
+        ["battery-pct-mobile", "battery-pct-desktop"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.textContent = pct + "%";
+          el.classList.toggle("text-danger", isDanger);
+        });
+      });
+    })();
+  </script>
+  {% endif %}
   <script>
 
 

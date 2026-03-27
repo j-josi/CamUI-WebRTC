@@ -42,6 +42,55 @@ logger = logging.getLogger(__name__)
 # Example: enable debug for camera_manager
 # logging.getLogger("camera_manager").setLevel(logging.DEBUG)
 
+
+####################
+# Battery Monitor (optional)
+# Install via: pip install git+https://github.com/j-josi/battery_monitor.git
+# If not installed, the battery icon is hidden in the navbar.
+#
+# Runs as a gevent greenlet (not an OS thread). SPI reads via spidev take
+# only ~100–500 µs (a few ioctl calls), which does not meaningfully block the
+# event loop. gevent.sleep(30) between reads is fully cooperative.
+# logger.* is safe here because greenlets share the main gevent hub.
+####################
+import gevent as _gevent
+
+_battery_state: dict = {"percent": None, "runtime_min": None}
+
+try:
+    from battery_monitor.battery import Battery as _Battery
+
+    def _battery_monitor_greenlet() -> None:
+        try:
+            logger.debug("Battery monitor: initialising…")
+            battery = _Battery(
+                cell_type="panasonic_ncr18650ga",
+                adc_vref=3.3,
+                voltage_scale=2.0,  # adjust for your voltage divider
+                avg_samples=10,
+                capacity_discharge_offset=1.0,
+                spi_bus=0,
+                spi_device=0,
+                spi_resolution=10,
+            )
+            logger.debug("Battery monitor: entering read loop.")
+            while True:
+                battery_cap_pct = round(battery.get_capacity_percentage())
+                if battery_cap_pct != _battery_state["percent"]:
+                    _battery_state["percent"] = battery_cap_pct
+                    socketio.emit("battery_state", {"percent": battery_cap_pct})
+                logger.debug("Battery monitor: capacity = %d%%", battery_cap_pct)
+                _gevent.sleep(30)
+        except Exception as exc:
+            logger.warning("Battery monitor stopped: %s", exc, exc_info=True)
+
+    _gevent.spawn(_battery_monitor_greenlet)
+    logger.info("Battery monitor started.")
+
+except ImportError as _e:
+    logger.info("battery_monitor package not installed — battery icon will be hidden. (%s)", _e)
+####################
+
 ####################
 # Local Module Imports
 ####################
@@ -172,6 +221,8 @@ media_gallery_manager = MediaGallery(media_upload_folder)
 @socketio.on("connect")
 def handle_connect():
     logger.info(f"Client connected: {request.sid}")
+    if _battery_state["percent"] is not None:
+        emit("battery_state", {"percent": _battery_state["percent"]})
 
 @socketio.on("disconnect")
 def handle_disconnect():
@@ -401,13 +452,13 @@ def inject_camera_list():
 
 @app.context_processor
 def inject_battery_status():
-    """Inject battery status into templates.
-    TODO: Replace hardcoded values with real ADC readings once the battery
-          monitor script is ready. Set battery_percent=None to hide the icon.
+    """Inject live battery status into all templates.
+    Values come from the background battery monitor thread.
+    Both are None when battery_monitor is not installed → icon hidden.
     """
     return dict(
-        battery_percent=78,
-        battery_runtime_min=192,  # Optional: set to None to hide tooltip (192 min = 3h 12min)
+        battery_percent=_battery_state["percent"],
+        battery_runtime_min=_battery_state["runtime_min"],
     )
 
 @app.route('/set_theme/<theme>')
