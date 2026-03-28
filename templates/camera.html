@@ -1,6 +1,29 @@
 {% extends "base.html" %}
 {% block content %}
 
+<script>
+// Inject local TURN server into every RTCPeerConnection for Firefox compatibility.
+// Firefox obfuscates its ICE candidates with mDNS hostnames; TURN relays around this.
+// Wrapping RTCPeerConnection here keeps reader.js unmodified and upgradeable.
+(function () {
+  const _Orig = window.RTCPeerConnection;
+  window.RTCPeerConnection = function (config, ...args) {
+    if (config) {
+      config.iceServers = [
+        ...(config.iceServers || []),
+        {
+          urls: [`turn:${window.location.hostname}:3478?transport=tcp`],
+          username: 'camui',
+          credential: 'camui',
+        },
+      ];
+    }
+    return new _Orig(config, ...args);
+  };
+  Object.setPrototypeOf(window.RTCPeerConnection, _Orig);
+  window.RTCPeerConnection.prototype = _Orig.prototype;
+}());
+</script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/reader.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/socketio/socket.io.min.js') }}"></script>
 
