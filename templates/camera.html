@@ -362,23 +362,47 @@ volumeSlider.addEventListener("input", () => {
 
 // -------------------------------------------------------
 // Fullscreen: toggle fullscreen on the video container
-// and update the button icon accordingly
+// and update the button icon accordingly.
+//
+// iOS Safari does not support the standard Fullscreen API
+// on arbitrary elements. The only supported path is
+// video.webkitEnterFullscreen() on the <video> element
+// itself, which hands control to the native iOS player.
 // -------------------------------------------------------
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
 fsBtn.addEventListener("click", () => {
-  if (!document.fullscreenElement) {
-    videoContainer.requestFullscreen();
+  if (_isIOS) {
+    if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
+  } else if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    if (videoContainer.requestFullscreen)       videoContainer.requestFullscreen();
+    else if (videoContainer.webkitRequestFullscreen) videoContainer.webkitRequestFullscreen();
   } else {
-    document.exitFullscreen();
+    if (document.exitFullscreen)       document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
   mouseOverControls = false;
   showControlsTemporarily();
 });
 
-document.addEventListener("fullscreenchange", () => {
-  fsBtn.innerHTML = document.fullscreenElement
+// Standard browsers: update icon on fullscreenchange
+function _onFullscreenChange() {
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  fsBtn.innerHTML = isFs
     ? '<i class="bi bi-fullscreen-exit fs-4"></i>'
     : '<i class="bi bi-fullscreen fs-4"></i>';
   showControlsTemporarily();
+}
+document.addEventListener("fullscreenchange",       _onFullscreenChange);
+document.addEventListener("webkitfullscreenchange", _onFullscreenChange);
+
+// iOS: fullscreen events fire on the video element, not document
+video.addEventListener("webkitbeginfullscreen", () => {
+  fsBtn.innerHTML = '<i class="bi bi-fullscreen-exit fs-4"></i>';
+});
+video.addEventListener("webkitendfullscreen", () => {
+  fsBtn.innerHTML = '<i class="bi bi-fullscreen fs-4"></i>';
 });
 
 // -------------------------------------------------------
