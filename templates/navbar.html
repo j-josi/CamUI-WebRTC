@@ -4,8 +4,8 @@
    battery_percent (int) is required — icon is hidden if None or not provided.
    battery_runtime_min (int, minutes) is optional — tooltip is hidden if None or not provided. #}
 {% if battery_runtime_min is defined and battery_runtime_min is not none %}
-  {% set _bh = battery_runtime_min // 60 %}
-  {% set _bm = battery_runtime_min % 60 %}
+  {% set _bh = (battery_runtime_min // 60) | int %}
+  {% set _bm = (battery_runtime_min % 60) | int %}
   {% set battery_runtime_str = _bh ~ "h " ~ "%02d" | format(_bm) ~ "min" %}
 {% endif %}
 {% if battery_percent is defined and battery_percent is not none %}

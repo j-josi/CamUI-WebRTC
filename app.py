@@ -45,50 +45,48 @@ logger = logging.getLogger(__name__)
 
 ####################
 # Battery Monitor (optional)
-# Install via: pip install git+https://github.com/j-josi/battery_monitor.git
-# If not installed, the battery icon is hidden in the navbar.
+# Reads battery state from a JSON file written by an external process.
 #
-# Runs as a gevent greenlet (not an OS thread). SPI reads via spidev take
-# only ~100–500 µs (a few ioctl calls), which does not meaningfully block the
-# event loop. gevent.sleep(30) between reads is fully cooperative.
-# logger.* is safe here because greenlets share the main gevent hub.
+# Enable by passing the file path via the BATTERY_FILE environment variable,
+# e.g. by adding --env BATTERY_FILE=/run/battery.json to the gunicorn command.
+# If BATTERY_FILE is not set, the battery icon is hidden in the navbar.
+#
+# Expected JSON format:
+#   {"voltage_v": 3.85, "state_of_charge_mah": 2100.0, "state_of_charge_pct": 62.8, "runtime_remaining": 75.4}
+# Only state_of_charge_pct is required. All other fields are optional and may be null or absent.
 ####################
 import gevent as _gevent
+import json as _json
+import os as _os
 
 _battery_state: dict = {"percent": None, "runtime_min": None}
+_BATTERY_FILE = _os.environ.get("BATTERY_FILE")
 
-try:
-    from battery_monitor.battery import Battery as _Battery
+if _BATTERY_FILE:
+    def _battery_file_watcher() -> None:
+        logger.info("Battery monitor: watching %s", _BATTERY_FILE)
+        while True:
+            try:
+                with open(_BATTERY_FILE) as _f:
+                    _data = _json.load(_f)
+                pct = _data.get("state_of_charge_pct")
+                runtime_remaining = _data.get("runtime_remaining")
+                if pct is not None:
+                    pct = round(float(pct))
+                    if pct != _battery_state["percent"] or runtime_remaining != _battery_state["runtime_min"]:
+                        _battery_state["percent"] = pct
+                        _battery_state["runtime_min"] = runtime_remaining
+                        socketio.emit("battery_state", {"percent": pct, "runtime_remaining": runtime_remaining})
+                        logger.debug("Battery monitor: state_of_charge = %d%%", pct)
+            except FileNotFoundError:
+                logger.debug("Battery file not found yet: %s", _BATTERY_FILE)
+            except Exception as _exc:
+                logger.warning("Battery file read error: %s", _exc)
+            _gevent.sleep(30)
 
-    def _battery_monitor_greenlet() -> None:
-        try:
-            logger.debug("Battery monitor: initialising…")
-            battery = _Battery(
-                cell_type="panasonic_ncr18650ga",
-                adc_vref=3.3,
-                voltage_scale=2.0,  # adjust for your voltage divider
-                avg_samples=10,
-                capacity_discharge_offset=1.0,
-                spi_bus=0,
-                spi_device=0,
-                spi_resolution=10,
-            )
-            logger.debug("Battery monitor: entering read loop.")
-            while True:
-                battery_cap_pct = round(battery.get_capacity_percentage())
-                if battery_cap_pct != _battery_state["percent"]:
-                    _battery_state["percent"] = battery_cap_pct
-                    socketio.emit("battery_state", {"percent": battery_cap_pct})
-                logger.debug("Battery monitor: capacity = %d%%", battery_cap_pct)
-                _gevent.sleep(30)
-        except Exception as exc:
-            logger.warning("Battery monitor stopped: %s", exc, exc_info=True)
-
-    _gevent.spawn(_battery_monitor_greenlet)
-    logger.info("Battery monitor started.")
-
-except ImportError as _e:
-    logger.info("battery_monitor package not installed — battery icon will be hidden. (%s)", _e)
+    _gevent.spawn(_battery_file_watcher)
+else:
+    logger.info("Battery monitor disabled — set BATTERY_FILE to enable.")
 ####################
 
 ####################
