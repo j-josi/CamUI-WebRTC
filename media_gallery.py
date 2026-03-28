@@ -67,7 +67,6 @@ class MediaGallery:
                 elif type not in ["all", "image", "video"]:
                     continue
 
-                path = os.path.join(self.upload_folder, f)
                 item: Dict[str, Any] = {
                     "filename": f,
                     "type": "video" if ext in self.video_exts else "image",
@@ -78,12 +77,9 @@ class MediaGallery:
                 }
 
                 if item["type"] == "image":
-                    item["width"], item["height"] = self.get_image_resolution(path)
                     dng = os.path.splitext(f)[0] + ".dng"
                     item["has_dng"] = os.path.exists(os.path.join(self.upload_folder, dng))
                     item["dng_file"] = dng
-                elif item["type"] == "video":
-                    item["width"], item["height"] = self.get_video_resolution(path)
 
                 media.append(item)
 
@@ -94,10 +90,67 @@ class MediaGallery:
             logger.error(f"Media loading error: {e}")
             return []
 
+    @property
+    def _cache_path(self) -> str:
+        return os.path.join(self.upload_folder, ".resolution_cache.json")
+
+    def _load_cache(self) -> Dict[str, Any]:
+        try:
+            with open(self._cache_path) as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def _save_cache(self, cache: Dict[str, Any]) -> None:
+        try:
+            with open(self._cache_path, "w") as f:
+                json.dump(cache, f)
+        except OSError as e:
+            logger.warning(f"Could not write resolution cache: {e}")
+
+    def register_media(self, filename: str, width: Optional[int], height: Optional[int]) -> None:
+        """Register a newly created media file's resolution in the cache.
+
+        Call this immediately after saving a photo or stopping a video recording
+        so that the resolution is always available without probing the file.
+        """
+        cache = self._load_cache()
+        cache[filename] = {"width": width, "height": height}
+        self._save_cache(cache)
+
+    def _enrich_with_resolutions(self, items: List[Dict[str, Any]]) -> None:
+        """Add width/height to a list of media items using the persistent cache.
+
+        Falls back to probing the file for items not yet in the cache (e.g.
+        files created before register_media() was introduced).
+        """
+        cache = self._load_cache()
+        cache_updated = False
+
+        for item in items:
+            filename = item["filename"]
+            entry = cache.get(filename)
+            if entry:
+                item["width"], item["height"] = entry["width"], entry["height"]
+            else:
+                path = os.path.join(self.upload_folder, filename)
+                if item["type"] == "image":
+                    w, h = self.get_image_resolution(path)
+                else:
+                    w, h = self.get_video_resolution(path)
+                item["width"], item["height"] = w, h
+                cache[filename] = {"width": w, "height": h}
+                cache_updated = True
+
+        if cache_updated:
+            self._save_cache(cache)
+
     def get_media_slice(self, offset: int = 0, limit: int = 20, type: str = "all", excluded_files: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Return a slice of media for infinite scroll."""
         all_media = self.get_media_files(type=type, excluded_files=excluded_files)
-        return all_media[offset:offset + limit]
+        sliced = all_media[offset:offset + limit]
+        self._enrich_with_resolutions(sliced)
+        return sliced
 
     def find_last_image_taken(self) -> Optional[str]:
         """Find the most recent image taken."""
@@ -149,6 +202,11 @@ class MediaGallery:
                 if os.path.exists(os.path.join(self.upload_folder, dng_file)):
                     os.remove(os.path.join(self.upload_folder, dng_file))
                     logger.info(f"Deleted corresponding DNG file: {dng_file}")
+
+                cache = self._load_cache()
+                if filename in cache:
+                    del cache[filename]
+                    self._save_cache(cache)
 
                 return True, f"Media '{filename}' deleted successfully."
             except Exception as e:

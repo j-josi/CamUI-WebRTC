@@ -297,7 +297,11 @@ def _do_capture_still(camera_num, room_name):
         socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
         return
     image_filename = generate_filename(camera_manager, camera_num, ".jpg")
+    still_index = camera.configs["still_capture_resolution"]
+    w, h = camera.still_resolutions_supported[still_index]
     success = camera.capture_still(image_filename, camera.configs["saveRAW"])
+    if success:
+        media_gallery_manager.register_media(image_filename, w, h)
     socketio.emit("capture_done", {
         "camera_num": camera_num,
         "success": success,
@@ -718,9 +722,12 @@ def capture_still(camera_num):
         image_filename = generate_filename(camera_manager, camera_num, ".jpg")
         logging.debug(f"📁 New image filename: {image_filename}")
 
+        still_index = camera.configs["still_capture_resolution"]
+        w, h = camera.still_resolutions_supported[still_index]
         success = camera.capture_still(image_filename, camera.configs["saveRAW"])
 
         if success:
+            media_gallery_manager.register_media(image_filename, w, h)
             return jsonify(success=True, message="Still image captured successfully", image=image_filename)
         else:
             return jsonify(success=False, message="Failed to capture still image", image=image_filename)
@@ -796,7 +803,11 @@ def stop_recording(camera_num):
 
     # save if stream was active on function call
     was_streaming = camera.states["is_video_streaming"]
+    recording_filename = camera.filename_recording
+    w, h = camera.get_recording_resolution()
     success = camera.stop_recording()
+    if success and recording_filename:
+        media_gallery_manager.register_media(recording_filename, w, h)
 
     room_name = f"camera_{camera_num}"
     # sync/push camera_status to all clients connected to this websocket room
