@@ -60,6 +60,22 @@
         </div>
     </div>
 
+    <!-- Storage info -->
+    {% macro fmt_bytes(b) %}
+        {%- if b >= 1073741824 -%}{{ "%.1f"|format(b / 1073741824) }} GB
+        {%- elif b >= 1048576 -%}{{ "%.0f"|format(b / 1048576) }} MB
+        {%- else -%}{{ "%.0f"|format(b / 1024) }} KB{%- endif -%}
+    {% endmacro %}
+    <div class="d-flex justify-content-end mb-2 mt-1">
+        <span class="fw-semibold">
+            <i class="bi bi-hdd"></i>
+            {{ fmt_bytes(media_used_bytes) }} used &nbsp;·&nbsp;
+            <span class="{{ 'text-danger' if disk_free_bytes < media_used_bytes * 0.2 else '' }}">
+                {{ fmt_bytes(disk_free_bytes) }} free
+            </span>
+        </span>
+    </div>
+
     <!-- Media Gallery -->
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3" id="media-gallery"></div>
     <div id="loading" class="text-center my-3" style="display:none;">

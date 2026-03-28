@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import shutil
 import subprocess
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict, Any
@@ -151,6 +152,30 @@ class MediaGallery:
         sliced = all_media[offset:offset + limit]
         self._enrich_with_resolutions(sliced)
         return sliced
+
+    def get_storage_info(self, buffer_bytes: int = 500 * 1024 * 1024) -> Dict[str, int]:
+        """Return storage usage for the upload folder and available disk space.
+
+        Args:
+            buffer_bytes: Reserve this many bytes from free space (default 500 MB)
+                          to prevent the SD card from filling up completely.
+
+        Returns:
+            Dict with keys:
+              media_used_bytes  — total size of all files in upload_folder
+              disk_free_bytes   — free space on the partition minus the buffer
+                                  (clamped to 0)
+        """
+        media_used = sum(
+            os.path.getsize(os.path.join(self.upload_folder, f))
+            for f in os.listdir(self.upload_folder)
+            if os.path.isfile(os.path.join(self.upload_folder, f))
+        )
+        disk_free = shutil.disk_usage(self.upload_folder).free
+        return {
+            "media_used_bytes": media_used,
+            "disk_free_bytes": max(0, disk_free - buffer_bytes),
+        }
 
     def find_last_image_taken(self) -> Optional[str]:
         """Find the most recent image taken."""

@@ -961,9 +961,12 @@ def get_profiles():
 def media_gallery():
     """Render media gallery page."""
     media_type = request.args.get('type', 'all')
+    storage = media_gallery_manager.get_storage_info()
     return render_template(
         'media_gallery.html',
         media_type=media_type,
+        media_used_bytes=storage["media_used_bytes"],
+        disk_free_bytes=storage["disk_free_bytes"],
     )
 
 @app.route('/get_media_slice')
