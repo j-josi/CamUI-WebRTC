@@ -1240,7 +1240,7 @@ class Camera:
             audio_process.wait()
 
         video_path = os.path.join(self.upload_folder, video_filename)
-        tmp_path = video_path + ".mux.mp4"
+        tmp_path = video_path + ".mux.tmp"
 
         try:
             result = subprocess.run(
@@ -1251,6 +1251,7 @@ class Camera:
                     "-c:v", "copy",
                     "-c:a", "aac",
                     "-shortest",
+                    "-f", "mp4",
                     tmp_path,
                 ],
                 check=True,

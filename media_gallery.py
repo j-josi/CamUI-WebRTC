@@ -109,6 +109,79 @@ class MediaGallery:
         except OSError as e:
             logger.warning(f"Could not write resolution cache: {e}")
 
+    def recover_interrupted_mux(self) -> None:
+        """Complete any audio muxing interrupted by a crash or power loss.
+
+        Called once at startup. Removes stale .mux.tmp files left by a
+        previously interrupted mux, then re-runs the mux for any orphaned
+        *_audio.wav files that still have a matching video on disk.
+        """
+        folder = self.upload_folder
+
+        # Remove incomplete .mux.tmp files from a previous interrupted run
+        for f in os.listdir(folder):
+            if f.endswith(".mux.tmp"):
+                try:
+                    os.remove(os.path.join(folder, f))
+                    logger.info("Removed stale mux temp file: %s", f)
+                except OSError as e:
+                    logger.warning("Could not remove stale mux temp %s: %s", f, e)
+
+        # Re-attempt mux for any orphaned audio WAV files
+        for f in os.listdir(folder):
+            if not f.endswith("_audio.wav"):
+                continue
+            base = f[: -len("_audio.wav")]
+            video_filename = base + ".mp4"
+            video_path = os.path.join(folder, video_filename)
+            audio_path = os.path.join(folder, f)
+
+            if not os.path.exists(video_path):
+                logger.warning("Orphaned audio file with no matching video, removing: %s", f)
+                try:
+                    os.remove(audio_path)
+                except OSError:
+                    pass
+                continue
+
+            logger.info("Recovering interrupted mux: %s + %s", video_filename, f)
+            tmp_path = video_path + ".mux.tmp"
+            try:
+                subprocess.run(
+                    [
+                        "ffmpeg", "-y",
+                        "-i", video_path,
+                        "-i", audio_path,
+                        "-c:v", "copy",
+                        "-c:a", "aac",
+                        "-shortest",
+                        "-f", "mp4",
+                        tmp_path,
+                    ],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                os.replace(tmp_path, video_path)
+                os.remove(audio_path)
+                logger.info("Mux recovery complete: %s", video_filename)
+            except subprocess.CalledProcessError as e:
+                logger.error("Mux recovery failed for %s: %s", video_filename, e.stderr)
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+                try:
+                    os.remove(audio_path)
+                except OSError:
+                    pass
+            except Exception as e:
+                logger.error("Mux recovery error for %s: %s", video_filename, e)
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
+
     def register_media(self, filename: str, width: Optional[int], height: Optional[int]) -> None:
         """Register a newly created media file's resolution in the cache.
 

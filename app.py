@@ -211,6 +211,7 @@ camera_manager.on_camera_setting_changed = handle_camera_setting_changed
 # Initialize Media Gallery
 ####################
 media_gallery_manager = MediaGallery(media_upload_folder)
+media_gallery_manager.recover_interrupted_mux()
 
 ####################
 # SocketIO Events
