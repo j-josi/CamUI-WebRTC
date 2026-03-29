@@ -817,6 +817,7 @@ def stop_recording(camera_num):
     if was_streaming:
         camera.states["is_video_streaming"] = False
         camera.start_streaming()
+        socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
 
     message = f"Recording of file {camera.filename_recording} stopped successfully" if success else "Failed to stop recording"
     return jsonify(success=success, message=message)

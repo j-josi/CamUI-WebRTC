@@ -501,30 +501,60 @@ socket.on("capture_done", (data) => {
 
 // -------------------------------------------------------
 // Stream reinit: emitted by server after a pipeline restart
-// (e.g. resolution change). The stream is already down when
-// this event arrives, so initReader is called immediately.
-// Overlay is hidden as soon as the video starts playing.
+// (e.g. resolution change). initReader() is retried every
+// 1 second until the first real video frame arrives, because
+// the RTSP publisher may not yet have pushed a keyframe to
+// mediamtx when the first WHEP request lands.
 // -------------------------------------------------------
 socket.on("stream_reinit", (data) => {
     if (data.camera_num !== cameraNum) return;
+
+    const captureBtn = document.getElementById("captureButton");
     reader?.close();
+    video.srcObject = null;
     showOverlay();
-    setButtonState(document.getElementById("captureButton"), false);
+    setButtonState(captureBtn, false);
     setButtonState(recordBtn, false);
-    initReader();
-    // Fallback: hide overlay after 10s if video.playing never fires
-    const fallback = setTimeout(() => {
+
+    let done = false;
+    let retryTimer;
+
+    function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(retryTimer);
         hideOverlay();
-        setButtonState(document.getElementById("captureButton"), true);
+        setButtonState(captureBtn, true);
         setButtonState(recordBtn, true);
-    }, 10000);
-    video.addEventListener("playing", function onPlaying() {
-        clearTimeout(fallback);
-        hideOverlay();
-        setButtonState(document.getElementById("captureButton"), true);
-        setButtonState(recordBtn, true);
-        video.removeEventListener("playing", onPlaying);
-    });
+    }
+
+    // Hard deadline: give up after 20s
+    setTimeout(finish, 20000);
+
+    function attempt() {
+        if (done) return;
+        reader?.close();
+        video.srcObject = null;
+        initReader();
+
+        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+            // Fires when the browser paints the first decoded video frame
+            video.requestVideoFrameCallback(() => finish());
+        }
+
+        // Retry in 1s if no frame has arrived yet
+        retryTimer = setTimeout(() => { if (!done) attempt(); }, 1000);
+    }
+
+    // Fallback for browsers without requestVideoFrameCallback
+    if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) {
+        video.addEventListener("playing", function onPlaying() {
+            video.removeEventListener("playing", onPlaying);
+            finish();
+        });
+    }
+
+    attempt();
 });
 
 // -------------------------------------------------------
