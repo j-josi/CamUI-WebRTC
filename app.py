@@ -652,56 +652,19 @@ def restart():
 # Flask routes - Camera Control
 ####################
 
-@app.route("/camera_mobile_<int:camera_num>")
-def camera_mobile(camera_num):
-    """Placeholder page for mobile camera view (coming soon)."""
-    feature = "camera mobile view"
-    return render_template('coming_soon.html', feature=feature)
-
-# @app.route("/camera_mobile_<int:camera_num>")
-# def camera_mobile(camera_num):
-#     """Full mobile camera view (currently commented)."""
-#     try:
-#         camera = camera_manager.get_camera(camera_num)
-#         if not camera:
-#             return render_template('camera_not_found.html', camera_num=camera_num)
-#         live_controls = camera.live_controls
-#         sensor_modes = camera.sensor_modes
-#         active_mode_index = camera.get_sensor_mode()
-#         last_image = media_gallery_manager.find_last_image_taken()
-#         return render_template(
-#             'camera_mobile.html',
-#             camera=camera.camera_info,
-#             settings=live_controls,
-#             sensor_modes=sensor_modes,
-#             active_mode_index=active_mode_index,
-#             last_image=last_image,
-#             profiles=get_profiles(),
-#             navbar=False,
-#             theme='dark',
-#             mode="mobile"
-#         )
-#     except Exception as e:
-#         logging.error(f"Error loading camera view: {e}")
-#         return render_template('error.html', error=str(e))
-
 @app.route("/camera_<int:camera_num>")
 def camera(camera_num):
-    """Desktop camera view route."""
+    """Camera view route."""
     try:
         camera = camera_manager.get_camera(camera_num)
         if not camera:
             return render_template('camera_not_found.html', camera_num=camera_num)
 
-        # last_image = media_gallery_manager.find_last_image_taken()
-
         return render_template(
             'camera.html',
             camera = camera.camera_info,
             settings = camera.ui_settings,
-            # last_image = last_image,
             profiles = camera_manager.list_profiles(),
-            mode = "desktop"
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")

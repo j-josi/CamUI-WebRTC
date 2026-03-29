@@ -29,12 +29,11 @@
       _batterySocket.on("battery_state", function (data) {
         var pct = data.percent;
         var isDanger = pct <= 10;
-        ["battery-pct-mobile", "battery-pct-desktop"].forEach(function (id) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          el.textContent = pct + "%";
-          el.classList.toggle("text-danger", isDanger);
-        });
+        var el = document.getElementById("battery-pct");
+          if (el) {
+            el.textContent = pct + "%";
+            el.classList.toggle("text-danger", isDanger);
+          }
       });
     })();
   </script>

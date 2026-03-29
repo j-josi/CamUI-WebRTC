@@ -59,8 +59,7 @@
 <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
     <div class="container-fluid">
       <a class="navbar-brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo" height="40" class="d-inline-block align-top">      </a>
-      {# Battery icon shown only on mobile (next to the toggler, outside the collapse).
-         ms-auto pushes it flush against the toggler button. #}
+      {# Battery icon — shown next to the toggler on mobile, inside the collapse on desktop #}
       {% if battery_percent is defined and battery_percent is not none %}
       <span class="d-flex d-md-none ms-auto me-2 align-items-center nav-link py-0 battery-display {{ battery_color }}"
             {% if battery_runtime_min is defined and battery_runtime_min is not none %}
@@ -71,7 +70,7 @@
             {% endif %}>
         <span class="position-relative d-inline-block">
           <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
-          <span id="battery-pct-mobile" class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
+          <span id="battery-pct" class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
                 style="font-size: 0.65rem; padding-right: 0.25em;">{{ battery_percent }}%</span>
         </span>
       </span>
@@ -141,7 +140,6 @@
         </ul>
 
         <ul class="navbar-nav ms-auto align-items-md-center">
-          {# Battery icon shown only on desktop (inside the collapse) #}
           {% if battery_percent is defined and battery_percent is not none %}
           <li class="nav-item d-none d-md-flex">
             <span class="nav-link battery-display {{ battery_color }}"
@@ -153,7 +151,7 @@
                   {% endif %}>
               <span class="position-relative d-inline-block">
                 <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
-                <span id="battery-pct-desktop" class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
+                <span id="battery-pct" class="{{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
                       style="font-size: 0.65rem; padding-right: 0.25em;">{{ battery_percent }}%</span>
               </span>
             </span>
