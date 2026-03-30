@@ -238,8 +238,33 @@ function applyStateToUI(state) {
     // Camera states: recording active, streaming active, still capture in progress
     if (state.states) {
         if (state.states.is_video_recording !== undefined) {
+            const wasRecording = isRecording;
             isRecording = state.states.is_video_recording;
             updateRecordButton();
+
+            const captureBtn = document.getElementById("captureButton");
+            if (isRecording) {
+                // Disable capture button on all clients while recording
+                setButtonState(captureBtn, false);
+            } else if (wasRecording) {
+                // Recording just stopped — show overlay and reinit reader on all clients.
+                // PyAV briefly stalls the RTSP publisher while finalizing the MP4 atom.
+                reader?.close();
+                video.srcObject = null;
+                showOverlay();
+                initReader();
+
+                const fallback = setTimeout(() => {
+                    hideOverlay();
+                    setButtonState(captureBtn, true);
+                }, 10000);
+                video.addEventListener("playing", function onRecStopPlaying() {
+                    clearTimeout(fallback);
+                    hideOverlay();
+                    setButtonState(captureBtn, true);
+                    video.removeEventListener("playing", onRecStopPlaying);
+                });
+            }
         }
 
         if (state.states.is_video_streaming !== undefined) {
@@ -595,14 +620,10 @@ function updateRecordButton() {
 }
 
 recordBtn.addEventListener("click", () => {
-    const captureBtn = document.getElementById("captureButton");
-
     if (isRecording) {
         stopVideoRecording();
     } else {
         startVideoRecording();
-        // Disable capture button while recording is active
-        setButtonState(captureBtn, false);
     }
 });
 

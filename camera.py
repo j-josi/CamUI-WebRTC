@@ -17,7 +17,7 @@ from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 # =========================
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
-from picamera2.outputs import PyavOutput
+from picamera2.outputs import PyavOutput, FfmpegOutput
 from libcamera import Transform, controls
 
 # =========================
@@ -1087,15 +1087,19 @@ class Camera:
                 return False
 
         path = os.path.join(self.upload_folder, filename)
-        output = PyavOutput(path)
+        # FfmpegOutput handles audio by reading PulseAudio directly in its own
+        # ffmpeg subprocess — no PyAV timestamp normalization issues.
+        output = FfmpegOutput(
+            path,
+            audio=bool(self.audio_device),
+            audio_device=self.audio_device or "default",
+        )
 
-        self.encoder_recording.audio = bool(self.audio_device)
-        if self.audio_device:
-            self.encoder_recording.audio_input = {'file': self.audio_device, 'format': 'pulse'}
+        encoder = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
 
         try:
             self.picam2.start_encoder(
-                self.encoder_recording,
+                encoder,
                 output,
                 name=self.get_recording_stream(),
             )
@@ -1103,6 +1107,7 @@ class Camera:
             logger.error("Failed to start recording: %s", e, exc_info=True)
             return False
 
+        self.encoder_recording = encoder
         self.filename_recording = filename
         self._set_state("is_video_recording", True)
         logger.info("Recording started: %s (audio=%s)", filename, bool(self.audio_device))
