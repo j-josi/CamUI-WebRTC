@@ -1,0 +1,357 @@
+[4:36:25.645823409] [56308]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[4:36:25.780392715] [56315]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[4:36:25.787235890] [56315]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[4:36:25.787340315] [56315]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media1 and ISP device /dev/media2
+[4:36:25.787382352] [56315]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-03-30 15:32:10,981 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-03-30 15:32:10,984 INFO [picamera2.picamera2] Initialization successful.
+2026-03-30 15:32:10,985 INFO [picamera2.picamera2] Camera now open.
+2026-03-30 15:32:10,985 DEBUG [picamera2.picamera2] <libcamera._libcamera.CameraManager object at 0x7f97d86730>
+2026-03-30 15:32:10,991 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (1536, 864), 'stride': 1920, 'framesize': 1658880}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (1536, 864)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:10,992 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:36:25.798766328] [56308]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[4:36:25.799215307] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-03-30 15:32:10,994 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:32:10,994 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (1536, 864), 'stride': 1920, 'framesize': 1658880}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (1536, 864)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:10,995 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:32:10,999 DEBUG [picamera2] Allocated 4 buffers for stream 0 with fds [23, 26, 29, 32]
+2026-03-30 15:32:11,003 DEBUG [picamera2] Allocated 4 buffers for stream 1 with fds [35, 38, 41, 44]
+2026-03-30 15:32:11,007 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,007 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:36:25.814025833] [56308]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[4:36:25.814441090] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-03-30 15:32:11,009 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:32:11,010 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,011 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:32:11,017 DEBUG [picamera2] Allocated 4 buffers for stream 0 with fds [23, 26, 29, 32]
+2026-03-30 15:32:11,028 DEBUG [picamera2] Allocated 4 buffers for stream 1 with fds [35, 38, 41, 44]
+2026-03-30 15:32:11,032 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,032 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:36:25.839253103] [56308]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[4:36:25.839970857] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-03-30 15:32:11,034 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:32:11,034 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'preview', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 4, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (640, 480), 'preserve_ar': True, 'stride': 2560, 'framesize': 1228800}, 'lores': None, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Minimal: 3>, 'FrameDurationLimits': (100, 83333)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,035 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:32:11,040 DEBUG [picamera2] Allocated 4 buffers for stream 0 with fds [23, 26, 29, 32]
+2026-03-30 15:32:11,071 DEBUG [picamera2] Allocated 4 buffers for stream 1 with fds [35, 38, 41, 44]
+2026-03-30 15:32:11,073 DEBUG [camera] still resolutions supported: [(4608, 2592), (3456, 1944), (2304, 1296), (1920, 1080), (1536, 864), (1152, 648), (768, 432)]
+2026-03-30 15:32:11,073 DEBUG [camera] video resolutions supported: [(1920, 1080), (1536, 864), (1280, 720), (1152, 648), (768, 432)]
+2026-03-30 15:32:11,658 INFO [camera] Detected PulseAudio audio source: alsa_input.usb-C-Media_Electronics_Inc._USB_PnP_Sound_Device-00.analog-mono
+2026-03-30 15:32:11,660 DEBUG [camera] child_id: LensPosition, child_source: controls
+2026-03-30 15:32:11,660 DEBUG [camera] child_id: ExposureValue, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] child_id: AeConstraintMode, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] child_id: AeExposureMode, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] child_id: AeMeteringMode, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] child_id: AeFlickerPeriod, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] child_id: AwbMode, child_source: controls
+2026-03-30 15:32:11,661 DEBUG [camera] Skipping saveRAW: no or unknown source specified
+2026-03-30 15:32:11,661 DEBUG [camera] Initialized camera UI settings
+2026-03-30 15:32:11,661 DEBUG [picamera2.picamera2] Camera was not started
+2026-03-30 15:32:11,664 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,664 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:36:26.471152974] [56308]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[4:36:26.471682396] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-03-30 15:32:11,666 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:32:11,666 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'identity'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SBGGR10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:11,667 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': <libcamera._libcamera.Stream object at 0x7f97809630>, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:32:11,695 DEBUG [picamera2] Allocated 6 buffers for stream 0 with fds [23, 26, 29, 32, 35, 38]
+2026-03-30 15:32:11,704 DEBUG [picamera2] Allocated 6 buffers for stream 1 with fds [41, 44, 47, 50, 53, 56]
+2026-03-30 15:32:11,749 DEBUG [picamera2] Allocated 6 buffers for stream 2 with fds [59, 62, 65, 68, 71, 74]
+2026-03-30 15:32:11,774 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:32:11,775 DEBUG [camera] Applied controls to hardware: {'AfMode': 0, 'LensPosition': 1.0, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 33000, 'AnalogueGain': 1.12, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000}
+2026-03-30 15:32:11,775 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:32:11,775 INFO [camera] All profile controls applied successfully
+2026-03-30 15:32:11,775 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-03-30 15:32:11,933 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:11,968 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,000 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,033 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,068 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,100 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,133 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,163 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978d96a0>
+2026-03-30 15:32:12,166 DEBUG [camera] Camera controls synced from hardware: {'AfMode': 0, 'LensPosition': 1.0, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 32680, 'AnalogueGain': 2.528395175933838, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000, 'ScalerCrop': (0, 0, 4608, 2592), 'ColourCorrectionMatrix': (1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752), 'ColourGains': (1.792555570602417, 2.0278091430664062)}
+2026-03-30 15:32:12,195 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:32:12,195 INFO [camera] Streaming started on 'lores' stream
+2026-03-30 15:32:12,697 INFO [camera] Audio stream process started for cam0
+2026-03-30 15:32:12,699 DEBUG [camera] Available Camera Controls: {'CnnEnableInputTensor': (False, True, False), 'ScalerCrop': ((0, 0, 128, 128), (0, 0, 4608, 2592), (0, 0, 4608, 2592)), 'Sharpness': (0.0, 16.0, 1.0), 'ExposureValue': (-8.0, 8.0, 0.0), 'AeFlickerMode': (0, 1, 0), 'Brightness': (-1.0, 1.0, 0.0), 'ColourCorrectionMatrix': (0.0, 8.0, None), 'AeExposureMode': (0, 3, 0), 'SyncFrames': (100, 100000, 1000), 'ExposureTimeMode': (0, 1, 0), 'AeConstraintMode': (0, 3, 0), 'HdrMode': (0, 4, 0), 'Saturation': (0.0, 32.0, 1.0), 'ColourTemperature': (100, 10000, None), 'AwbMode': (0, 7, 0), 'StatsOutputEnable': (False, True, False), 'Contrast': (0.0, 32.0, 1.0), 'ExposureTime': (100, 100000, 500), 'SyncMode': (0, 2, 0), 'AwbEnable': (False, True, None), 'ColourGains': (0.0, 32.0, None), 'AfWindows': ((0, 0, 0, 0), (65535, 65535, 65535, 65535), [(0, 0, 0, 0)]), 'AfTrigger': (0, 1, 0), 'LensPosition': (0.0, 15.0, 1.0), 'AfSpeed': (0, 1, 0), 'AfRange': (0, 2, 0), 'FrameDurationLimits': (17849, 112075593, (33333, 33333)), 'AfMode': (0, 2, 0), 'AeEnable': (False, True, True), 'AfMetering': (0, 1, 0), 'AeMeteringMode': (0, 3, 0), 'NoiseReductionMode': (0, 4, 0), 'AeFlickerPeriod': (100, 1000000, None), 'AnalogueGainMode': (0, 1, 0), 'AfPause': (0, 2, 0), 'AnalogueGain': (1.1228070259094238, 16.0, 1.0)}
+2026-03-30 15:32:12,700 DEBUG [camera] Available Sensor Modes: [{'format': SRGGB10_CSI2P, 'unpacked': 'SRGGB10', 'bit_depth': 10, 'size': (1536, 864), 'fps': 120.13, 'crop_limits': (768, 432, 3072, 1728), 'exposure_limits': (9, 77208145, 20000)}, {'format': SRGGB10_CSI2P, 'unpacked': 'SRGGB10', 'bit_depth': 10, 'size': (2304, 1296), 'fps': 56.03, 'crop_limits': (0, 0, 4608, 2592), 'exposure_limits': (13, 112015096, 20000)}, {'format': SRGGB10_CSI2P, 'unpacked': 'SRGGB10', 'bit_depth': 10, 'size': (4608, 2592), 'fps': 14.35, 'crop_limits': (0, 0, 4608, 2592), 'exposure_limits': (26, 220416802, 20000)}]
+2026-03-30 15:32:12,701 DEBUG [camera] Available Resolutions: [(4608, 2592), (3456, 1944), (2304, 1296), (1920, 1080), (1536, 864), (1152, 648), (768, 432)]
+2026-03-30 15:32:12,702 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:32:12,702 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:32:12,704 INFO [camera] Audio stream process stopped for cam0
+2026-03-30 15:32:12,705 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978aa5d0>
+2026-03-30 15:32:12,732 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:32:13,140 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:32:13,140 INFO [camera] Streaming stopped
+2026-03-30 15:32:13,140 DEBUG [picamera2.picamera2] Camera was not started
+2026-03-30 15:32:13,142 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'vflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SGRBG10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:13,143 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:36:27.949695112] [56333]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SGRBG10_CSI2P/RAW
+[4:36:27.950777493] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SGRBG10_1X10/RAW - Selected unicam format: 2304x1296-pgAA/RAW
+2026-03-30 15:32:13,145 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:32:13,145 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'vflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SGRBG10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:32:13,146 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': <libcamera._libcamera.Stream object at 0x7f97809630>, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:32:13,172 DEBUG [picamera2] Allocated 6 buffers for stream 0 with fds [23, 26, 29, 32, 35, 38]
+2026-03-30 15:32:13,180 DEBUG [picamera2] Allocated 6 buffers for stream 1 with fds [41, 44, 47, 50, 53, 56]
+2026-03-30 15:32:13,189 DEBUG [picamera2] Allocated 6 buffers for stream 2 with fds [59, 62, 65, 68, 71, 74]
+2026-03-30 15:32:13,207 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:32:13,227 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:32:13,227 INFO [camera] Streaming started on 'lores' stream
+2026-03-30 15:32:13,729 INFO [camera] Audio stream process started for cam0
+2026-03-30 15:32:13,730 DEBUG [camera] Applied controls to hardware: {'AfMode': 0, 'LensPosition': 1.0, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 32680, 'AnalogueGain': 2.528395175933838, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000, 'ScalerCrop': (0, 0, 4608, 2592), 'ColourCorrectionMatrix': (1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752), 'ColourGains': (1.792555570602417, 2.0278091430664062)}
+2026-03-30 15:32:13,731 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:32:13,732 INFO [camera] All profile controls applied successfully
+2026-03-30 15:32:13,732 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-03-30 15:32:13,732 DEBUG [camera] ctrl_name: AfMode, raw_value: 0
+2026-03-30 15:32:13,733 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AfMode
+2026-03-30 15:32:13,733 DEBUG [camera] ctrl_name: LensPosition, raw_value: 1.0
+2026-03-30 15:32:13,734 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:32:13,734 DEBUG [camera] ctrl_name: AfRange, raw_value: 0
+2026-03-30 15:32:13,735 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AfRange
+2026-03-30 15:32:13,735 DEBUG [camera] ctrl_name: AfSpeed, raw_value: 0
+2026-03-30 15:32:13,736 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AfSpeed
+2026-03-30 15:32:13,736 DEBUG [camera] ctrl_name: ExposureTime, raw_value: 33000
+2026-03-30 15:32:13,737 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:32:13,737 DEBUG [camera] ctrl_name: AnalogueGain, raw_value: 1.1228070259094238
+2026-03-30 15:32:13,738 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control AnalogueGain
+2026-03-30 15:32:13,738 DEBUG [camera] ctrl_name: AeEnable, raw_value: 1
+2026-03-30 15:32:13,739 DEBUG [camera] Convert data type <class 'int'> -> <class 'bool'> for picamera2 control AeEnable
+2026-03-30 15:32:13,739 DEBUG [camera] ctrl_name: ExposureValue, raw_value: 0.0
+2026-03-30 15:32:13,740 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control ExposureValue
+2026-03-30 15:32:13,740 DEBUG [camera] ctrl_name: AeConstraintMode, raw_value: 0
+2026-03-30 15:32:13,741 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AeConstraintMode
+2026-03-30 15:32:13,741 DEBUG [camera] ctrl_name: AeExposureMode, raw_value: 0
+2026-03-30 15:32:13,744 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AeExposureMode
+2026-03-30 15:32:13,744 DEBUG [camera] ctrl_name: AeMeteringMode, raw_value: 0
+2026-03-30 15:32:13,745 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AeMeteringMode
+2026-03-30 15:32:13,745 DEBUG [camera] ctrl_name: AeFlickerMode, raw_value: 0
+2026-03-30 15:32:13,746 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AeFlickerMode
+2026-03-30 15:32:13,746 DEBUG [camera] ctrl_name: AeFlickerPeriod, raw_value: 100
+2026-03-30 15:32:13,747 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AeFlickerPeriod
+2026-03-30 15:32:13,747 DEBUG [camera] ctrl_name: AwbEnable, raw_value: 0
+2026-03-30 15:32:13,748 DEBUG [camera] Convert data type <class 'int'> -> <class 'bool'> for picamera2 control AwbEnable
+2026-03-30 15:32:13,748 DEBUG [camera] ctrl_name: AwbMode, raw_value: 0
+2026-03-30 15:32:13,749 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control AwbMode
+2026-03-30 15:32:13,749 DEBUG [camera] ctrl_name: Brightness, raw_value: 0
+2026-03-30 15:32:13,750 DEBUG [camera] Convert data type <class 'int'> -> <class 'float'> for picamera2 control Brightness
+2026-03-30 15:32:13,750 DEBUG [camera] ctrl_name: Contrast, raw_value: 1.0
+2026-03-30 15:32:13,751 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control Contrast
+2026-03-30 15:32:13,751 DEBUG [camera] ctrl_name: Saturation, raw_value: 1.0
+2026-03-30 15:32:13,752 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control Saturation
+2026-03-30 15:32:13,752 DEBUG [camera] ctrl_name: Sharpness, raw_value: 1.0
+2026-03-30 15:32:13,753 DEBUG [camera] Convert data type <class 'float'> -> <class 'float'> for picamera2 control Sharpness
+2026-03-30 15:32:13,753 DEBUG [camera] ctrl_name: ColourTemperature, raw_value: 4000
+2026-03-30 15:32:13,753 DEBUG [camera] Convert data type <class 'int'> -> <class 'int'> for picamera2 control ColourTemperature
+2026-03-30 15:32:13,757 DEBUG [camera] ctrl_name: ScalerCrop, raw_value: [0, 0, 4608, 2592]
+2026-03-30 15:32:13,758 DEBUG [camera] Convert data type <class 'list'> -> <class 'tuple'> for picamera2 control ScalerCrop
+2026-03-30 15:32:13,760 DEBUG [camera] ctrl_name: ColourCorrectionMatrix, raw_value: [1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]
+2026-03-30 15:32:13,761 DEBUG [camera] Convert data type <class 'list'> -> <class 'float'> for picamera2 control ColourCorrectionMatrix
+2026-03-30 15:32:13,762 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-03-30 15:32:13,762 DEBUG [camera] ctrl_name: ColourGains, raw_value: [1.792555570602417, 2.0278091430664062]
+2026-03-30 15:32:13,763 DEBUG [camera] Convert data type <class 'list'> -> <class 'float'> for picamera2 control ColourGains
+2026-03-30 15:32:13,763 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-03-30 15:32:13,763 DEBUG [camera] Set control ExposureTime=33000
+2026-03-30 15:32:13,764 DEBUG [camera] Set control AnalogueGain=1.1228070259094238
+2026-03-30 15:32:13,764 DEBUG [camera] Set control ScalerCrop=[0, 0, 4608, 2592]
+2026-03-30 15:32:13,765 DEBUG [camera] Set control ColourCorrectionMatrix=[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]
+2026-03-30 15:32:13,765 DEBUG [camera] Set control ColourGains=[1.792555570602417, 2.0278091430664062]
+2026-03-30 15:32:13,765 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:32:13,773 DEBUG [camera_manager] Loaded active profile 'vflip.json' for camera 0
+2026-03-30 15:32:13,774 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-03-30 15:32:13,775 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-03-30 15:33:59,976 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:33:59,976 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:04,346 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:04,348 INFO [camera] Recording started: 2026-03-30_15-34-04.mp4 (audio=True)
+2026-03-30 15:34:10,926 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:10,930 INFO [camera] Recording 2026-03-30_15-34-04.mp4 finalized
+2026-03-30 15:34:43,079 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:34:57,457 DEBUG [camera] set_config() set config hflip=1
+2026-03-30 15:34:57,458 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:34:57,459 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:57,982 INFO [camera] Audio stream process stopped for cam0
+2026-03-30 15:34:57,983 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978aa490>
+2026-03-30 15:34:58,016 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:34:58,424 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:58,425 INFO [camera] Streaming stopped
+2026-03-30 15:34:58,426 DEBUG [picamera2.picamera2] Camera was not started
+2026-03-30 15:34:58,429 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:34:58,430 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:39:13.236799747] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[4:39:13.237959869] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:34:58,432 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:34:58,433 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:34:58,433 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': <libcamera._libcamera.Stream object at 0x7f97809630>, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:34:58,469 DEBUG [picamera2] Allocated 6 buffers for stream 0 with fds [23, 26, 29, 32, 35, 38]
+2026-03-30 15:34:58,479 DEBUG [picamera2] Allocated 6 buffers for stream 1 with fds [41, 44, 47, 50, 53, 56]
+2026-03-30 15:34:58,491 DEBUG [picamera2] Allocated 6 buffers for stream 2 with fds [59, 62, 65, 68, 71, 74]
+2026-03-30 15:34:58,513 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:34:58,538 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:34:58,540 INFO [camera] Streaming started on 'lores' stream
+2026-03-30 15:34:59,042 INFO [camera] Audio stream process started for cam0
+2026-03-30 15:34:59,043 DEBUG [camera] Applied controls to hardware: {'AfMode': 0, 'LensPosition': 1.0, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 32680, 'AnalogueGain': 1.1228070259094238, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000, 'ScalerCrop': [0, 0, 4608, 2592], 'ColourCorrectionMatrix': [1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752], 'ColourGains': [1.792555570602417, 2.0278091430664062]}
+2026-03-30 15:34:59,043 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:34:59,043 INFO [camera] All profile controls applied successfully
+2026-03-30 15:34:59,043 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-03-30 15:35:11,348 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:11,349 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:13,046 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:13,046 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:15,264 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:15,265 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:17,315 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:17,315 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:18,637 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control AfMode
+2026-03-30 15:35:18,637 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:29,475 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control AfMode
+2026-03-30 15:35:29,476 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:31,165 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:31,166 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:33,695 DEBUG [camera] Convert data type <class 'str'> -> <class 'float'> for picamera2 control LensPosition
+2026-03-30 15:35:33,696 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:35:56,035 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:36:31,531 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:36:31,532 INFO [camera] Recording started: 2026-03-30_15-36-31.mp4 (audio=True)
+2026-03-30 15:36:43,989 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:36:43,993 INFO [camera] Recording 2026-03-30_15-36-31.mp4 finalized
+2026-03-30 15:36:53,732 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978f50f0>
+2026-03-30 15:36:53,737 DEBUG [camera] Sensor resolution: (4608, 2592)
+2026-03-30 15:37:02,752 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:37:09,085 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:37:20,946 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:37:23,909 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:37:23,910 INFO [camera] Recording started: 2026-03-30_15-37-23.mp4 (audio=True)
+2026-03-30 15:37:32,998 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:37:40,574 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:37:40,576 INFO [camera] Recording 2026-03-30_15-37-23.mp4 finalized
+2026-03-30 15:40:09,988 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime
+2026-03-30 15:40:14,054 INFO [camera] Skip stopping recording, no active recording
+2026-03-30 15:40:14,423 INFO [camera] Audio stream process stopped for cam0
+2026-03-30 15:40:14,424 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f97d8f360>
+2026-03-30 15:40:14,449 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:14,460 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:40:14,460 INFO [camera] Streaming stopped
+2026-03-30 15:40:14,461 DEBUG [picamera2.picamera2] Camera was not started
+2026-03-30 15:40:14,462 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+[4:44:29.269314998] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB (1) 4608x2592-SRGGB10_CSI2P/RAW
+[4:44:29.270304935] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-03-30 15:40:14,464 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:14,465 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+2026-03-30 15:40:14,467 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:14,487 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [23]
+2026-03-30 15:40:14,493 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [26]
+2026-03-30 15:40:14,512 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:14,512 DEBUG [camera] Capturing non-raw image '/home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-14.jpg'
+2026-03-30 15:40:14,513 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f97d46f90>
+2026-03-30 15:40:14,614 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:14,616 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+[4:44:29.423245907] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB (1) 4608x2592-SRGGB10_CSI2P/RAW
+[4:44:29.424150678] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-03-30 15:40:14,618 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:14,619 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+2026-03-30 15:40:14,619 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:14,636 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [23]
+2026-03-30 15:40:14,643 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [26]
+2026-03-30 15:40:14,661 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:14,889 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f97d46f90>
+2026-03-30 15:40:14,981 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:14,982 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+[4:44:29.789589215] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB (1) 4608x2592-SRGGB10_CSI2P/RAW
+[4:44:29.790389968] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-03-30 15:40:14,984 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:14,985 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (4608, 2592), 'preserve_ar': True, 'stride': 13824, 'framesize': 35831808}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (4608, 2592), 'stride': 5760, 'framesize': 14929920}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (4608, 2592)}, 'display': None, 'encode': None}
+2026-03-30 15:40:14,986 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:15,001 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [25]
+2026-03-30 15:40:15,010 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [30]
+2026-03-30 15:40:15,029 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:15,361 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f97d1a270> to file /home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-14.jpg.
+2026-03-30 15:40:15,361 INFO [picamera2.request] Time taken for encode: 233.0434300019988 ms.
+2026-03-30 15:40:15,367 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-14.jpg'
+2026-03-30 15:40:15,368 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f765a2140>
+2026-03-30 15:40:15,405 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:15,407 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:40:15,408 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:44:30.214582863] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[4:44:30.215405524] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:40:15,410 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:15,410 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:40:15,411 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': <libcamera._libcamera.Stream object at 0x7f9782b170>, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:15,437 DEBUG [picamera2] Allocated 6 buffers for stream 0 with fds [23, 26, 29, 32, 35, 38]
+2026-03-30 15:40:15,445 DEBUG [picamera2] Allocated 6 buffers for stream 1 with fds [41, 44, 47, 50, 53, 56]
+2026-03-30 15:40:15,454 DEBUG [picamera2] Allocated 6 buffers for stream 2 with fds [59, 62, 65, 68, 71, 74]
+2026-03-30 15:40:15,473 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:15,473 DEBUG [camera] Applied controls to hardware: {'AfMode': 0, 'LensPosition': 1.1, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 32680, 'AnalogueGain': 1.1228070259094238, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000, 'ScalerCrop': [0, 0, 4608, 2592], 'ColourCorrectionMatrix': [1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752], 'ColourGains': [1.792555570602417, 2.0278091430664062]}
+2026-03-30 15:40:15,474 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:40:15,474 INFO [camera] All profile controls applied successfully
+2026-03-30 15:40:15,474 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-03-30 15:40:15,494 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:40:15,494 INFO [camera] Streaming started on 'lores' stream
+2026-03-30 15:40:15,996 INFO [camera] Audio stream process started for cam0
+2026-03-30 15:40:28,285 DEBUG [camera] set_config() set config still_capture_resolution=5
+2026-03-30 15:40:28,285 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:40:28,286 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:40:29,937 INFO [camera] Skip stopping recording, no active recording
+2026-03-30 15:40:30,163 INFO [camera] Audio stream process stopped for cam0
+2026-03-30 15:40:30,164 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f765a08d0>
+2026-03-30 15:40:30,193 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:30,202 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:40:30,204 INFO [camera] Streaming stopped
+2026-03-30 15:40:30,204 DEBUG [picamera2.picamera2] Camera was not started
+2026-03-30 15:40:30,206 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+2026-03-30 15:40:30,206 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:44:45.013080182] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1152x648-BGR888/sRGB (1) 2304x1296-SRGGB10_CSI2P/RAW
+[4:44:45.014072712] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:40:30,208 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:30,209 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+2026-03-30 15:40:30,209 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:30,219 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [23]
+2026-03-30 15:40:30,221 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [26]
+2026-03-30 15:40:30,240 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:30,240 DEBUG [camera] Capturing non-raw image '/home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-29.jpg'
+2026-03-30 15:40:30,240 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978fb750>
+2026-03-30 15:40:30,332 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:30,334 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+[4:44:45.140855007] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1152x648-BGR888/sRGB (1) 2304x1296-SRGGB10_CSI2P/RAW
+[4:44:45.141635056] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:40:30,336 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:30,336 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+2026-03-30 15:40:30,337 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:30,339 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [23]
+2026-03-30 15:40:30,341 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [26]
+2026-03-30 15:40:30,358 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:30,501 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978fb750>
+2026-03-30 15:40:30,521 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:30,523 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+[4:44:45.329844578] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1152x648-BGR888/sRGB (1) 2304x1296-SRGGB10_CSI2P/RAW
+[4:44:45.330584999] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:40:30,525 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:30,525 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'still', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'sYCC'>, 'buffer_count': 1, 'queue': True, 'main': {'format': 'BGR888', 'size': (1152, 648), 'preserve_ar': True, 'stride': 3456, 'framesize': 2239488}, 'lores': None, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.HighQuality: 2>, 'FrameDurationLimits': (100, 10000000000)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': None, 'encode': None}
+2026-03-30 15:40:30,526 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': None, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:30,528 DEBUG [picamera2] Allocated 1 buffers for stream 0 with fds [25]
+2026-03-30 15:40:30,530 DEBUG [picamera2] Allocated 1 buffers for stream 1 with fds [30]
+2026-03-30 15:40:30,547 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:30,567 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f97d1a270> to file /home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-29.jpg.
+2026-03-30 15:40:30,567 INFO [picamera2.request] Time taken for encode: 12.956144000781933 ms.
+2026-03-30 15:40:30,567 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-03-30_15-40-29.jpg'
+2026-03-30 15:40:30,567 DEBUG [picamera2.picamera2] Execute job: <picamera2.job.Job object at 0x7f978fb750>
+2026-03-30 15:40:30,641 INFO [picamera2.picamera2] Camera stopped
+2026-03-30 15:40:30,644 DEBUG [picamera2.picamera2] Requesting configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:40:30,644 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[4:44:45.451262450] [56774]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[4:44:45.452055111] [56315]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-03-30 15:40:30,646 INFO [picamera2.picamera2] Configuration successful!
+2026-03-30 15:40:30,647 DEBUG [picamera2.picamera2] Final configuration: {'use_case': 'video', 'transform': <libcamera.Transform 'hvflip'>, 'colour_space': <libcamera.ColorSpace 'Rec709'>, 'buffer_count': 6, 'queue': True, 'main': {'format': 'XBGR8888', 'size': (1920, 1080), 'preserve_ar': True, 'stride': 7680, 'framesize': 8294400}, 'lores': {'format': 'YUV420', 'size': (1920, 1080), 'preserve_ar': False, 'stride': 1920, 'framesize': 3110400}, 'raw': {'format': 'SRGGB10_CSI2P', 'size': (2304, 1296), 'stride': 2880, 'framesize': 3732480}, 'controls': {'NoiseReductionMode': <NoiseReductionModeEnum.Fast: 1>, 'FrameDurationLimits': (33333, 33333)}, 'sensor': {'bit_depth': 10, 'output_size': (2304, 1296)}, 'display': 'main', 'encode': 'main'}
+2026-03-30 15:40:30,647 DEBUG [picamera2.picamera2] Streams: {'main': <libcamera._libcamera.Stream object at 0x7f97d98670>, 'lores': <libcamera._libcamera.Stream object at 0x7f9782a6b0>, 'raw': <libcamera._libcamera.Stream object at 0x7f97d9b5b0>}
+2026-03-30 15:40:30,672 DEBUG [picamera2] Allocated 6 buffers for stream 0 with fds [23, 26, 29, 32, 35, 38]
+2026-03-30 15:40:30,680 DEBUG [picamera2] Allocated 6 buffers for stream 1 with fds [41, 44, 47, 50, 53, 56]
+2026-03-30 15:40:30,689 DEBUG [picamera2] Allocated 6 buffers for stream 2 with fds [59, 62, 65, 68, 71, 74]
+2026-03-30 15:40:30,709 INFO [picamera2.picamera2] Camera started
+2026-03-30 15:40:30,710 DEBUG [camera] Applied controls to hardware: {'AfMode': 0, 'LensPosition': 1.1, 'AfRange': 0, 'AfSpeed': 0, 'ExposureTime': 32680, 'AnalogueGain': 1.1228070259094238, 'AeEnable': 1, 'ExposureValue': 0.0, 'AeConstraintMode': 0, 'AeExposureMode': 0, 'AeMeteringMode': 0, 'AeFlickerMode': 0, 'AeFlickerPeriod': 100, 'AwbEnable': 0, 'AwbMode': 0, 'Brightness': 0, 'Contrast': 1.0, 'Saturation': 1.0, 'Sharpness': 1.0, 'ColourTemperature': 4000, 'ScalerCrop': [0, 0, 4608, 2592], 'ColourCorrectionMatrix': [1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752], 'ColourGains': [1.792555570602417, 2.0278091430664062]}
+2026-03-30 15:40:30,710 DEBUG [camera] Live controls synced with current controls
+2026-03-30 15:40:30,710 INFO [camera] All profile controls applied successfully
+2026-03-30 15:40:30,710 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-03-30 15:40:30,733 DEBUG [camera] camera._on_setting_changed() called
+2026-03-30 15:40:30,734 INFO [camera] Streaming started on 'lores' stream
+2026-03-30 15:40:31,238 INFO [camera] Audio stream process started for cam0
+2026-03-30 15:41:13,730 DEBUG [camera] Convert data type <class 'str'> -> <class 'int'> for picamera2 control ExposureTime

@@ -1,5 +1,10 @@
 from gevent import monkey
-monkey.patch_all()
+# GeventWebSocketWorker (gunicorn) calls monkey.patch_all() before the app is
+# imported; skip the call here to avoid the double-patch warning.
+# When running the app directly (python app.py), the socket module is not yet
+# patched, so we call it ourselves.
+if not monkey.is_module_patched('socket'):
+    monkey.patch_all()
 
 # System / Standard Library Imports
 import os
@@ -92,7 +97,7 @@ else:
 ####################
 # Local Module Imports
 ####################
-from camera_manager import CameraManager
+from camera_client import CameraManagerClient, connect_with_retry
 from media_gallery import MediaGallery
 
 ####################
@@ -154,7 +159,7 @@ def system_time_is_synced() -> bool:
     except Exception:
         return False
 
-def generate_filename(camera_manager: CameraManager, cam_num: int, file_extension: str = ".jpg") -> str:
+def generate_filename(camera_manager, cam_num: int, file_extension: str = ".jpg") -> str:
     """Generate a timestamped filename for a camera, optionally including camera number."""
     # Normalize file extension
     if not file_extension.startswith("."):
@@ -175,7 +180,7 @@ def generate_filename(camera_manager: CameraManager, cam_num: int, file_extensio
     else:
         return f"{timestamp}{file_extension}"
 
-def handle_camera_setting_changed(camera: "Camera"):
+def handle_camera_setting_changed(camera):
     logger.debug(f"Camera {camera.camera_num} changed settings")
     socketio.emit(
         "camera_state",
@@ -187,15 +192,48 @@ def handle_camera_setting_changed(camera: "Camera"):
     )
 
 ####################
-# Initialize CameraManager
+# Start camera server subprocess (if not already running) and connect
 ####################
-camera_manager = CameraManager(
-    camera_module_info_path=camera_module_info_path,
-    camera_active_profile_path=camera_active_profile_path,
-    media_upload_folder=media_upload_folder,
-    camera_ui_settings_db_path=camera_ui_settings_db_path,
-    camera_profile_folder=camera_profile_folder,
-)
+_CAMERA_SOCKET = os.path.join(current_dir, 'camera.sock')
+
+def _ensure_camera_server():
+    """
+    Start camera_server.py as a subprocess if the socket is not yet available.
+    Uses a simple connect-probe so that an externally started server is reused.
+    """
+    import socket as _socket
+    probe = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+    try:
+        probe.connect(_CAMERA_SOCKET)
+        probe.close()
+        logger.info("Camera server already running at %s", _CAMERA_SOCKET)
+        return
+    except (FileNotFoundError, ConnectionRefusedError):
+        pass
+    finally:
+        probe.close()
+
+    script = os.path.join(current_dir, 'camera_server.py')
+    log_path = os.path.join(current_dir, 'camera_server.log')
+    logger.info("Starting camera_server.py → %s (log: %s)", _CAMERA_SOCKET, log_path)
+    import sys as _sys
+    with open(log_path, 'a') as _log:
+        subprocess.Popen(
+            [_sys.executable, script,
+             '--socket', _CAMERA_SOCKET,
+             '--base-dir', current_dir,
+             '--log-level', 'DEBUG'],
+            stdout=_log,
+            stderr=_log,
+            close_fds=True,
+        )
+
+_ensure_camera_server()
+
+####################
+# Connect to CameraManager (via RPC client)
+####################
+camera_manager = connect_with_retry(_CAMERA_SOCKET, timeout=60)
 camera_manager.init_cameras()
 
 """
@@ -765,8 +803,6 @@ def stop_recording(camera_num):
     if not camera:
         return jsonify(success=False, error="Invalid camera number"), 400
 
-    # save if stream was active on function call
-    was_streaming = camera.states["is_video_streaming"]
     recording_filename = camera.filename_recording
     w, h = camera.get_recording_resolution()
     success = camera.stop_recording()
@@ -774,16 +810,11 @@ def stop_recording(camera_num):
         media_gallery_manager.register_media(recording_filename, w, h)
 
     room_name = f"camera_{camera_num}"
-    # sync/push camera_status to all clients connected to this websocket room
     socketio.emit("camera_status", {"active_recording": False}, room=room_name)
+    # Streaming is unaffected by stop_recording (no picam2.stop_recording call),
+    # so no stream_reinit is needed.
 
-    # start streaming again, if stream was active on function call
-    if was_streaming:
-        camera.states["is_video_streaming"] = False
-        camera.start_streaming()
-        socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
-
-    message = f"Recording of file {camera.filename_recording} stopped successfully" if success else "Failed to stop recording"
+    message = f"Recording of file {recording_filename} stopped successfully" if success else "Failed to stop recording"
     return jsonify(success=success, message=message)
 
 @app.route('/preview_<int:camera_num>', methods=['POST'])

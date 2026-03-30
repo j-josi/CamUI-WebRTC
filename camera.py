@@ -9,6 +9,7 @@ import threading
 import subprocess
 import time
 
+
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 
 # =========================
@@ -16,7 +17,7 @@ from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 # =========================
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
-from picamera2.outputs import PyavOutput, FfmpegOutput
+from picamera2.outputs import PyavOutput
 from libcamera import Transform, controls
 
 # =========================
@@ -136,9 +137,7 @@ class Camera:
 
         self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
         self.audio_device = self._detect_audio_device()
-        self.output_recording = FfmpegOutput("recording.mp4")
-        self._audio_process: Optional[subprocess.Popen] = None
-        self._audio_tmp_path: Optional[str] = None
+
         self._audio_stream_process: Optional[subprocess.Popen] = None
 
         self.main_stream = "recording"
@@ -1082,37 +1081,32 @@ class Camera:
         logger.info("Streaming stopped")
 
     def start_recording(self, filename: str) -> bool:
-        success = False
-
         with self.lock:
             if self.states["is_video_recording"]:
                 logger.info("Skip starting recording, already active")
                 return False
 
-            path = os.path.join(self.upload_folder, filename)
-            self.output_recording.output_filename = path
+        path = os.path.join(self.upload_folder, filename)
+        output = PyavOutput(path)
 
-            try:
-                self.picam2.start_recording(
-                    self.encoder_recording,
-                    self.output_recording,
-                    name=self.get_recording_stream(),
-                )
-                success = True
-            except Exception as e:
-                logger.error(f"Failed to start video recording: {e}")
+        self.encoder_recording.audio = bool(self.audio_device)
+        if self.audio_device:
+            self.encoder_recording.audio_input = {'file': self.audio_device, 'format': 'pulse'}
 
-        if success:
-            self.filename_recording = filename
-            self._set_state("is_video_recording", True)
-            logger.debug("start_recording: audio_device=%s", self.audio_device)
-            if self.audio_device:
-                self._start_audio_capture(filename)
-            logger.info(f"Recording {filename} started")
-            return True
-        else:
-            logger.error(f"Failed to start video recording")
+        try:
+            self.picam2.start_encoder(
+                self.encoder_recording,
+                output,
+                name=self.get_recording_stream(),
+            )
+        except Exception as e:
+            logger.error("Failed to start recording: %s", e, exc_info=True)
             return False
+
+        self.filename_recording = filename
+        self._set_state("is_video_recording", True)
+        logger.info("Recording started: %s (audio=%s)", filename, bool(self.audio_device))
+        return True
 
     def _start_audio_stream(self) -> None:
         """Start ffmpeg to mix PulseAudio audio into cam0 RTSP and republish as cam0a."""
@@ -1153,123 +1147,27 @@ class Camera:
             self._audio_stream_process = None
             logger.info("Audio stream process stopped for cam%s", self.camera_num)
 
-    def _start_audio_capture(self, video_filename: str) -> None:
-        """Start a separate ffmpeg process to capture audio via PulseAudio."""
-        base = os.path.splitext(video_filename)[0]
-        self._audio_tmp_path = os.path.join(self.upload_folder, f"{base}_audio.wav")
-        try:
-            self._audio_process = subprocess.Popen(
-                [
-                    "ffmpeg", "-y",
-                    "-f", "pulse",
-                    "-i", self.audio_device,
-                    self._audio_tmp_path,
-                ],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-            )
-            import time as _time
-            _time.sleep(0.3)
-            rc = self._audio_process.poll()
-            if rc is not None:
-                stderr_out = self._audio_process.stderr.read().decode(errors="replace")
-                logger.error("Audio process exited immediately (rc=%s):\n%s", rc, stderr_out)
-                self._audio_process = None
-                self._audio_tmp_path = None
-            else:
-                logger.info("Audio capture started: %s", self._audio_tmp_path)
-        except Exception as e:
-            logger.error("Failed to start audio capture: %s", e)
-            self._audio_process = None
-            self._audio_tmp_path = None
 
     def stop_recording(self) -> bool:
-        success = False
         _filename_recording = self.filename_recording
-        _audio_process = self._audio_process
-        _audio_tmp_path = self._audio_tmp_path
 
         with self.lock:
             if not self.states["is_video_recording"]:
                 logger.info("Skip stopping recording, no active recording")
                 return False
+            self.filename_recording = None
 
-            try:
-                self.picam2.stop_recording()
-                self.output_recording = FfmpegOutput("recording.mp4")
-                self.filename_recording = None
-                self._audio_process = None
-                self._audio_tmp_path = None
-                success = True
-            except Exception as e:
-                logger.error(f"Failed to stop video recording {_filename_recording}")
-
-        if success:
-            self._set_state("is_video_recording", False)
-            logger.info(f"Recording {_filename_recording} stopped")
-            if _audio_process and _audio_tmp_path and _filename_recording:
-                threading.Thread(
-                    target=self._stop_audio_and_mux,
-                    args=(_audio_process, _audio_tmp_path, _filename_recording),
-                    daemon=True,
-                ).start()
-            return True
-        else:
-            logger.error(f"Failed to stop video recording {_filename_recording}")
-            return False
-
-    def _stop_audio_and_mux(
-        self,
-        audio_process: subprocess.Popen,
-        audio_tmp_path: str,
-        video_filename: str,
-    ) -> None:
-        """Stop audio capture and mux audio+video into the final mp4."""
+        # Stop only the recording encoder — streaming encoder is unaffected.
+        # PyavOutput.stop() closes the container, which finalizes the MP4 atom.
         try:
-            audio_process.stdin.write(b"q\n")
-            audio_process.stdin.flush()
-            audio_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            logger.warning("Audio process did not stop gracefully, killing it")
-            audio_process.kill()
-            audio_process.wait()
+            self.picam2.stop_encoder(self.encoder_recording)
         except Exception as e:
-            logger.warning("Soft stop failed (%s), killing audio process", e)
-            audio_process.kill()
-            audio_process.wait()
+            logger.error("Failed to stop recording encoder: %s", e, exc_info=True)
 
-        video_path = os.path.join(self.upload_folder, video_filename)
-        tmp_path = video_path + ".mux.tmp"
+        self._set_state("is_video_recording", False)
+        logger.info("Recording %s finalized", _filename_recording)
+        return True
 
-        try:
-            result = subprocess.run(
-                [
-                    "ffmpeg", "-y",
-                    "-i", video_path,
-                    "-i", audio_tmp_path,
-                    "-c:v", "copy",
-                    "-c:a", "aac",
-                    "-shortest",
-                    "-f", "mp4",
-                    tmp_path,
-                ],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            os.replace(tmp_path, video_path)
-            os.remove(audio_tmp_path)
-            logger.info("Audio muxed into %s", video_filename)
-        except subprocess.CalledProcessError as e:
-            logger.error("Failed to mux audio into %s (exit %s):\n%s", video_filename, e.returncode, e.stderr)
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-        except Exception as e:
-            logger.error("Failed to mux audio into %s: %s", video_filename, e)
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
 
     #-----
     # Camera Capture Functions
