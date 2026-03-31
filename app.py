@@ -14,11 +14,9 @@ import json
 import time
 import tempfile
 import zipfile
-from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import subprocess
 import argparse
-import copy
 import secrets
 
 # Flask Imports
@@ -30,10 +28,6 @@ from flask import (
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
 # Image handling imports
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageOps, ExifTags
-
-# libcamera imports
-from libcamera import Transform, controls
 
 ####################
 # Initialize Logging
@@ -284,17 +278,10 @@ def handle_connect():
 def handle_disconnect():
     logger.info(f"Client disconnected: {request.sid}")
 
-@socketio.on("message")
-def handle_message(data):
-    logger.info(f"Received message from client {request.sid}: {data}")
-    emit("response", {"data": "Message received"}, broadcast=False)
-
-# @socketio.on("join_camera_room")
-# def handle_join_camera_room(data):
-#     camera_num = data["camera_num"]
-#     room = f"camera_{camera_num}"
-#     join_room(room)
-#     logger.info("Client %s joined room %s", request.sid, room)
+# @socketio.on("message")
+# def handle_message(data):
+#     logger.info(f"Received message from client {request.sid}: {data}")
+#     emit("response", {"data": "Message received"}, broadcast=False)
 
 @socketio.on("join_camera_room")
 def handle_join_camera_room(data):
@@ -324,19 +311,6 @@ def handle_leave_camera_room(data):
     leave_room(room)
     logger.info("Client %s left room %s", request.sid, room)
 
-# Client joins camera room
-# @socketio.on("join_camera_room")
-# def handle_join_camera_room(data):
-#     camera_num = data.get("camera_num")
-#     if camera_num is not None:
-#         room_name = f"camera_{camera_num}"
-#         join_room(room_name)
-
-        # camera = camera_manager.get_camera(camera_num)
-        # if camera:
-        #     # send initial active_recording state
-        #     emit("camera_status", {"active_recording": camera.states["is_video_recording"]}, room=room_name)
-
 @socketio.on("capture_still")
 def handle_capture_still(data):
     camera_num = data.get("camera_num")
@@ -355,11 +329,7 @@ def _do_capture_still(camera_num, room_name):
         socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
         return
     image_filename = generate_filename(camera_manager, camera_num, ".jpg")
-    still_index = camera.configs["still_capture_resolution"]
-    w, h = camera.still_resolutions_supported[still_index]
     success = camera.capture_still(image_filename, camera.configs["saveRAW"])
-    if success:
-        media_gallery_manager.register_media(image_filename, w, h)
     socketio.emit("capture_done", {
         "camera_num": camera_num,
         "success": success,
@@ -367,27 +337,27 @@ def _do_capture_still(camera_num, room_name):
     }, room=room_name)
 
 @socketio.on("start_recording")
-def start_recording(data):
+def handle_start_recording(data):
     camera_num = data.get("camera_num")
     camera = camera_manager.get_camera(camera_num)
-
-    logger.debug(f"start_recording() called -> camera_num: {camera_num}")
-
     if not camera:
         emit("error", {"message": "Invalid camera"})
         return
-
     filename = generate_filename(camera_manager, camera_num, ".mp4")
     success = camera.start_recording(filename)
-
-    if success:
-        logger.debug(f"sucessfully started recording: {filename}")
-        emit("recording_started", {
-            "camera_num": camera_num,
-            "filename": filename
-        }, room=f"camera_{camera_num}")
-    else:
+    if not success:
         emit("error", {"message": "Failed to start recording"})
+
+@socketio.on("stop_recording")
+def handle_stop_recording(data):
+    camera_num = data.get("camera_num")
+    camera = camera_manager.get_camera(camera_num)
+    if not camera:
+        emit("error", {"message": "Invalid camera"})
+        return
+    success = camera.stop_recording()
+    if not success:
+        emit("error", {"message": "Failed to stop recording"})
 
 @socketio.on("set_camera_setting")
 def handle_set_camera_setting(data):
@@ -478,19 +448,6 @@ def handle_set_camera_setting(data):
         emit("error", {"message": f"Unsupported source '{source}'"}, room=room_name)
         return
 
-    # -----------------------------------------------------
-    # Broadcast updated state if something changed
-    # -----------------------------------------------------
-    # if changed:
-    #     emit(
-    #         "camera_state",
-    #         {
-    #             "camera_num": camera_num,
-    #             "state": camera.get_settings()
-    #         },
-    #         room=room_name
-    #     )
-
 ####################
 # Flask routes - WebUI routes
 ####################
@@ -530,10 +487,6 @@ def set_theme(theme):
 @app.route('/')
 def home():
     """Render home page with list of cameras."""
-    camera_list = [
-        (camera.camera_info, camera.get_camera_module_spec())
-        for camera in camera_manager.cameras.values()
-    ]
     return render_template('home.html')
 
 @app.route('/camera_info_<int:camera_num>')
@@ -545,31 +498,6 @@ def camera_info(camera_num):
 
     camera_module_spec = camera.get_camera_module_spec()
     return render_template('camera_info.html', camera_data=camera_module_spec, camera_num=camera_num)
-
-# @app.route("/camera_status_long/<int:camera_num>")
-# def camera_status_long(camera_num):
-#     """
-#     Long polling endpoint for camera recording status.
-#     Returns immediately if status changes, otherwise waits up to 15s.
-#     """
-#     try:
-#         camera = camera_manager.get_camera(camera_num)
-#         if not camera:
-#             return jsonify(success=False, error="Camera not found"), 404
-
-#         last_state = request.args.get("state", "false") == "true"
-#         timeout = 15
-#         start = time.time()
-
-#         while time.time() - start < timeout:
-#             if camera.states["is_video_recording"] != last_state:
-#                 return jsonify(success=True, active_recording=camera.states["is_video_recording"])
-#             time.sleep(0.2)
-
-#         return jsonify(success=True, active_recording=camera.states["is_video_recording"])
-
-#     except Exception as e:
-#         return jsonify(success=False, error=str(e)), 500
 
 @app.route("/about")
 def about():
@@ -730,33 +658,6 @@ def camera(camera_num):
         logging.error(f"Error loading camera view: {e}")
         return render_template('error.html', error=str(e))
 
-@app.route("/capture_still_<int:camera_num>", methods=["POST"])
-def capture_still(camera_num):
-    """Capture a still image from the selected camera."""
-    try:
-        logging.debug(f"📸 Received capture request for camera {camera_num}")
-
-        camera = camera_manager.get_camera(camera_num)
-        if not camera:
-            logging.warning(f"❌ Camera {camera_num} not found.")
-            return jsonify(success=False, message="Camera not found"), 404
-
-        # Generate new filename
-        image_filename = generate_filename(camera_manager, camera_num, ".jpg")
-        logging.debug(f"📁 New image filename: {image_filename}")
-
-        success = camera.capture_still(image_filename, camera.configs["saveRAW"])
-
-        if success:
-            return jsonify(success=True, message="Still image captured successfully", image=image_filename)
-        else:
-            return jsonify(success=False, message="Failed to capture still image", image=image_filename)
-
-    except Exception as e:
-        logging.error(f"🔥 Error capturing still image: {e}")
-        camera.reconfigure_video_pipeline()
-        return jsonify(success=False, message=str(e)), 500
-
 @app.route('/snapshot_<int:camera_num>')
 def snapshot(camera_num):
     """Take a snapshot from the camera feed and send it as JPG."""
@@ -798,89 +699,24 @@ def video_webrtc_url(camera_num):
     path = f"cam{camera_num}a" if camera.audio_device else f"cam{camera_num}"
     return jsonify({"url": f"http://{host_ip}:{mediamtx_webrtc_port}/{path}/whep"})
 
-# @app.route("/start_recording/<int:camera_num>")
-# def start_recording(camera_num):
-#     """Start video recording on the specified camera."""
-#     camera = camera_manager.get_camera(camera_num)
-#     if not camera:
-#         return jsonify(success=False, error="Invalid camera number"), 400
-
-#     recording_filename = generate_filename(camera_manager, camera_num, ".mp4")
-#     success = camera.start_recording(recording_filename)
-
-#     room_name = f"camera_{camera_num}"
-#     # sync/push camera_status to all clients connected to this websocket room
-#     # socketio.emit("camera_status", {"active_recording": True}, room=room_name)
-
-#     message = f"Recording of file {recording_filename} started successfully" if success else "Failed to start recording"
-#     return jsonify(success=success, message=message)
-
-@app.route("/stop_recording/<int:camera_num>")
-def stop_recording(camera_num):
-    camera = camera_manager.get_camera(camera_num)
-    if not camera:
-        return jsonify(success=False, error="Invalid camera number"), 400
-
-    success = camera.stop_recording()
-    # camera_state event is emitted automatically by handle_camera_setting_changed
-    # when stop_recording() changes is_video_recording to False.
-    message = "Recording stopped successfully" if success else "Failed to stop recording"
-    return jsonify(success=success, message=message)
-
 @app.route('/preview_<int:camera_num>', methods=['POST'])
 def preview(camera_num):
-    """Capture a preview image from the camera."""
+    """Capture a preview still from the camera feed for the home page."""
     try:
         camera = camera_manager.get_camera(camera_num)
         if camera:
-            filepath = f'snapshot/pimage_preview_{camera_num}'
-            preview_path = camera.capture_still(filepath)
-            return jsonify(success=True, message="Photo captured successfully", image_path=preview_path)
+            preview_dir = os.path.join(camera_manager.media_upload_folder, 'snapshot')
+            os.makedirs(preview_dir, exist_ok=True)
+            filepath = os.path.join(preview_dir, f'pimage_preview_{camera_num}.jpg')
+            success = camera.capture_still_from_feed(filepath)
+            return jsonify(success=bool(success), message="Preview captured" if success else "Failed")
     except Exception as e:
         return jsonify(success=False, message=str(e))
-
-# @app.route('/update_setting', methods=['POST'])
-# def update_setting():
-#     """Update a single camera setting from the WebUI."""
-#     try:
-#         data = request.json
-#         camera_num = data.get("camera_num")
-#         setting_id = data.get("id")
-#         new_value = data.get("value")
-
-#         logger.info(f"Received update for Camera {camera_num}: {setting_id} -> {new_value}")
-
-#         camera = camera_manager.get_camera(camera_num)
-#         camera.update_settings(setting_id, new_value)
-
-#         return jsonify({
-#             "success": True,
-#             "message": f"Received setting update for Camera {camera_num}: {setting_id} -> {new_value}"
-#         })
-
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
 
 @app.route('/camera_controls')
 def redirect_to_home():
     """Redirect /camera_controls to home page."""
     return redirect(url_for('home'))
-
-@app.route("/set_recording_resolution", methods=["POST"])
-def set_recording_resolution():
-    """Set recording resolution for a camera."""
-    data = request.get_json()
-    cam = cameras[data["camera_num"]]
-    cam.set_recording_resolution((data["width"], data["height"]))
-    return jsonify({"status": "ok"})
-
-@app.route("/set_streaming_resolution", methods=["POST"])
-def set_streaming_resolution():
-    """Set streaming resolution for a camera."""
-    data = request.get_json()
-    cam = cameras[data["camera_num"]]
-    cam.set_streaming_resolution((data["width"], data["height"]))
-    return jsonify({"status": "ok"})
 
 ####################
 # Camera Profile routes
@@ -900,16 +736,6 @@ def save_profile(camera_num):
     if success:
         return jsonify({"message": f"Profile '{filename}' created successfully"}), 200
     return jsonify({"error": "Failed to save profile"}), 500
-
-@app.route("/reset_profile_<int:camera_num>", methods=["POST"])
-def reset_profile(camera_num):
-    cam = camera_manager.cameras[camera_num]
-    success = cam.reset_camera_to_defaults()
-    # success = camera_manager.reset_camera_to_defaults(camera_num)
-    if success:
-        return jsonify({"success": True, "message": "Profile reset to default values"})
-    else:
-        return jsonify({"success": False, "message": "Failed to reset profile to default values"}), 500
 
 @app.route("/delete_profile", methods=["POST"])
 def delete_profile():
@@ -1012,32 +838,6 @@ def edit_image(filename):
     """Render image editing page."""
     return render_template('image_edit.html', filename=filename)
 
-@app.route("/apply_filters", methods=["POST"])
-def apply_filters():
-    """Apply filters (brightness, contrast, rotation) to an image."""
-    try:
-        filename = request.form["filename"]
-        brightness = float(request.form.get("brightness", 1.0))
-        contrast = float(request.form.get("contrast", 1.0))
-        rotation = float(request.form.get("rotation", 0))
-
-        img_path = os.path.join(app.config['media_upload_folder'], filename)
-
-        edited_filepath = media_gallery.apply_filter(
-            img_path,
-            brightness=brightness,
-            contrast=contrast,
-            rotation=rotation
-        )
-
-        if edited_filepath:
-            edited_filename = os.path.basename(edited_filepath)
-            return send_from_directory(app.config['media_upload_folder'], edited_filename)
-        return jsonify(success=False, message="Failed to apply filters"), 500
-
-    except Exception as e:
-        return jsonify(success=False, message=str(e)), 500
-
 @app.route('/download_image/<filename>', methods=['GET'])
 def download_image(filename):
     """Download a single image file."""
@@ -1110,18 +910,6 @@ def add_header(response):
 # Start Flask application
 ####################
 
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(description='PiCamera2 WebUI')
-#     parser.add_argument('--port', type=int, default=8080, help='Port number to run the web server on')
-#     parser.add_argument('--ip', type=str, default='0.0.0.0', help='IP to which the web server is bound to')
-#     args = parser.parse_args()
-    
-#     # Uncomment the following line to run Flask's internal server (only recommended for debugging - if used in production, a external server like gunicorn is highly recommended)
-#     # app.run(host=args.ip, port=args.port)
-
-# --------------------
-# Start server
-# --------------------
 if __name__ == "__main__":
     import argparse
 

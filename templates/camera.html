@@ -616,9 +616,7 @@ function startVideoRecording() {
 }
 
 function stopVideoRecording() {
-    fetch(`/stop_recording/${cameraNum}`)
-        .then(r => r.json())
-        .catch(err => console.error(err));
+    socket.emit("stop_recording", { camera_num: cameraNum });
 }
 
 // Update the record button appearance based on the current recording state
