@@ -215,6 +215,9 @@ class CameraProxy:
     def reconfigure_video_pipeline(self):
         return self._rpc("reconfigure_video_pipeline")
 
+    def reset_camera_to_defaults(self):
+        return self._rpc("reset_camera_to_defaults")
+
 
 # ---------------------------------------------------------------------------
 # CameraManager proxy

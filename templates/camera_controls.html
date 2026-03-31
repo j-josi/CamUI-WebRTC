@@ -134,10 +134,13 @@
 
                 <!-- Save Profile -->
                 <div id="saveProfile" class="profile-section d-none">
+                    {% set active_profile = profiles | selectattr('active') | first | default(None) %}
+                    <label for="saveConfigFile" class="form-label">Profile name</label>
                     <input type="text"
                            class="form-control mb-2"
                            id="saveConfigFile"
-                           placeholder="Enter profile name">
+                           placeholder="Enter profile name"
+                           value="{{ active_profile.filename | replace('.json', '') if active_profile else '' }}">
                     <button class="btn btn-primary"
                             onclick="saveProfile({{ camera.Num }})">Save</button>
                 </div>
@@ -242,6 +245,32 @@
 </div>
 
 <!-- ===================================== -->
+<!-- Overwrite profile confirmation modal -->
+<!-- ===================================== -->
+
+<div class="modal fade" id="overwriteProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">Overwrite Profile?</h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                A profile named <strong id="overwriteProfileName"></strong> already exists.
+                Do you want to overwrite it?
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary"
+                        data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-warning"
+                        onclick="confirmOverwriteProfile()">Overwrite</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================================== -->
 <!-- Model mismatch modal -->
 <!-- ===================================== -->
 
@@ -337,6 +366,8 @@ function applyProfile(profileName) {
     .catch(error => console.error("Error loading profile:", error));
 }
 
+let _pendingSaveProfile = null;  // { cameraNum, filename }
+
 function saveProfile(cameraNum) {
     const filename = document.getElementById("saveConfigFile").value;
     const alertBox = document.getElementById("profileAlert");
@@ -346,18 +377,44 @@ function saveProfile(cameraNum) {
         return;
     }
 
+    const existingFilenames = Array.from(
+        document.querySelectorAll('input[name="selectedConfig"]')
+    ).map(r => r.value);
+
+    if (existingFilenames.includes(`${filename}.json`)) {
+        _pendingSaveProfile = { cameraNum, filename };
+        document.getElementById("overwriteProfileName").textContent = filename;
+        new bootstrap.Modal(document.getElementById("overwriteProfileModal")).show();
+        return;
+    }
+
+    doSaveProfile(cameraNum, filename);
+}
+
+function confirmOverwriteProfile() {
+    bootstrap.Modal.getInstance(document.getElementById("overwriteProfileModal")).hide();
+    if (_pendingSaveProfile) {
+        doSaveProfile(_pendingSaveProfile.cameraNum, _pendingSaveProfile.filename);
+        _pendingSaveProfile = null;
+    }
+}
+
+function doSaveProfile(cameraNum, filename) {
+    const alertBox = document.getElementById("profileAlert");
+
     fetch(`/save_profile_${cameraNum}`, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: filename })
     })
     .then(response => response.json())
     .then(data => {
         if (data.message) {
-            showAlert(alertBox, "success", data.message);
-            updateProfileList(); // Refresh profile list after loading
+            alertBox.innerHTML = data.message.replace(/(created|updated)/, '<strong>$1</strong>');
+            alertBox.className = 'alert alert-success';
+            alertBox.classList.remove('d-none');
+            setTimeout(() => alertBox.classList.add('d-none'), 5000);
+            updateProfileList();
         } else {
             showAlert(alertBox, "danger", data.error || "Failed to save profile.");
         }

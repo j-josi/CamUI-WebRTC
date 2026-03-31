@@ -743,11 +743,28 @@ def save_profile(camera_num):
     if not filename:
         return jsonify({"error": "Filename is required"}), 400
 
+    existing = {p["filename"] for p in (camera_manager.list_profiles() or [])}
+    is_update = f"{filename}.json" in existing
+
     success = camera_manager.save_profile(camera_num, filename)
 
     if success:
-        return jsonify({"message": f"Profile '{filename}' created successfully"}), 200
+        verb = "updated" if is_update else "created"
+        return jsonify({"message": f"Profile '{filename}' {verb} successfully"}), 200
     return jsonify({"error": "Failed to save profile"}), 500
+
+@app.route("/reset_profile_<int:camera_num>", methods=["POST"])
+def reset_profile(camera_num):
+    """Reset camera settings to factory defaults."""
+    camera = camera_manager.get_camera(camera_num)
+    if not camera:
+        return jsonify({"success": False, "message": "Camera not found"}), 404
+    success = camera.reset_camera_to_defaults()
+    if success:
+        room_name = f"camera_{camera_num}"
+        socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
+        return jsonify({"success": True, "message": "Profile reset to default values"})
+    return jsonify({"success": False, "message": "Failed to reset profile to default values"}), 500
 
 @app.route("/delete_profile", methods=["POST"])
 def delete_profile():
