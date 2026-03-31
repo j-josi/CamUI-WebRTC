@@ -234,7 +234,7 @@ def _ensure_camera_server():
             [_sys.executable, script,
              '--socket', _CAMERA_SOCKET,
              '--base-dir', current_dir,
-             '--log-level', 'DEBUG'],
+             '--log-level', 'INFO'],
             stdout=_log,
             stderr=_log,
             close_fds=True,
@@ -614,6 +614,18 @@ def reset_camera_detection():
 
     except Exception as e:
         return jsonify({"message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/system_settings', methods=['GET'])
+def get_system_settings():
+    return jsonify(camera_manager.get_system_settings())
+
+@app.route('/api/system_settings', methods=['POST'])
+def update_system_settings():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    updated = camera_manager.update_system_settings(data)
+    return jsonify(updated)
 
 @app.route('/shutdown', methods=['POST'])
 def shutdown():

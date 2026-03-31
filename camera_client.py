@@ -298,6 +298,12 @@ class CameraManagerClient:
     def delete_profile(self, profile_filename: str) -> bool:
         return self._client.call("manager.delete_profile", profile_filename)
 
+    def get_system_settings(self) -> dict:
+        return self._client.call("manager.get_system_settings")
+
+    def update_system_settings(self, data: dict) -> dict:
+        return self._client.call("manager.update_system_settings", data)
+
     @property
     def camera_module_info(self):
         return self._client.call("manager.get_attr", "camera_module_info")

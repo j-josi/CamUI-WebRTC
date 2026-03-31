@@ -17,19 +17,13 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import socket
 import sys
 import threading
-import time
 
 logger = logging.getLogger(__name__)
 
 SOCKET_PATH = '/tmp/camui_camera.sock'
-
-# Auto-stop thresholds
-RECORDING_MAX_DURATION_S = 90 * 60   # 90 minutes
-STORAGE_MIN_FREE_BYTES    = 500 * 1024 * 1024  # 500 MB
 
 
 class CameraRPCServer:
@@ -57,64 +51,6 @@ class CameraRPCServer:
             for c in dead:
                 self._clients.remove(c)
 
-    # ------------------------------------------------------------------
-    # Recording watchdog
-    # ------------------------------------------------------------------
-
-    def _start_recording_watchdog(self):
-        """
-        Background thread that automatically stops any active recording when:
-          1. The recording has run for RECORDING_MAX_DURATION_S (90 min)
-          2. Free disk space drops below STORAGE_MIN_FREE_BYTES (500 MB)
-        The thread polls every 10 seconds and broadcasts a
-        'recording_auto_stopped' event with the stop reason so all WebUI
-        clients can react (re-enable buttons, hide overlay, etc.).
-        """
-        def _watchdog():
-            # Track per-camera recording start times {camera_num: start_time}
-            recording_started_at: dict = {}
-
-            while True:
-                time.sleep(10)
-                try:
-                    disk_free = shutil.disk_usage(
-                        self._manager.media_upload_folder
-                    ).free
-                    storage_full = disk_free < STORAGE_MIN_FREE_BYTES
-
-                    for cam_num, camera in list(self._manager.cameras.items()):
-                        if not camera.states.get("is_video_recording"):
-                            recording_started_at.pop(cam_num, None)
-                            continue
-
-                        # Track when this recording started
-                        if cam_num not in recording_started_at:
-                            recording_started_at[cam_num] = time.monotonic()
-
-                        elapsed = time.monotonic() - recording_started_at[cam_num]
-
-                        reason = None
-                        if elapsed >= RECORDING_MAX_DURATION_S:
-                            reason = "max_duration"
-                        elif storage_full:
-                            reason = "storage_full"
-
-                        if reason:
-                            logger.warning(
-                                "Auto-stopping recording on cam%s: %s", cam_num, reason
-                            )
-                            camera.stop_recording()  # triggers media_created callback
-                            recording_started_at.pop(cam_num, None)
-                            self._broadcast_event("recording_auto_stopped", {
-                                "camera_num": cam_num,
-                                "reason": reason,
-                            })
-                except Exception as exc:
-                    logger.error("Recording watchdog error: %s", exc, exc_info=True)
-
-        t = threading.Thread(target=_watchdog, daemon=True, name="recording-watchdog")
-        t.start()
-
     def _setup_callbacks(self):
         def on_changed(camera):
             self._broadcast_event("camera_state_changed", {
@@ -132,14 +68,12 @@ class CameraRPCServer:
             })
         self._manager.on_media_created = on_media_created
 
-        def on_media_created(camera_num, filename, w, h):
-            self._broadcast_event("media_created", {
+        def on_recording_auto_stopped(camera_num, reason):
+            self._broadcast_event("recording_auto_stopped", {
                 "camera_num": camera_num,
-                "filename": filename,
-                "w": w,
-                "h": h,
+                "reason": reason,
             })
-        self._manager.on_media_created = on_media_created
+        self._manager.on_recording_auto_stopped = on_recording_auto_stopped
 
     # ------------------------------------------------------------------
     # RPC dispatch
@@ -169,6 +103,10 @@ class CameraRPCServer:
             return list(val) if isinstance(val, tuple) else val
         if method == "manager.camera_nums":
             return list(m.cameras.keys())
+        if method == "manager.get_system_settings":
+            return m.get_system_settings()
+        if method == "manager.update_system_settings":
+            return m.update_system_settings(*params)
 
         # ---- Camera methods (first param is always camera_num) ----
         if method.startswith("camera."):
@@ -250,7 +188,6 @@ class CameraRPCServer:
         srv.listen(8)
         logger.info("Camera RPC server listening on %s", self._socket_path)
         self._setup_callbacks()
-        self._start_recording_watchdog()
         try:
             while True:
                 conn, _ = srv.accept()
@@ -297,6 +234,7 @@ def main():
         media_upload_folder=os.path.join(base_dir, 'static/gallery'),
         camera_ui_settings_db_path=os.path.join(base_dir, 'camera_controls_db.json'),
         camera_profile_folder=os.path.join(base_dir, 'static/camera_profiles'),
+        system_settings_path=os.path.join(base_dir, 'system_settings.json'),
     )
     manager.init_cameras()
 

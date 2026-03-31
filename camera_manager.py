@@ -1,12 +1,15 @@
 import os
 import json
+import shutil
 import threading
+import time
 import logging
 import copy
 from typing import Dict, List, Optional
 from picamera2 import Picamera2
 from camera import Camera
 from media_gallery import MediaGallery
+from system_settings import SystemSettings
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +18,8 @@ logger = logging.getLogger(__name__)
 ####################
 
 class CameraManager:
+
+    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024  # 500 MB
 
     # DEFAULT_CONFIG = {
     #     "hflip": False,
@@ -56,6 +61,7 @@ class CameraManager:
         media_upload_folder: str,
         camera_ui_settings_db_path: str,
         camera_profile_folder: str,
+        system_settings_path: str,
     ):
         """
         :param camera_module_info_path: Path to camera-module-info.json
@@ -75,6 +81,7 @@ class CameraManager:
         self.camera_active_profile = {"cameras": []}
         self.lock = threading.Lock()
         self._gallery = MediaGallery(media_upload_folder)
+        self._settings = SystemSettings(system_settings_path)
 
         # create directories, if not already existing
         os.makedirs(self.camera_profile_folder, exist_ok=True)
@@ -168,6 +175,8 @@ class CameraManager:
         for key, camera in self.cameras.items():
             logger.info("Initialized camera %s: %s", key, camera.camera_info)
 
+        self._start_recording_watchdog()
+
     def on_camera_setting_changed(self, camera: Camera):
         """
         Hook for reacting to camera setting changes.
@@ -191,6 +200,75 @@ class CameraManager:
         self._gallery.register_media(filename, w, h)
         if callable(self.on_media_created):
             self.on_media_created(camera_num, filename, w, h)
+
+    def on_recording_auto_stopped(self, camera_num: int, reason: str):
+        """
+        Hook called when a recording is auto-stopped by the watchdog.
+        Intended to be overridden / rebound by application layer.
+        """
+        pass
+
+    def _handle_recording_auto_stopped(self, camera_num: int, reason: str):
+        if callable(self.on_recording_auto_stopped):
+            self.on_recording_auto_stopped(camera_num, reason)
+
+    # ------------------------------------------------------------------
+    # System settings
+    # ------------------------------------------------------------------
+
+    def get_system_settings(self) -> dict:
+        return self._settings.get_all()
+
+    def update_system_settings(self, data: dict) -> dict:
+        return self._settings.update(data)
+
+    # ------------------------------------------------------------------
+    # Recording watchdog
+    # ------------------------------------------------------------------
+
+    def _start_recording_watchdog(self):
+        """
+        Background thread that automatically stops any active recording when:
+          1. The recording has run for max_recording_duration_s (configurable)
+          2. Free disk space drops below STORAGE_MIN_FREE_BYTES (500 MB)
+        Polls every 10 seconds.
+        """
+        def _watchdog():
+            recording_started_at: dict = {}
+            while True:
+                time.sleep(10)
+                try:
+                    disk_free = shutil.disk_usage(self.media_upload_folder).free
+                    storage_full = disk_free < CameraManager.STORAGE_MIN_FREE_BYTES
+
+                    for cam_num, camera in list(self.cameras.items()):
+                        if not camera.states.get("is_video_recording"):
+                            recording_started_at.pop(cam_num, None)
+                            continue
+
+                        if cam_num not in recording_started_at:
+                            recording_started_at[cam_num] = time.monotonic()
+
+                        elapsed = time.monotonic() - recording_started_at[cam_num]
+
+                        reason = None
+                        if elapsed >= self._settings.max_recording_duration_s:
+                            reason = "max_duration"
+                        elif storage_full:
+                            reason = "storage_full"
+
+                        if reason:
+                            logger.warning(
+                                "Auto-stopping recording on cam%s: %s", cam_num, reason
+                            )
+                            camera.stop_recording()
+                            recording_started_at.pop(cam_num, None)
+                            self._handle_recording_auto_stopped(cam_num, reason)
+                except Exception as exc:
+                    logger.error("Recording watchdog error: %s", exc, exc_info=True)
+
+        t = threading.Thread(target=_watchdog, daemon=True, name="recording-watchdog")
+        t.start()
 
     def get_camera(self, cam_num: int) -> Optional[Camera]:
         """

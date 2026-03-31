@@ -3,7 +3,23 @@
 {% block content %}
 <div class="container py-4">
 
-  <!-- 1. System Control Section -->
+  <!-- 1. Recording Settings Section -->
+  <div class="mb-5">
+    <h2 class="pb-2 mb-4 border-bottom">Recording Settings</h2>
+    <div class="row g-3 align-items-end" style="max-width: 480px;">
+      <div class="col">
+        <label for="maxRecordingDuration" class="form-label">Max. recording duration (minutes)</label>
+        <input type="number" class="form-control" id="maxRecordingDuration" min="1" max="600" step="1" value="90">
+        <div class="form-text">Video recording (.mp4 file) stops automatically when this duration is reached.</div>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary" onclick="saveRecordingSettings()">Save</button>
+      </div>
+    </div>
+    <div id="recordingSettingsMsg" class="mt-2 small d-none"></div>
+  </div>
+
+  <!-- 2. System Control Section -->
   <div class="mb-5">
     <h2 class="pb-2 mb-4 border-bottom">System Controls</h2>
     <div class="d-flex gap-3">
@@ -74,6 +90,57 @@
 </div>
 
 <script>
+  /**
+   * Show a success or error message for a setting.
+   *
+   * @param {string} msgId     - ID of the message element
+   * @param {boolean} success  - true = success (green), false = error (red)
+   * @param {string} label     - Human-readable parameter name, e.g. "Max. recording duration"
+   * @param {number|string} value - The value that was set or entered
+   * @param {string} unit      - Unit string, e.g. "min"
+   * @param {number} min       - Minimum allowed value (shown in error message)
+   * @param {number} max       - Maximum allowed value (shown in error message)
+   */
+  function showSettingMsg(msgId, success, label, value, unit, min, max) {
+    const el = document.getElementById(msgId);
+    if (success) {
+      el.textContent = `${label} set to ${value} ${unit}`;
+      el.className = 'mt-2 small text-success';
+      setTimeout(() => el.classList.add('d-none'), 3000);
+    } else {
+      el.textContent = `Invalid value — ${label} must be between ${min} and ${max} ${unit}`;
+      el.className = 'mt-2 small text-danger';
+    }
+    el.classList.remove('d-none');
+  }
+
+  // Load current settings on page load
+  fetch('/api/system_settings')
+    .then(r => r.json())
+    .then(data => {
+      if (data.max_recording_duration_min !== undefined) {
+        document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;
+      }
+    });
+
+  function saveRecordingSettings() {
+    const MIN = 1, MAX = 600;
+    const LABEL = 'Max. recording duration', UNIT = 'min';
+    const minutes = parseInt(document.getElementById('maxRecordingDuration').value, 10);
+    if (isNaN(minutes) || minutes < MIN || minutes > MAX) {
+      showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX);
+      return;
+    }
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_recording_duration_min: minutes })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => showSettingMsg('recordingSettingsMsg', true, LABEL, minutes, UNIT, MIN, MAX))
+    .catch(() => showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX));
+  }
+
   let currentAction = null;
 
   function showCameraModal(sensorModel, moduleName) {
