@@ -6,6 +6,7 @@ import copy
 from typing import Dict, List, Optional
 from picamera2 import Picamera2
 from camera import Camera
+from media_gallery import MediaGallery
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class CameraManager:
         self.cameras: Dict[int, Camera] = {}
         self.camera_active_profile = {"cameras": []}
         self.lock = threading.Lock()
+        self._gallery = MediaGallery(media_upload_folder)
 
         # create directories, if not already existing
         os.makedirs(self.camera_profile_folder, exist_ok=True)
@@ -147,7 +149,8 @@ class CameraManager:
                     camera_module_info = self.camera_module_info,
                     upload_folder = self.media_upload_folder,
                     camera_ui_settings_db_path = self.camera_ui_settings_db_path,
-                    on_setting_changed=self._handle_camera_setting_changed
+                    on_setting_changed=self._handle_camera_setting_changed,
+                    on_media_created=self._handle_media_created,
 
                     # CameraManager.DEFAULT_CONFIG,
                     # CameraManager.DEFAULT_CONTROLS,
@@ -172,9 +175,22 @@ class CameraManager:
         """
         pass
 
+    def on_media_created(self, camera_num: int, filename: str, w: int, h: int):
+        """
+        Hook called whenever a media file is successfully created
+        (recording stopped, still image captured).
+        Intended to be overridden / rebound by application layer (app.py).
+        """
+        pass
+
     def _handle_camera_setting_changed(self, camera: Camera):
         if callable(self.on_camera_setting_changed):
             self.on_camera_setting_changed(camera)
+
+    def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int):
+        self._gallery.register_media(filename, w, h)
+        if callable(self.on_media_created):
+            self.on_media_created(camera_num, filename, w, h)
 
     def get_camera(self, cam_num: int) -> Optional[Camera]:
         """

@@ -191,6 +191,24 @@ def handle_camera_setting_changed(camera):
         room=f"camera_{camera.camera_num}"
     )
 
+def handle_recording_auto_stopped(camera_num: int, reason: str):
+    logger.info("Recording auto-stopped on cam%s: reason=%s", camera_num, reason)
+    socketio.emit(
+        "recording_auto_stopped",
+        {"camera_num": camera_num, "reason": reason},
+        room=f"camera_{camera_num}",
+    )
+
+def _stop_all_active_recordings():
+    """Gracefully stop any active recordings before system shutdown/restart."""
+    for cam_num, camera in camera_manager.cameras.items():
+        try:
+            if camera.states.get("is_video_recording"):
+                logger.info("Stopping active recording on cam%s before shutdown", cam_num)
+                camera.stop_recording()
+        except Exception as exc:
+            logger.error("Error stopping recording for cam%s: %s", cam_num, exc)
+
 ####################
 # Start camera server subprocess (if not already running) and connect
 ####################
@@ -244,6 +262,7 @@ CameraManager updates its state, including changes to configuration
 parameters (e.g. video resolution) or live controls (e.g. ExposureTime).
 """
 camera_manager.on_camera_setting_changed = handle_camera_setting_changed
+camera_manager.on_recording_auto_stopped = handle_recording_auto_stopped
 
 ####################
 # Initialize Media Gallery
@@ -672,6 +691,7 @@ def reset_camera_detection():
 def shutdown():
     """Shutdown the Raspberry Pi system via Flask route."""
     try:
+        _stop_all_active_recordings()
         subprocess.run(['sudo', 'shutdown', '-h', 'now'], check=True)
         return jsonify({"message": "System is shutting down."})
     except subprocess.CalledProcessError as e:
@@ -682,6 +702,7 @@ def shutdown():
 def restart():
     """Restart the Raspberry Pi system via Flask route."""
     try:
+        _stop_all_active_recordings()
         subprocess.run(['sudo', 'reboot'], check=True)
         return jsonify({"message": "System is restarting."})
     except subprocess.CalledProcessError as e:
@@ -724,12 +745,9 @@ def capture_still(camera_num):
         image_filename = generate_filename(camera_manager, camera_num, ".jpg")
         logging.debug(f"📁 New image filename: {image_filename}")
 
-        still_index = camera.configs["still_capture_resolution"]
-        w, h = camera.still_resolutions_supported[still_index]
         success = camera.capture_still(image_filename, camera.configs["saveRAW"])
 
         if success:
-            media_gallery_manager.register_media(image_filename, w, h)
             return jsonify(success=True, message="Still image captured successfully", image=image_filename)
         else:
             return jsonify(success=False, message="Failed to capture still image", image=image_filename)
@@ -803,18 +821,10 @@ def stop_recording(camera_num):
     if not camera:
         return jsonify(success=False, error="Invalid camera number"), 400
 
-    recording_filename = camera.filename_recording
-    w, h = camera.get_recording_resolution()
     success = camera.stop_recording()
-    if success and recording_filename:
-        media_gallery_manager.register_media(recording_filename, w, h)
-
-    room_name = f"camera_{camera_num}"
-    socketio.emit("camera_status", {"active_recording": False}, room=room_name)
-    # Streaming is unaffected by stop_recording (no picam2.stop_recording call),
-    # so no stream_reinit is needed.
-
-    message = f"Recording of file {recording_filename} stopped successfully" if success else "Failed to stop recording"
+    # camera_state event is emitted automatically by handle_camera_setting_changed
+    # when stop_recording() changes is_video_recording to False.
+    message = "Recording stopped successfully" if success else "Failed to stop recording"
     return jsonify(success=success, message=message)
 
 @app.route('/preview_<int:camera_num>', methods=['POST'])

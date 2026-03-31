@@ -94,6 +94,7 @@ class Camera:
         upload_folder: str,
         camera_ui_settings_db_path: str,
         on_setting_changed: Optional[Callable[["Camera"], None]] = None,
+        on_media_created: Optional[Callable[[int, str, int, int], None]] = None,
     ) -> None:
 
         self.camera_info = camera_info
@@ -101,6 +102,7 @@ class Camera:
         self.upload_folder = upload_folder
         self.ui_settings_db_path = camera_ui_settings_db_path
         self._on_setting_changed_callback = on_setting_changed
+        self._on_media_created_callback = on_media_created
 
         self.camera_num: int = camera_info["Num"]
         self._setting_changed_callback = None
@@ -1171,6 +1173,9 @@ class Camera:
 
         self._set_state("is_video_recording", False)
         logger.info("Recording %s finalized", _filename_recording)
+        if _filename_recording and callable(self._on_media_created_callback):
+            w, h = self.get_recording_resolution()
+            self._on_media_created_callback(self.camera_num, _filename_recording, w, h)
         return True
 
 
@@ -1265,6 +1270,9 @@ class Camera:
                 self.start_streaming()
             
             if success:
+                if callable(self._on_media_created_callback):
+                    w, h = still_resolution
+                    self._on_media_created_callback(self.camera_num, filename, w, h)
                 return filepath
             else:
                 return None

@@ -237,6 +237,8 @@ class CameraManagerClient:
         self._client.add_event_handler(self._handle_server_event)
         self.cameras: Dict[int, CameraProxy] = {}
         self.on_camera_setting_changed = None   # set by app.py
+        self.on_media_created = None            # set by app.py; called with (camera_num, filename, w, h)
+        self.on_recording_auto_stopped = None   # set by app.py; called with (camera_num, reason)
 
     def _handle_server_event(self, msg: dict):
         event = msg.get("event")
@@ -250,6 +252,22 @@ class CameraManagerClient:
                 t = threading.Thread(
                     target=self.on_camera_setting_changed,
                     args=(cam,),
+                    daemon=True,
+                )
+                t.start()
+        elif event == "media_created":
+            if callable(self.on_media_created):
+                t = threading.Thread(
+                    target=self.on_media_created,
+                    args=(data["camera_num"], data["filename"], data["w"], data["h"]),
+                    daemon=True,
+                )
+                t.start()
+        elif event == "recording_auto_stopped":
+            if callable(self.on_recording_auto_stopped):
+                t = threading.Thread(
+                    target=self.on_recording_auto_stopped,
+                    args=(data["camera_num"], data["reason"]),
                     daemon=True,
                 )
                 t.start()
