@@ -39,7 +39,8 @@ class Camera:
     # =========================
     MEDIAMTX_RTSP_ROOT_DOMAIN = "rtsp://127.0.0.1:8554"
 
-    MAX_VID_RESOLUTION = (1920, 1080) # h264 encoder of Picamera2 supports a max. resolution of 1920x1080
+    H264_MAX_VID_RESOLUTION = (1920, 1080) # h264 encoder of Picamera2 supports a max. resolution of 1920x1080
+    H264_FPS_MAX_VID_RESOLUTION = 30  # max. supported fps at max. supported video resolution of h264 encoder
 
     BITRATE_ENCODER_STREAM = 8_000_000
     BITRATE_ENCODER_RECORDING = 8_000_000
@@ -154,9 +155,6 @@ class Camera:
             self._get_picam_control_capabilities(),
             self.ui_settings_db_path,
         )
-
-        # Load last profile (sets state through setters!)
-        # self.load_active_profile()
 
         # Initialize video configuration (stream and recording)
         self.reconfigure_video_pipeline()
@@ -575,9 +573,10 @@ class Camera:
         controls: Dict = copy.deepcopy(self.picam2.camera_controls)
 
         if "ExposureTime" in controls:
-            min_exposure_time = 100        # microseconds
-            max_exposure_time = 100_000    # microseconds
-            default_exposure_time = 500
+            min_exposure_time = 1000       # microseconds (0.001 s)
+            # Max = 1 frame at the video pipeline framerate
+            max_exposure_time = int(1_000_000 / Camera.H264_FPS_MAX_VID_RESOLUTION)
+            default_exposure_time = min(20_000, max_exposure_time)
             controls["ExposureTime"] = (
                 min_exposure_time,
                 max_exposure_time,
@@ -869,8 +868,8 @@ class Camera:
                 (768, 432),
             ]:
                 if (
-                    w <= Camera.MAX_VID_RESOLUTION[0]
-                    and h <= Camera.MAX_VID_RESOLUTION[1]
+                    w <= Camera.H264_MAX_VID_RESOLUTION[0]
+                    and h <= Camera.H264_MAX_VID_RESOLUTION[1]
                     and w <= sw
                     and h <= sh
                 ):

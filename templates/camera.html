@@ -85,7 +85,7 @@
                     bg-dark bg-opacity-50"
              style="display:none;">
           <button id="startButton" class="btn btn-lg btn-light">
-            ▶ Stream starten
+            ▶ Start Camera Live Stream
           </button>
         </div>
 
@@ -204,6 +204,10 @@ function applyStateToUI(state) {
                     el.checked = Boolean(value);
                 } else {
                     el.value = value;
+                    if (el.type === "range") {
+                        adjustSliderSetting(key, value);
+                        continue;
+                    }
                 }
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;
@@ -224,6 +228,10 @@ function applyStateToUI(state) {
                     el.checked = Boolean(value);
                 } else {
                     el.value = value;
+                    if (el.type === "range") {
+                        adjustSliderSetting(key, value);
+                        continue;
+                    }
                 }
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;

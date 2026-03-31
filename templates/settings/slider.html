@@ -25,7 +25,12 @@
     <!-- Label + Value -->
     {% if setting.label %}
     <label for="{{ setting.id }}" class="form-label mb-0" id="current{{ setting.id }}">
-        Value: {{ setting.get("value", setting.get("default")) }}
+        {% set raw_value = setting.get("value", setting.get("default")) %}
+        {% if setting.conversion and setting.conversion.enabled and setting.conversion.always_on %}
+        Value: {{ (raw_value / setting.conversion.factor) | round(6) }}
+        {% else %}
+        Value: {{ raw_value }}
+        {% endif %}
         {% if setting.conversion and setting.conversion.enabled %}
         <span id="{{ setting.id }}_unit_label">({{ setting.conversion.label }})</span>
         {% endif %}
@@ -62,12 +67,21 @@
             {% if setting.conversion.step %}
                 data-conversion-step="{{ setting.conversion.step }}"
             {% endif %}
+            {% if setting.conversion.always_on %}
+                data-conversion-always-on="true"
+            {% endif %}
+            {% if setting.conversion.display_format %}
+                data-conversion-display-format="{{ setting.conversion.display_format }}"
+            {% endif %}
         {% endif %}
 
         onchange="adjustSliderSetting('{{ setting.id }}', this.value)">
 
     <!-- Conversion Switch -->
     {% if setting.conversion and setting.conversion.enabled %}
+    {% if setting.conversion.always_on %}
+    <input type="checkbox" id="{{ setting.id }}_conversion" checked hidden>
+    {% else %}
     <div class="form-check form-switch mt-2">
         <input class="form-check-input"
             type="checkbox"
@@ -78,6 +92,7 @@
             Display in {{ setting.conversion.label }}
         </label>
     </div>
+    {% endif %}
     {% endif %}
 
     <!-- Validation -->

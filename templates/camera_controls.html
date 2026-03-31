@@ -791,10 +791,22 @@ function adjustSliderSetting(settingId, value) {
 
     // Check for conversion
     let displayValue = value;
-    if (slider?.dataset.conversionEnabled === "true" && conversionSwitch?.checked) {
+    const conversionActive = slider?.dataset.conversionAlwaysOn === "true" || conversionSwitch?.checked;
+    if (slider?.dataset.conversionEnabled === "true" && conversionActive) {
         const factor = parseFloat(slider.dataset.conversionFactor);
         if (!isNaN(factor)) {
-            displayValue = (value / factor).toFixed(3);
+            const seconds = value / factor;
+            if (slider.dataset.conversionDisplayFormat === "fraction") {
+                if (seconds >= 1) {
+                    displayValue = `${seconds.toFixed(3).replace(/\.?0+$/, '')} s`;
+                } else {
+                    const denom = Math.round(1 / seconds);
+                    const decStr = seconds.toFixed(4).replace(/\.?0+$/, '');
+                    displayValue = `1/${denom} s (${decStr} s)`;
+                }
+            } else {
+                displayValue = seconds.toFixed(6).replace(/\.?0+$/, '') || '0';
+            }
         }
     }
 
@@ -848,9 +860,8 @@ document.addEventListener("DOMContentLoaded", function () {
             const conversionEnabled = slider.dataset.conversionEnabled === "true";
             const conversionSwitch = document.getElementById(settingId + "_conversion");
     
-            if (conversionEnabled && conversionSwitch?.checked) {
-                console.log("input_type_range calls adjustSliderSetting");
-                console.log("settingsId:", settingId, "slider.value:", slider.value);
+            const conversionAlwaysOn = slider.dataset.conversionAlwaysOn === "true";
+            if (conversionEnabled && (conversionSwitch?.checked || conversionAlwaysOn)) {
                 adjustSliderSetting(settingId, slider.value);
             }
         });
