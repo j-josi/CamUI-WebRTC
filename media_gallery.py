@@ -28,13 +28,14 @@ class MediaGallery:
         return width, height
 
     def get_video_metadata(self, path: str) -> Dict[str, Any]:
-        """Return width, height, duration (seconds), and has_audio for a video file."""
+        """Return width, height, and duration (seconds) for a video file."""
         try:
             result = subprocess.run(
                 [
                     "ffprobe",
                     "-v", "error",
-                    "-show_entries", "stream=width,height,codec_type",
+                    "-select_streams", "v:0",
+                    "-show_entries", "stream=width,height",
                     "-show_entries", "format=duration",
                     "-of", "json",
                     path,
@@ -45,19 +46,16 @@ class MediaGallery:
                 check=True,
             )
             data = json.loads(result.stdout)
-            streams = data.get("streams", [])
-            video_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
-            has_audio = any(s.get("codec_type") == "audio" for s in streams)
+            stream = data.get("streams", [{}])[0]
             duration = data.get("format", {}).get("duration")
             return {
-                "width": video_stream.get("width"),
-                "height": video_stream.get("height"),
+                "width": stream.get("width"),
+                "height": stream.get("height"),
                 "duration": float(duration) if duration is not None else None,
-                "has_audio": has_audio,
             }
         except Exception as e:
             logger.warning("Could not read video metadata for %s: %s", path, e)
-            return {"width": None, "height": None, "duration": None, "has_audio": None}
+            return {"width": None, "height": None, "duration": None}
 
     def get_media_files(self, type: str = "all", excluded_files: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         try:
@@ -88,7 +86,6 @@ class MediaGallery:
                     "dng_file": None,
                     "thumbnail": None,
                     "duration": None,
-                    "has_audio": None,
                 }
 
                 if item["type"] == "image":
@@ -110,7 +107,7 @@ class MediaGallery:
 
     @property
     def _cache_path(self) -> str:
-        return os.path.join(self.upload_folder, ".resolution_cache.json")
+        return os.path.join(self.upload_folder, ".media_cache.json")
 
     def _load_cache(self) -> Dict[str, Any]:
         try:
@@ -210,7 +207,6 @@ class MediaGallery:
             path = os.path.join(self.upload_folder, filename)
             meta = self.get_video_metadata(path)
             entry["duration"] = meta.get("duration")
-            entry["has_audio"] = meta.get("has_audio")
         cache = self._load_cache()
         cache[filename] = entry
         self._save_cache(cache)
@@ -278,7 +274,6 @@ class MediaGallery:
                 item["height"] = entry.get("height")
                 if item["type"] == "video":
                     item["duration"] = entry.get("duration")
-                    item["has_audio"] = entry.get("has_audio")
             else:
                 path = os.path.join(self.upload_folder, filename)
                 if item["type"] == "image":
@@ -290,7 +285,6 @@ class MediaGallery:
                     item["width"] = meta["width"]
                     item["height"] = meta["height"]
                     item["duration"] = meta["duration"]
-                    item["has_audio"] = meta["has_audio"]
                     cache[filename] = meta
                 cache_updated = True
 
