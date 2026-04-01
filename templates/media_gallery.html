@@ -4,22 +4,28 @@
 <div class="container-xxl">
 
     <!-- Sticky Filter + Bulk Actions -->
-    <div class="sticky-top bg-body shadow-sm" style="top:66px; z-index:1020;">
-        <!-- Media Type Tabs -->
+    <div class="sticky-top bg-body shadow-sm pt-2" style="top:66px; z-index:1020;">
         {% set tab_labels = {"all": "All", "image": "Photo", "video": "Video"} %}
-        <ul class="nav nav-tabs mb-2">
-            {% for t in ["all", "image", "video"] %}
-            <li class="nav-item">
-                <a class="nav-link {% if media_type == t %}active{% endif %}"
-                href="?type={{ t }}">
-                    {{ tab_labels[t] }}
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
+
+        <!-- Tabs row + Storage info desktop (right-aligned, same row) -->
+        <div class="d-flex align-items-end mb-2 border-bottom">
+            <ul class="nav nav-tabs flex-grow-1 border-bottom-0">
+                {% for t in ["all", "image", "video"] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if media_type == t %}active{% endif %}"
+                    href="?type={{ t }}">
+                        {{ tab_labels[t] }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+            <div id="storageInfo" class="d-none d-sm-block pb-1 pe-2" style="min-width:260px; max-width:360px;">
+                <div class="text-body small"><i class="bi bi-hdd"></i> Loading…</div>
+            </div>
+        </div>
 
         <!-- Bulk Actions -->
-        <div id="bulk-actions" class="mb-2 d-flex align-items-center gap-2 px-2 py-1">
+        <div id="bulk-actions" class="mb-2 d-flex align-items-center flex-wrap gap-2 px-2 py-1">
             <input type="checkbox" class="btn-check" id="selectAll">
             <label class="btn btn-outline-primary btn-sm" for="selectAll" id="selectAllLabel">Select all</label>
 
@@ -36,6 +42,11 @@
                     disabled>
                 <i class="bi bi-trash"></i> <span id="bulk-delete-label">Delete</span>
             </button>
+
+            <!-- Storage info mobile: full-width below buttons -->
+            <div id="storageInfoMobile" class="w-100 d-sm-none">
+                <div class="text-muted small"><i class="bi bi-hdd"></i> Loading…</div>
+            </div>
         </div>
     </div>
 
@@ -77,13 +88,6 @@
         </div>
     </div>
 
-    <!-- Storage info (loaded async) -->
-    <div class="d-flex justify-content-end mb-2 mt-1">
-        <span class="fw-semibold" id="storageInfo">
-            <i class="bi bi-hdd"></i>
-            <span class="text-muted small">Loading…</span>
-        </span>
-    </div>
 
     <!-- Media Gallery -->
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3" id="media-gallery"></div>
@@ -113,10 +117,21 @@ function fmtBytes(b) {
 fetch('/get_storage_info')
     .then(r => r.json())
     .then(data => {
+        const total = data.media_used_bytes + data.disk_free_bytes;
+        const usedPct = total > 0 ? Math.round(data.media_used_bytes / total * 100) : 0;
         const lowFree = data.disk_free_bytes < data.media_used_bytes * 0.2;
-        document.getElementById("storageInfo").innerHTML =
-            `<i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} used &nbsp;·&nbsp;` +
-            `<span class="${lowFree ? 'text-danger' : ''}">${fmtBytes(data.disk_free_bytes)} free</span>`;
+        const barColor = lowFree ? "bg-danger" : usedPct > 60 ? "bg-warning" : "bg-primary";
+        const displayPct = Math.max(usedPct, 2);
+        const html =
+            `<div class="progress mb-1" style="height:6px;">
+                <div class="progress-bar ${barColor}" style="width:${displayPct}%"></div>
+             </div>
+             <div class="d-flex justify-content-between small">
+                 <span class="text-body"><i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} used</span>
+                 <span class="${lowFree ? 'text-danger fw-semibold' : 'text-body'}">${fmtBytes(data.disk_free_bytes)} free</span>
+             </div>`;
+        document.getElementById("storageInfo").innerHTML = html;
+        document.getElementById("storageInfoMobile").innerHTML = html;
     });
 
 /* ---------- Initial load ---------- */
