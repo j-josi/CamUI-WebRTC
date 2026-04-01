@@ -58,6 +58,25 @@
         </div>
     </div>
 
+    <!-- Download Confirmation Modal -->
+    <div class="modal fade" id="downloadConfirmationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Download</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="downloadModalBody"></div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" id="confirmDownloadButton">
+                        <i class="bi bi-download"></i> Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Storage info (loaded async) -->
     <div class="d-flex justify-content-end mb-2 mt-1">
         <span class="fw-semibold" id="storageInfo">
@@ -312,8 +331,18 @@ function downloadMedia(files) {
 function bulkDownload() {
     const selectedFiles = getSelectedFiles();
     if (!selectedFiles.length) return;
-    downloadMedia(selectedFiles);
+
+    const count = selectedFiles.length;
+    document.getElementById("downloadModalBody").innerHTML =
+        `Download <strong>${count} selected file${count > 1 ? "s" : ""}</strong> as a ZIP archive?`;
+
+    new bootstrap.Modal(document.getElementById("downloadConfirmationModal")).show();
 }
+
+document.getElementById("confirmDownloadButton").addEventListener("click", () => {
+    bootstrap.Modal.getInstance(document.getElementById("downloadConfirmationModal")).hide();
+    downloadMedia(getSelectedFiles());
+});
 
 </script>
 
