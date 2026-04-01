@@ -145,7 +145,6 @@ class Camera:
             format="rtsp",
         )
 
-        self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
         self.output_recording = None
 
         self.main_stream = "recording"
@@ -1091,6 +1090,7 @@ class Camera:
                 return False
 
         path = os.path.join(self.upload_folder, filename)
+        self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
         self.encoder_recording.audio = bool(self.audio_device)
         if self.audio_device:
             self.encoder_recording.audio_output = {"codec_name": "aac"}
