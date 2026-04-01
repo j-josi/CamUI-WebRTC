@@ -665,6 +665,7 @@ def camera(camera_num):
             camera = camera.camera_info,
             settings = camera.ui_settings,
             profiles = camera_manager.list_profiles(),
+            has_audio = bool(camera.audio_device),
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")

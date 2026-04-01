@@ -133,6 +133,11 @@
 
 <!-- Volume slider styling (Bootstrap-compatible, dark theme) -->
 <style>
+#volumeContainer.audio-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 #volumeSlider {
   filter: brightness(1.2);
 }
@@ -322,11 +327,23 @@ volumeContainer.addEventListener("mouseleave", () => {
   }, 150);
 });
 
+// Whether the camera has an audio device (set server-side at page load)
+const streamHasAudio = {{ has_audio | tojson }};
+
+// -------------------------------------------------------
+// Volume control: enabled only when the stream has audio
+// -------------------------------------------------------
+function setVolumeControlEnabled(enabled) {
+  volumeContainer.classList.toggle("audio-disabled", !enabled);
+}
+
 // -------------------------------------------------------
 // initReader: fetch the WebRTC stream URL and start the
 // MediaMTX WebRTC reader; audio is embedded directly in the cam0 RTSP stream
 // -------------------------------------------------------
 async function initReader() {
+  setVolumeControlEnabled(streamHasAudio);
+
   const response = await fetch(`/video_webrtc_url/${cameraNum}`);
   const data = await response.json();
 

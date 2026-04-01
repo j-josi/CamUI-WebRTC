@@ -135,8 +135,11 @@ class Camera:
         self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
         self.encoder_stream.audio = bool(self.audio_device)
         if self.audio_device:
+            logger.info(f"microphone detected: {self.audio_device}")
             self.encoder_stream.audio_output = {"codec_name": "libopus"}
             self.encoder_stream.audio_sync = 0
+        else:
+            logger.info(f"no microphone detected")
         self.output_stream = PyavOutput(
             f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
             format="rtsp",
