@@ -430,7 +430,8 @@ def handle_set_camera_setting(data):
             return
 
         try:
-            changed = camera.set_config(name, int(value))
+            coerced = bool(value) if isinstance(value, bool) else int(value)
+            changed = camera.set_config(name, coerced)
         except (ValueError, TypeError):
             emit("error", {"message": f"Invalid value for config '{name}'"})
             return
@@ -445,7 +446,8 @@ def handle_set_camera_setting(data):
     # =====================================================
     elif source == "configs_no_picamera_restart":
         try:
-            changed = camera.set_config(name, int(value))
+            coerced = bool(value) if isinstance(value, bool) else int(value)
+            changed = camera.set_config(name, coerced)
         except (ValueError, TypeError):
             emit("error", {"message": f"Invalid value for config '{name}'"})
             return
@@ -843,6 +845,18 @@ def get_storage_info():
     storage = media_gallery_manager.get_storage_info()
     return jsonify(storage)
 
+@app.route('/get_all_media_filenames')
+def get_all_media_filenames():
+    """Return all media filenames for the given type (used by select-all)."""
+    media_type = request.args.get('type', 'all')
+    active_recordings = [
+        cam.filename_recording
+        for cam in camera_manager.cameras.values()
+        if cam.states["is_video_recording"]
+    ]
+    all_files = media_gallery_manager.get_media_files(type=media_type, excluded_files=active_recordings)
+    return jsonify([f["filename"] for f in all_files])
+
 @app.route('/get_media_slice')
 def get_media_slice():
     """AJAX route for endless scroll in media gallery."""
@@ -880,36 +894,46 @@ def edit_image(filename):
     """Render image editing page."""
     return render_template('image_edit.html', filename=filename)
 
-@app.route('/download_image/<filename>', methods=['GET'])
-def download_image(filename):
-    """Download a single image file."""
+@app.route("/download_media", methods=["POST"])
+def download_media():
+    """Download one or more media files.
+
+    Expects a form field 'files' with a JSON list of filenames.
+    For image files, any matching _raw.dng is included automatically.
+    Returns the file directly when there is exactly one file and no extras,
+    otherwise returns a ZIP archive.
+    """
     try:
-        image_path = os.path.join(app.config['media_upload_folder'], filename)
-        return send_file(image_path, as_attachment=True)
+        folder = app.config["media_upload_folder"]
+        files_json = request.form.get("files", "[]")
+        requested = json.loads(files_json)
+
+        # Expand each requested file: add _raw.dng companion for images where it exists
+        to_download = []
+        for f in requested:
+            to_download.append(f)
+            if os.path.splitext(f)[1].lower() in (".jpg", ".jpeg"):
+                raw = os.path.splitext(f)[0] + "_raw.dng"
+                if os.path.exists(os.path.join(folder, raw)):
+                    to_download.append(raw)
+
+        # Single file with no extras → return directly
+        if len(to_download) == 1:
+            return send_file(os.path.join(folder, to_download[0]), as_attachment=True)
+
+        # Multiple files → ZIP
+        memory_file = io.BytesIO()
+        with zipfile.ZipFile(memory_file, "w", zipfile.ZIP_DEFLATED) as zf:
+            for f in to_download:
+                path = os.path.join(folder, f)
+                if os.path.exists(path):
+                    zf.write(path, arcname=f)
+        memory_file.seek(0)
+        zip_name = os.path.splitext(requested[0])[0] + ".zip" if len(requested) == 1 else "media_selection.zip"
+        return send_file(memory_file, mimetype="application/zip", as_attachment=True, download_name=zip_name)
     except Exception as e:
-        logger.error(f"\nError downloading image:\n{e}\n")
+        logger.error("Error downloading media: %s", e)
         abort(500)
-
-@app.route("/download_media_bulk", methods=["POST"])
-def download_media_bulk():
-    """Download multiple media files as a ZIP archive."""
-    files_json = request.form.get("files", "[]")
-    files = json.loads(files_json)
-    memory_file = io.BytesIO()
-
-    with zipfile.ZipFile(memory_file, "w", zipfile.ZIP_DEFLATED) as zf:
-        for f in files:
-            path = os.path.join(app.config["media_upload_folder"], f)
-            if os.path.exists(path):
-                zf.write(path, arcname=f)
-
-    memory_file.seek(0)
-    return send_file(
-        memory_file,
-        mimetype="application/zip",
-        as_attachment=True,
-        download_name="media_selection.zip"
-    )
 
 @app.route('/save_edit', methods=['POST'])
 def save_edit():

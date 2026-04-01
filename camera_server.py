@@ -59,12 +59,13 @@ class CameraRPCServer:
             })
         self._manager.on_camera_setting_changed = on_changed
 
-        def on_media_created(camera_num, filename, w, h):
+        def on_media_created(camera_num, filename, w, h, has_raw=False):
             self._broadcast_event("media_created", {
                 "camera_num": camera_num,
                 "filename": filename,
                 "w": w,
                 "h": h,
+                "has_raw": has_raw,
             })
         self._manager.on_media_created = on_media_created
 

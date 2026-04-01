@@ -82,6 +82,7 @@ class MediaGallery:
                     "type": "video" if ext in self.video_exts else "image",
                     "width": None,
                     "height": None,
+                    "has_raw": False,
                     "has_dng": False,
                     "dng_file": None,
                     "thumbnail": None,
@@ -196,10 +197,11 @@ class MediaGallery:
                     except OSError:
                         pass
 
-    def register_media(self, filename: str, width: Optional[int], height: Optional[int]) -> None:
+    def register_media(self, filename: str, width: Optional[int], height: Optional[int], has_raw: bool = False) -> None:
         """Register a newly created media file's resolution in the cache.
 
-        For video files, also probes duration and audio presence via ffprobe.
+        For video files, also probes duration via ffprobe.
+        For image files, stores has_raw if a DNG was captured simultaneously.
         Call this immediately after saving a photo or stopping a video recording.
         """
         entry: Dict[str, Any] = {"width": width, "height": height}
@@ -207,6 +209,8 @@ class MediaGallery:
             path = os.path.join(self.upload_folder, filename)
             meta = self.get_video_metadata(path)
             entry["duration"] = meta.get("duration")
+        else:
+            entry["has_raw"] = has_raw
         cache = self._load_cache()
         cache[filename] = entry
         self._save_cache(cache)
@@ -274,12 +278,17 @@ class MediaGallery:
                 item["height"] = entry.get("height")
                 if item["type"] == "video":
                     item["duration"] = entry.get("duration")
+                else:
+                    item["has_raw"] = entry.get("has_raw", False)
             else:
                 path = os.path.join(self.upload_folder, filename)
                 if item["type"] == "image":
                     w, h = self.get_image_resolution(path)
                     item["width"], item["height"] = w, h
-                    cache[filename] = {"width": w, "height": h}
+                    raw_path = os.path.join(self.upload_folder, os.path.splitext(filename)[0] + "_raw.dng")
+                    has_raw = os.path.exists(raw_path)
+                    item["has_raw"] = has_raw
+                    cache[filename] = {"width": w, "height": h, "has_raw": has_raw}
                 else:
                     meta = self.get_video_metadata(path)
                     item["width"] = meta["width"]

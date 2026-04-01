@@ -94,7 +94,7 @@ class Camera:
         upload_folder: str,
         camera_ui_settings_db_path: str,
         on_setting_changed: Optional[Callable[["Camera"], None]] = None,
-        on_media_created: Optional[Callable[[int, str, int, int], None]] = None,
+        on_media_created: Optional[Callable] = None,
     ) -> None:
 
         self.camera_info = camera_info
@@ -1175,6 +1175,7 @@ class Camera:
             still_config = self.picam2.create_still_configuration(
                 buffer_count=1,
                 main={"size": still_resolution},
+                raw={} if raw else None,
                 transform=Transform(hflip=self.configs["hflip"], vflip=self.configs["vflip"]),
                 sensor={"output_size": mode["size"], "bit_depth": mode["bit_depth"]},
                 controls={"FrameDurationLimits": (100, 10_000_000_000)},
@@ -1202,7 +1203,9 @@ class Camera:
                     metadata,
                     filepath,
                 )
-                self.picam2.helpers.save_dng(buffers[1], metadata, still_config["raw"], filepath)
+                dng_filepath = os.path.splitext(filepath)[0] + "_raw.dng"
+                self.picam2.helpers.save_dng(buffers[1], metadata, still_config["raw"], dng_filepath)
+                logger.info("Saved DNG: '%s'", dng_filepath)
             else:
                 logger.debug("Capturing non-raw image '%s'", filepath)
                 buffers, metadata = self.picam2.switch_mode_and_capture_buffers(still_config, ["main"])
@@ -1233,7 +1236,7 @@ class Camera:
             if success:
                 if callable(self._on_media_created_callback):
                     w, h = still_resolution
-                    self._on_media_created_callback(self.camera_num, filename, w, h)
+                    self._on_media_created_callback(self.camera_num, filename, w, h, has_raw=raw)
                 return filepath
             else:
                 return None

@@ -189,7 +189,7 @@ class CameraManager:
         """
         pass
 
-    def on_media_created(self, camera_num: int, filename: str, w: int, h: int):
+    def on_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
         """
         Hook called whenever a media file is successfully created
         (recording stopped, still image captured).
@@ -201,8 +201,8 @@ class CameraManager:
         if callable(self.on_camera_setting_changed):
             self.on_camera_setting_changed(camera)
 
-    def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int):
-        self._gallery.register_media(filename, w, h)
+    def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
+        self._gallery.register_media(filename, w, h, has_raw=has_raw)
         if filename.lower().endswith(".mp4"):
             threading.Thread(
                 target=self._gallery.generate_video_thumbnail,
@@ -210,7 +210,7 @@ class CameraManager:
                 daemon=True,
             ).start()
         if callable(self.on_media_created):
-            self.on_media_created(camera_num, filename, w, h)
+            self.on_media_created(camera_num, filename, w, h, has_raw=has_raw)
 
     def on_recording_auto_stopped(self, camera_num: int, reason: str):
         """

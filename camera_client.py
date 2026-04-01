@@ -263,6 +263,7 @@ class CameraManagerClient:
                 t = threading.Thread(
                     target=self.on_media_created,
                     args=(data["camera_num"], data["filename"], data["w"], data["h"]),
+                    kwargs={"has_raw": data.get("has_raw", False)},
                     daemon=True,
                 )
                 t.start()

@@ -370,6 +370,7 @@
           "type": "switch",
           "label": "Disabled/Enabled",
           "enabled": true,
+          "source": "configs_no_picamera_restart",
           "default": false
         }
       ]

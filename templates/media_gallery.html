@@ -21,7 +21,7 @@
         <!-- Bulk Actions -->
         <div id="bulk-actions" class="mb-2 d-flex align-items-center gap-2 px-2 py-1">
             <input type="checkbox" class="btn-check" id="selectAll">
-            <label class="btn btn-outline-primary btn-sm" for="selectAll">Select all</label>
+            <label class="btn btn-outline-primary btn-sm" for="selectAll" id="selectAllLabel">Select all</label>
 
             <span id="selection-count" class="text-muted small"></span>
 
@@ -151,10 +151,19 @@ function loadMoreMedia() {
                         style="font-size:0.75rem; pointer-events:none;">${durStr}</span>`;
                 }
 
+                const rawBadge = file.type === "image" && file.has_raw
+                    ? `<span class="position-absolute top-0 end-0 m-1 px-1
+                        bg-dark bg-opacity-75 text-white rounded"
+                        style="font-size:0.75rem; pointer-events:none;">RAW</span>`
+                    : "";
+
                 const mediaContent = file.type === "image"
-                    ? `<a href="/view_image/${file.filename}">
-                           <img src="/static/gallery/${file.filename}" class="card-img-top" loading="lazy">
-                       </a>`
+                    ? `<div class="position-relative">
+                           <a href="/view_image/${file.filename}">
+                               <img src="/static/gallery/${file.filename}" class="card-img-top" loading="lazy">
+                           </a>
+                           ${rawBadge}
+                       </div>`
                     : `<div class="position-relative">
                            <video class="card-img-top" controls preload="none" ${poster}>
                                <source src="/static/gallery/${file.filename}" type="video/mp4">
@@ -177,9 +186,9 @@ function loadMoreMedia() {
                                         onclick="window.location.href='/image_edit/${file.filename}'">
                                         <i class="bi bi-pencil"></i>
                                     </button>` : ""}
-                                    <a class="btn btn-sm btn-outline-secondary" href="/download_image/${file.filename}">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="downloadMedia(['${file.filename}'])">
                                         <i class="bi bi-download"></i>
-                                    </a>
+                                    </button>
                                     <button class="btn btn-sm btn-outline-danger" onclick="openSingleDelete('${file.filename}')">
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -208,33 +217,53 @@ function loadMoreMedia() {
 }
 
 /* ---------- Checkbox handling ---------- */
+// allSelectedFilenames tracks the true selection across all pages (loaded + unloaded)
+const allSelectedFilenames = new Set();
+
 function attachCheckboxListeners() {
     document.querySelectorAll(".media-checkbox").forEach(cb => {
-        cb.addEventListener("change", updateBulkActions);
+        if (cb.dataset.listenerAttached) return;
+        cb.dataset.listenerAttached = "1";
+        // Sync initial checked state from the set
+        cb.checked = allSelectedFilenames.has(cb.value);
+        cb.addEventListener("change", () => {
+            if (cb.checked) allSelectedFilenames.add(cb.value);
+            else allSelectedFilenames.delete(cb.value);
+            updateBulkActions();
+        });
     });
 }
 
-/* ---------- Bulk actions ---------- */
-function getCheckboxes() {
-    return Array.from(document.querySelectorAll(".media-checkbox"));
+function updateBulkActions() {
+    const count = allSelectedFilenames.size;
+    document.getElementById("bulk-delete").disabled = count === 0;
+    document.getElementById("bulk-download").disabled = count === 0;
+    document.getElementById("selection-count").textContent = count ? `${count} selected` : "";
 }
 
 function getSelectedFiles() {
-    return getCheckboxes().filter(cb => cb.checked).map(cb => cb.value);
-}
-
-function updateBulkActions() {
-    const selected = getSelectedFiles();
-    document.getElementById("bulk-delete").disabled = selected.length === 0;
-    document.getElementById("bulk-download").disabled = selected.length === 0;
-    document.getElementById("selection-count").textContent =
-        selected.length ? `${selected.length} selected` : "";
+    return Array.from(allSelectedFilenames);
 }
 
 document.getElementById("selectAll").addEventListener("change", e => {
     const checked = e.target.checked;
-    getCheckboxes().forEach(cb => cb.checked = checked);
-    updateBulkActions();
+    const label = document.getElementById("selectAllLabel");
+    if (!checked) {
+        allSelectedFilenames.clear();
+        document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = false);
+        label.textContent = "Select all";
+        updateBulkActions();
+        return;
+    }
+    // Fetch all filenames from backend, add to set, check visible boxes
+    fetch(`/get_all_media_filenames?type=${mediaType}`)
+        .then(r => r.json())
+        .then(filenames => {
+            filenames.forEach(f => allSelectedFilenames.add(f));
+            document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = true);
+            label.textContent = "Deselect all";
+            updateBulkActions();
+        });
 });
 
 /* ---------- Delete ---------- */
@@ -256,26 +285,25 @@ document.getElementById("confirmDeleteButton").addEventListener("click", () => {
         .then(() => location.reload());
 });
 
-/* ---------- Bulk download as ZIP ---------- */
-function bulkDownload() {
-    const selectedFiles = getSelectedFiles();
-    if (!selectedFiles.length) return;
-
-    // Formular dynamisch erstellen
+/* ---------- Download (single or bulk) ---------- */
+function downloadMedia(files) {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = '/download_media_bulk';
-    
-    // Hidden input mit JSON-Daten
+    form.action = '/download_media';
     const input = document.createElement('input');
     input.type = 'hidden';
     input.name = 'files';
-    input.value = JSON.stringify(selectedFiles);
+    input.value = JSON.stringify(files);
     form.appendChild(input);
-
     document.body.appendChild(form);
     form.submit();
     form.remove();
+}
+
+function bulkDownload() {
+    const selectedFiles = getSelectedFiles();
+    if (!selectedFiles.length) return;
+    downloadMedia(selectedFiles);
 }
 
 </script>
