@@ -177,6 +177,11 @@ class CameraManager:
 
         self._start_recording_watchdog()
 
+        threading.Thread(
+            target=self._gallery.backfill_video_thumbnails,
+            daemon=True,
+        ).start()
+
     def on_camera_setting_changed(self, camera: Camera):
         """
         Hook for reacting to camera setting changes.
@@ -198,6 +203,12 @@ class CameraManager:
 
     def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int):
         self._gallery.register_media(filename, w, h)
+        if filename.lower().endswith(".mp4"):
+            threading.Thread(
+                target=self._gallery.generate_video_thumbnail,
+                args=(filename,),
+                daemon=True,
+            ).start()
         if callable(self.on_media_created):
             self.on_media_created(camera_num, filename, w, h)
 

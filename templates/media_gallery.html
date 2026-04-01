@@ -60,19 +60,11 @@
         </div>
     </div>
 
-    <!-- Storage info -->
-    {% macro fmt_bytes(b) %}
-        {%- if b >= 1073741824 -%}{{ "%.1f"|format(b / 1073741824) }} GB
-        {%- elif b >= 1048576 -%}{{ "%.0f"|format(b / 1048576) }} MB
-        {%- else -%}{{ "%.0f"|format(b / 1024) }} KB{%- endif -%}
-    {% endmacro %}
+    <!-- Storage info (loaded async) -->
     <div class="d-flex justify-content-end mb-2 mt-1">
-        <span class="fw-semibold">
+        <span class="fw-semibold" id="storageInfo">
             <i class="bi bi-hdd"></i>
-            {{ fmt_bytes(media_used_bytes) }} used &nbsp;·&nbsp;
-            <span class="{{ 'text-danger' if disk_free_bytes < media_used_bytes * 0.2 else '' }}">
-                {{ fmt_bytes(disk_free_bytes) }} free
-            </span>
+            <span class="text-muted small">Loading…</span>
         </span>
     </div>
 
@@ -93,20 +85,22 @@ let allLoaded = false;
 const mediaType = "{{ media_type }}";
 const gallery = document.getElementById("media-gallery");
 
-/* ---------- Intersection Observer for lazy video loading ---------- */
-const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const video = entry.target;
-            const source = video.querySelector("source[data-src]");
-            if (source) {
-                source.src = source.dataset.src;
-                video.load();
-                observer.unobserve(video);
-            }
-        }
+
+/* ---------- Storage info ---------- */
+function fmtBytes(b) {
+    if (b >= 1073741824) return (b / 1073741824).toFixed(1) + " GB";
+    if (b >= 1048576)    return Math.round(b / 1048576) + " MB";
+    return Math.round(b / 1024) + " KB";
+}
+
+fetch('/get_storage_info')
+    .then(r => r.json())
+    .then(data => {
+        const lowFree = data.disk_free_bytes < data.media_used_bytes * 0.2;
+        document.getElementById("storageInfo").innerHTML =
+            `<i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} used &nbsp;·&nbsp;` +
+            `<span class="${lowFree ? 'text-danger' : ''}">${fmtBytes(data.disk_free_bytes)} free</span>`;
     });
-}, { rootMargin: "200px" });
 
 /* ---------- Initial load ---------- */
 document.addEventListener("DOMContentLoaded", () => {
@@ -139,13 +133,34 @@ function loadMoreMedia() {
                 col.className = "col";
                 col.id = `card_${file.filename}`;
 
+                const poster = file.thumbnail
+                    ? `poster="/static/gallery/video_thumbnails/${file.thumbnail}"`
+                    : "";
+
+                let durationOverlay = "";
+                if (file.type === "video" && file.duration != null) {
+                    const totalSec = Math.round(file.duration);
+                    const h = Math.floor(totalSec / 3600);
+                    const m = Math.floor((totalSec % 3600) / 60);
+                    const s = totalSec % 60;
+                    const durStr = h > 0
+                        ? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+                        : `${m}:${String(s).padStart(2,"0")}`;
+                    durationOverlay = `<span class="position-absolute top-0 end-0 m-1 px-1
+                        bg-dark bg-opacity-75 text-white rounded"
+                        style="font-size:0.75rem; pointer-events:none;">${durStr}</span>`;
+                }
+
                 const mediaContent = file.type === "image"
                     ? `<a href="/view_image/${file.filename}">
                            <img src="/static/gallery/${file.filename}" class="card-img-top" loading="lazy">
                        </a>`
-                    : `<video class="card-img-top" controls preload="metadata">
-                           <source data-src="/static/gallery/${file.filename}" type="video/mp4">
-                       </video>`;
+                    : `<div class="position-relative">
+                           <video class="card-img-top" controls preload="none" ${poster}>
+                               <source src="/static/gallery/${file.filename}" type="video/mp4">
+                           </video>
+                           ${durationOverlay}
+                       </div>`;
 
                 col.innerHTML = `
                     <div class="card shadow-sm position-relative">
@@ -181,9 +196,6 @@ function loadMoreMedia() {
                 `;
                 gallery.appendChild(col);
 
-                if (file.type === "video") {
-                    observer.observe(col.querySelector("video"));
-                }
             });
 
             attachCheckboxListeners();

@@ -229,16 +229,28 @@ def _ensure_camera_server():
     log_path = os.path.join(current_dir, 'camera_server.log')
     logger.info("Starting camera_server.py → %s (log: %s)", _CAMERA_SOCKET, log_path)
     import sys as _sys
-    with open(log_path, 'a') as _log:
-        subprocess.Popen(
-            [_sys.executable, script,
-             '--socket', _CAMERA_SOCKET,
-             '--base-dir', current_dir,
-             '--log-level', 'INFO'],
-            stdout=_log,
-            stderr=_log,
-            close_fds=True,
-        )
+    import threading as _threading
+
+    def _tee_output(pipe, log_file):
+        """Forward subprocess output to both terminal and log file."""
+        for raw in iter(pipe.readline, b''):
+            line = raw.decode(errors='replace')
+            _sys.stdout.write(line)
+            _sys.stdout.flush()
+            log_file.write(line)
+            log_file.flush()
+
+    _log_file = open(log_path, 'a')
+    _proc = subprocess.Popen(
+        [_sys.executable, script,
+         '--socket', _CAMERA_SOCKET,
+         '--base-dir', current_dir,
+         '--log-level', 'INFO'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        close_fds=True,
+    )
+    _threading.Thread(target=_tee_output, args=(_proc.stdout, _log_file), daemon=True).start()
 
 _ensure_camera_server()
 
@@ -823,13 +835,13 @@ def get_profiles():
 def media_gallery():
     """Render media gallery page."""
     media_type = request.args.get('type', 'all')
+    return render_template('media_gallery.html', media_type=media_type)
+
+@app.route('/get_storage_info')
+def get_storage_info():
+    """Return storage usage as JSON (called async from the media gallery page)."""
     storage = media_gallery_manager.get_storage_info()
-    return render_template(
-        'media_gallery.html',
-        media_type=media_type,
-        media_used_bytes=storage["media_used_bytes"],
-        disk_free_bytes=storage["disk_free_bytes"],
-    )
+    return jsonify(storage)
 
 @app.route('/get_media_slice')
 def get_media_slice():

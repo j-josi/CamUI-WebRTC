@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class MediaGallery:
     def __init__(self, upload_folder: str):
         self.upload_folder: str = upload_folder
+        self.thumbnails_folder: str = os.path.join(upload_folder, "video_thumbnails")
+        os.makedirs(self.thumbnails_folder, exist_ok=True)
         self.image_exts: Tuple[str, ...] = ('.jpg', '.jpeg')
         self.video_exts: Tuple[str, ...] = ('.mp4',)
 
@@ -25,28 +27,37 @@ class MediaGallery:
             width, height = img.size
         return width, height
 
-    def get_video_resolution(self, path: str) -> Tuple[Optional[int], Optional[int]]:
+    def get_video_metadata(self, path: str) -> Dict[str, Any]:
+        """Return width, height, duration (seconds), and has_audio for a video file."""
         try:
             result = subprocess.run(
                 [
                     "ffprobe",
                     "-v", "error",
-                    "-select_streams", "v:0",
-                    "-show_entries", "stream=width,height",
+                    "-show_entries", "stream=width,height,codec_type",
+                    "-show_entries", "format=duration",
                     "-of", "json",
-                    path
+                    path,
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                check=True
+                check=True,
             )
             data = json.loads(result.stdout)
-            stream = data.get("streams", [{}])[0]
-            return stream.get("width"), stream.get("height")
+            streams = data.get("streams", [])
+            video_stream = next((s for s in streams if s.get("codec_type") == "video"), {})
+            has_audio = any(s.get("codec_type") == "audio" for s in streams)
+            duration = data.get("format", {}).get("duration")
+            return {
+                "width": video_stream.get("width"),
+                "height": video_stream.get("height"),
+                "duration": float(duration) if duration is not None else None,
+                "has_audio": has_audio,
+            }
         except Exception as e:
-            logger.warning(f"Could not read video resolution for {path}: {e}")
-            return None, None
+            logger.warning("Could not read video metadata for %s: %s", path, e)
+            return {"width": None, "height": None, "duration": None, "has_audio": None}
 
     def get_media_files(self, type: str = "all", excluded_files: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         try:
@@ -74,13 +85,19 @@ class MediaGallery:
                     "width": None,
                     "height": None,
                     "has_dng": False,
-                    "dng_file": None
+                    "dng_file": None,
+                    "thumbnail": None,
+                    "duration": None,
+                    "has_audio": None,
                 }
 
                 if item["type"] == "image":
                     dng = os.path.splitext(f)[0] + ".dng"
                     item["has_dng"] = os.path.exists(os.path.join(self.upload_folder, dng))
                     item["dng_file"] = dng
+                elif item["type"] == "video":
+                    if os.path.exists(self._thumb_path(f)):
+                        item["thumbnail"] = os.path.splitext(f)[0] + "_thumb.jpg"
 
                 media.append(item)
 
@@ -185,12 +202,64 @@ class MediaGallery:
     def register_media(self, filename: str, width: Optional[int], height: Optional[int]) -> None:
         """Register a newly created media file's resolution in the cache.
 
-        Call this immediately after saving a photo or stopping a video recording
-        so that the resolution is always available without probing the file.
+        For video files, also probes duration and audio presence via ffprobe.
+        Call this immediately after saving a photo or stopping a video recording.
         """
+        entry: Dict[str, Any] = {"width": width, "height": height}
+        if filename.lower().endswith(".mp4"):
+            path = os.path.join(self.upload_folder, filename)
+            meta = self.get_video_metadata(path)
+            entry["duration"] = meta.get("duration")
+            entry["has_audio"] = meta.get("has_audio")
         cache = self._load_cache()
-        cache[filename] = {"width": width, "height": height}
+        cache[filename] = entry
         self._save_cache(cache)
+
+    def _thumb_path(self, video_filename: str) -> str:
+        """Return the full path to the thumbnail for a given video filename."""
+        thumb_filename = os.path.splitext(video_filename)[0] + "_thumb.jpg"
+        return os.path.join(self.thumbnails_folder, thumb_filename)
+
+    def generate_video_thumbnail(self, video_filename: str) -> Optional[str]:
+        """Extract the first frame of a video as a JPEG thumbnail.
+
+        Thumbnails are stored in the video_thumbnails/ subfolder.
+        Returns the thumbnail filename on success, None on failure.
+        Safe to call from a background thread.
+        """
+        video_path = os.path.join(self.upload_folder, video_filename)
+        thumb_filename = os.path.splitext(video_filename)[0] + "_thumb.jpg"
+        thumb_path = self._thumb_path(video_filename)
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-ss", "0",
+                    "-i", video_path,
+                    "-frames:v", "1",
+                    "-q:v", "5",
+                    thumb_path,
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            logger.debug("Generated thumbnail: %s", thumb_filename)
+            return thumb_filename
+        except Exception as e:
+            logger.warning("Could not generate thumbnail for %s: %s", video_filename, e)
+            return None
+
+    def backfill_video_thumbnails(self) -> None:
+        """Generate thumbnails for any existing videos that don't have one yet.
+
+        Intended to be called once at startup in a background thread.
+        """
+        for f in os.listdir(self.upload_folder):
+            if not f.lower().endswith(".mp4"):
+                continue
+            if not os.path.exists(self._thumb_path(f)):
+                self.generate_video_thumbnail(f)
 
     def _enrich_with_resolutions(self, items: List[Dict[str, Any]]) -> None:
         """Add width/height to a list of media items using the persistent cache.
@@ -205,15 +274,24 @@ class MediaGallery:
             filename = item["filename"]
             entry = cache.get(filename)
             if entry:
-                item["width"], item["height"] = entry["width"], entry["height"]
+                item["width"] = entry.get("width")
+                item["height"] = entry.get("height")
+                if item["type"] == "video":
+                    item["duration"] = entry.get("duration")
+                    item["has_audio"] = entry.get("has_audio")
             else:
                 path = os.path.join(self.upload_folder, filename)
                 if item["type"] == "image":
                     w, h = self.get_image_resolution(path)
+                    item["width"], item["height"] = w, h
+                    cache[filename] = {"width": w, "height": h}
                 else:
-                    w, h = self.get_video_resolution(path)
-                item["width"], item["height"] = w, h
-                cache[filename] = {"width": w, "height": h}
+                    meta = self.get_video_metadata(path)
+                    item["width"] = meta["width"]
+                    item["height"] = meta["height"]
+                    item["duration"] = meta["duration"]
+                    item["has_audio"] = meta["has_audio"]
+                    cache[filename] = meta
                 cache_updated = True
 
         if cache_updated:
@@ -240,9 +318,9 @@ class MediaGallery:
                                   (clamped to 0)
         """
         media_used = sum(
-            os.path.getsize(os.path.join(self.upload_folder, f))
-            for f in os.listdir(self.upload_folder)
-            if os.path.isfile(os.path.join(self.upload_folder, f))
+            e.stat().st_size
+            for e in os.scandir(self.upload_folder)
+            if e.is_file(follow_symlinks=False)
         )
         disk_free = shutil.disk_usage(self.upload_folder).free
         return {
@@ -300,6 +378,11 @@ class MediaGallery:
                 if os.path.exists(os.path.join(self.upload_folder, dng_file)):
                     os.remove(os.path.join(self.upload_folder, dng_file))
                     logger.info(f"Deleted corresponding DNG file: {dng_file}")
+
+                thumb_path = self._thumb_path(filename)
+                if os.path.exists(thumb_path):
+                    os.remove(thumb_path)
+                    logger.info("Deleted corresponding thumbnail for: %s", filename)
 
                 cache = self._load_cache()
                 if filename in cache:
