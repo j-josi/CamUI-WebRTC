@@ -375,6 +375,12 @@ async function initReader() {
     onTrack: evt => {
       video.srcObject = evt.streams[0];
       volumeSlider.value = video.volume;
+      // Detect autoplay block: only show the overlay for NotAllowedError
+      // (browser policy). Other rejections (AbortError, NotSupportedError) are
+      // transient and must not trigger the fallback overlay.
+      video.play().catch(err => {
+        if (err.name === 'NotAllowedError') showOverlay();
+      });
     }
   });
 }
@@ -395,14 +401,15 @@ function setButtonState(button, enabled) {
 }
 
 // -------------------------------------------------------
-// Autoplay fallback: if the browser blocks autoplay,
-// show an overlay with a manual start button
+// Autoplay fallback: show overlay only when the browser
+// blocks autoplay; hide it as soon as video starts playing.
+// Detection happens in onTrack (see initReader) by catching
+// a rejected video.play() promise.
 // -------------------------------------------------------
-setTimeout(() => {
-  if (!isPlaying(video)) overlay.style.display = "flex";
-}, 800);
+function showOverlay() { overlay.style.display = "flex"; }
+function hideOverlay() { overlay.style.display = "none"; }
 
-video.addEventListener("playing", () => overlay.style.display = "none");
+video.addEventListener("playing", hideOverlay);
 startBtn.addEventListener("click", () => video.play().catch(() => {}));
 
 // -------------------------------------------------------
