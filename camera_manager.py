@@ -19,7 +19,17 @@ logger = logging.getLogger(__name__)
 
 class CameraManager:
 
-    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024  # 500 MB
+    # Minimum free disk space (500 MB).
+    # Active recordings are automatically stopped when free space drops below this threshold.
+    # Also used as the buffer subtracted from reported free space in get_storage_info(),
+    # so the UI never shows the reserved space as "available".
+    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
+
+    # Additional safety margin on top of STORAGE_MIN_FREE_BYTES (10 MB).
+    # A new photo capture or video recording is rejected unless free space exceeds
+    # STORAGE_MIN_FREE_BYTES + STORAGE_START_MARGIN_BYTES, preventing a new capture
+    # from immediately triggering the auto-stop threshold.
+    STORAGE_START_MARGIN_BYTES = 10 * 1024 * 1024
 
     # DEFAULT_CONFIG = {
     #     "hflip": False,
@@ -158,6 +168,7 @@ class CameraManager:
                     camera_ui_settings_db_path = self.camera_ui_settings_db_path,
                     on_setting_changed=self._handle_camera_setting_changed,
                     on_media_created=self._handle_media_created,
+                    storage_min_free_bytes=CameraManager.STORAGE_MIN_FREE_BYTES + CameraManager.STORAGE_START_MARGIN_BYTES,
 
                     # CameraManager.DEFAULT_CONFIG,
                     # CameraManager.DEFAULT_CONTROLS,
@@ -226,6 +237,9 @@ class CameraManager:
     # ------------------------------------------------------------------
     # System settings
     # ------------------------------------------------------------------
+
+    def get_storage_info(self) -> dict:
+        return self._gallery.get_storage_info(buffer_bytes=CameraManager.STORAGE_MIN_FREE_BYTES)
 
     def get_system_settings(self) -> dict:
         return self._settings.get_all()

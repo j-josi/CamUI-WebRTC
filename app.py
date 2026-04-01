@@ -341,7 +341,14 @@ def _do_capture_still(camera_num, room_name):
         socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
         return
     image_filename = generate_filename(camera_manager, camera_num, ".jpg")
-    success = camera.capture_still(image_filename, camera.configs["saveRAW"])
+    try:
+        success = camera.capture_still(image_filename, camera.configs["saveRAW"])
+    except RuntimeError as e:
+        if "storage_full" in str(e):
+            socketio.emit("storage_error", {"message": "Failed to take photo - not enough free storage available."}, room=room_name)
+
+        socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
+        return
     socketio.emit("capture_done", {
         "camera_num": camera_num,
         "success": success,
@@ -355,8 +362,16 @@ def handle_start_recording(data):
     if not camera:
         emit("error", {"message": "Invalid camera"})
         return
+
     filename = generate_filename(camera_manager, camera_num, ".mp4")
-    success = camera.start_recording(filename)
+    try:
+        success = camera.start_recording(filename)
+    except RuntimeError as e:
+        if "storage_full" in str(e):
+            emit("storage_error", {"message": "Failed to start recording - not enough free storage available."})
+        else:
+            emit("error", {"message": "Failed to start recording"})
+        return
     if not success:
         emit("error", {"message": "Failed to start recording"})
 
@@ -842,7 +857,7 @@ def media_gallery():
 @app.route('/get_storage_info')
 def get_storage_info():
     """Return storage usage as JSON (called async from the media gallery page)."""
-    storage = media_gallery_manager.get_storage_info()
+    storage = camera_manager.get_storage_info()
     return jsonify(storage)
 
 @app.route('/get_all_media_filenames')

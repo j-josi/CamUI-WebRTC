@@ -104,6 +104,8 @@ class CameraRPCServer:
             return list(val) if isinstance(val, tuple) else val
         if method == "manager.camera_nums":
             return list(m.cameras.keys())
+        if method == "manager.get_storage_info":
+            return m.get_storage_info()
         if method == "manager.get_system_settings":
             return m.get_system_settings()
         if method == "manager.update_system_settings":

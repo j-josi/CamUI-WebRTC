@@ -5,6 +5,7 @@ import os
 import json
 import copy
 import logging
+import shutil
 import threading
 import subprocess
 
@@ -43,6 +44,7 @@ class Camera:
 
     BITRATE_ENCODER_STREAM = 8_000_000
     BITRATE_ENCODER_RECORDING = 8_000_000
+
 
     DEFAULT_STATES = {
         "is_video_streaming": False,
@@ -95,6 +97,7 @@ class Camera:
         camera_ui_settings_db_path: str,
         on_setting_changed: Optional[Callable[["Camera"], None]] = None,
         on_media_created: Optional[Callable] = None,
+        storage_min_free_bytes: int = 510 * 1024 * 1024,
     ) -> None:
 
         self.camera_info = camera_info
@@ -103,6 +106,7 @@ class Camera:
         self.ui_settings_db_path = camera_ui_settings_db_path
         self._on_setting_changed_callback = on_setting_changed
         self._on_media_created_callback = on_media_created
+        self._storage_min_free_bytes = storage_min_free_bytes
 
         self.camera_num: int = camera_info["Num"]
         self._setting_changed_callback = None
@@ -1084,6 +1088,11 @@ class Camera:
         logger.info("Streaming stopped")
 
     def start_recording(self, filename: str) -> bool:
+        free = shutil.disk_usage(self.upload_folder).free
+        if free < self._storage_min_free_bytes:
+            logger.warning("Not enough storage space to start recording (free: %d MB)", free // (1024 * 1024))
+            raise RuntimeError("storage_full")
+
         with self.lock:
             if self.states["is_video_recording"]:
                 logger.info("Skip starting recording, already active")
@@ -1144,6 +1153,11 @@ class Camera:
     # Camera Capture Functions
     #-----
     def capture_still(self, filename: str, raw: bool = False) -> Optional[str]:
+        free = shutil.disk_usage(self.upload_folder).free
+        if free < self._storage_min_free_bytes:
+            logger.warning("Not enough storage space to capture still (free: %d MB)", free // (1024 * 1024))
+            raise RuntimeError("storage_full")
+
         filepath = os.path.join(self.upload_folder, filename)
         sucess = False
 
