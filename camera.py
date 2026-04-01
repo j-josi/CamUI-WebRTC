@@ -7,7 +7,6 @@ import copy
 import logging
 import threading
 import subprocess
-import time
 
 
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
@@ -17,7 +16,7 @@ from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 # =========================
 from picamera2 import Picamera2
 from picamera2.encoders import H264Encoder
-from picamera2.outputs import PyavOutput, FfmpegOutput
+from picamera2.outputs import PyavOutput
 from libcamera import Transform, controls
 
 # =========================
@@ -131,17 +130,20 @@ class Camera:
         # ------------------------------------------------
         # Picamera2 Encoders and Outputs (used for Streaming and Recording)
         # ------------------------------------------------
+        self.audio_device = self._detect_audio_device()
+
         self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
-        self.encoder_stream.audio = False # TODO function to detect if microphone is available/connected
+        self.encoder_stream.audio = bool(self.audio_device)
+        if self.audio_device:
+            self.encoder_stream.audio_output = {"codec_name": "libopus"}
+            self.encoder_stream.audio_sync = 0
         self.output_stream = PyavOutput(
             f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
             format="rtsp",
         )
 
         self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
-        self.audio_device = self._detect_audio_device()
-
-        self._audio_stream_process: Optional[subprocess.Popen] = None
+        self.output_recording = None
 
         self.main_stream = "recording"
         self.lores_stream = "streaming"
@@ -1067,10 +1069,8 @@ class Camera:
             )
         self._set_state("is_video_streaming", True)
         logger.info("Streaming started on '%s' stream", stream_name)
-        self._start_audio_stream()
 
     def stop_streaming(self) -> None:
-        self._stop_audio_stream()
         with self.lock:
             if not self.states["is_video_streaming"]:
                 logger.info("Skip stopping stream, no active stream")
@@ -1088,71 +1088,26 @@ class Camera:
                 return False
 
         path = os.path.join(self.upload_folder, filename)
-        # FfmpegOutput handles audio by reading PulseAudio directly in its own
-        # ffmpeg subprocess — no PyAV timestamp normalization issues.
-        output = FfmpegOutput(
-            path,
-            audio=bool(self.audio_device),
-            audio_device=self.audio_device or "default",
-        )
-
-        encoder = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
+        self.encoder_recording.audio = bool(self.audio_device)
+        if self.audio_device:
+            self.encoder_recording.audio_output = {"codec_name": "aac"}
+        self.output_recording = PyavOutput(path)
 
         try:
-            self.picam2.start_encoder(
-                encoder,
-                output,
+            self.picam2.start_recording(
+                self.encoder_recording,
+                self.output_recording,
                 name=self.get_recording_stream(),
             )
         except Exception as e:
             logger.error("Failed to start recording: %s", e, exc_info=True)
+            self.output_recording = None
             return False
 
-        self.encoder_recording = encoder
         self.filename_recording = filename
         self._set_state("is_video_recording", True)
         logger.info("Recording started: %s (audio=%s)", filename, bool(self.audio_device))
         return True
-
-    def _start_audio_stream(self) -> None:
-        """Start ffmpeg to mix PulseAudio audio into cam0 RTSP and republish as cam0a."""
-        if not self.audio_device:
-            return
-        env = os.environ.copy()
-        env["XDG_RUNTIME_DIR"] = f"/run/user/{os.getuid()}"
-        time.sleep(0.5)  # wait for cam0 RTSP publisher to be ready
-        self._audio_stream_process = subprocess.Popen(
-            [
-                "ffmpeg", "-y",
-                "-fflags", "nobuffer", "-flags", "low_delay",
-                "-probesize", "32", "-analyzeduration", "0",
-                "-rtsp_transport", "tcp",
-                "-i", f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
-                "-f", "pulse", "-fragment_size", "1024",
-                "-i", "default",
-                "-c:v", "copy", "-c:a", "libopus", "-application", "lowdelay",
-                "-f", "rtsp", "-rtsp_transport", "tcp",
-                f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}a",
-            ],
-            env=env,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        logger.info("Audio stream process started for cam%s", self.camera_num)
-
-    def _stop_audio_stream(self) -> None:
-        """Stop the ffmpeg audio stream subprocess."""
-        if self._audio_stream_process:
-            if self._audio_stream_process.poll() is None:
-                self._audio_stream_process.terminate()
-                try:
-                    self._audio_stream_process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    self._audio_stream_process.kill()
-                    self._audio_stream_process.wait()
-            self._audio_stream_process = None
-            logger.info("Audio stream process stopped for cam%s", self.camera_num)
-
 
     def stop_recording(self) -> bool:
         _filename_recording = self.filename_recording
@@ -1163,18 +1118,22 @@ class Camera:
                 return False
             self.filename_recording = None
 
-        # Stop only the recording encoder — streaming encoder is unaffected.
-        # PyavOutput.stop() closes the container, which finalizes the MP4 atom.
+        # stop_recording stops all encoders (stream + recording); restart stream after.
         try:
-            self.picam2.stop_encoder(self.encoder_recording)
+            self.picam2.stop_recording()
         except Exception as e:
-            logger.error("Failed to stop recording encoder: %s", e, exc_info=True)
+            logger.error("Failed to stop recording: %s", e, exc_info=True)
 
+        self.output_recording = None
         self._set_state("is_video_recording", False)
+        self._set_state("is_video_streaming", False)
+
         logger.info("Recording %s finalized", _filename_recording)
         if _filename_recording and callable(self._on_media_created_callback):
             w, h = self.get_recording_resolution()
             self._on_media_created_callback(self.camera_num, _filename_recording, w, h)
+
+        self.start_streaming()
         return True
 
 

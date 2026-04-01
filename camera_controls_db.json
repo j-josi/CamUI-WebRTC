@@ -119,9 +119,9 @@
         {
           "name": "Analogue Gain",
           "id": "AnalogueGain",
-          "info": "Analogue gain applied by the sensor",
+          "info": "Amplification of the light signal directly at the image sensor, before digitisation. Similar to ISO on a DSLR camera: higher values brighten the image but increase noise. A value of 1 means no amplification (minimum supported by the sensor hardware). Requires AEC-AGC to be disabled.",
           "type": "slider",
-          "label": "Original/Flipped",
+          "label": "Gain factor",
           "enabled": true,
           "source": "controls",
           "step": 0.1,

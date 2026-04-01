@@ -324,8 +324,7 @@ volumeContainer.addEventListener("mouseleave", () => {
 
 // -------------------------------------------------------
 // initReader: fetch the WebRTC stream URL and start the
-// MediaMTX WebRTC reader; routes to audio stream (cam0a)
-// when a USB microphone is detected
+// MediaMTX WebRTC reader; audio is embedded directly in the cam0 RTSP stream
 // -------------------------------------------------------
 async function initReader() {
   const response = await fetch(`/video_webrtc_url/${cameraNum}`);

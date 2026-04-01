@@ -708,7 +708,7 @@ def video_webrtc_url(camera_num):
         abort(404)
 
     host_ip = request.host.split(":")[0]
-    path = f"cam{camera_num}a" if camera.audio_device else f"cam{camera_num}"
+    path = f"cam{camera_num}"
     return jsonify({"url": f"http://{host_ip}:{mediamtx_webrtc_port}/{path}/whep"})
 
 @app.route('/preview_<int:camera_num>', methods=['POST'])
