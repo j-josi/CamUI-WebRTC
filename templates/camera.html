@@ -78,6 +78,16 @@
           </button>
         </div>
 
+        <!-- Recording indicator: shown while a video recording is active -->
+        <div id="recIndicator"
+             class="position-absolute top-0 end-0 m-2 px-2 py-1
+                    bg-dark bg-opacity-75 text-white rounded d-none"
+             style="font-size:0.85rem; pointer-events:none; user-select:none;">
+            <span id="recDot" style="color:#ff4444;">&#9679;</span>
+            <span class="ms-1 fw-semibold">REC</span>
+            <span id="recTimer" class="ms-2 font-monospace">00:00</span>
+        </div>
+
         <!-- Autoplay blocked fallback: shown if browser prevents autoplay -->
         <div id="videoOverlay"
              class="position-absolute top-0 start-0 w-100 h-100
@@ -149,6 +159,15 @@
 #volumeSlider::-moz-range-thumb {
   box-shadow: 0 0 0 0.25rem rgba(255,255,255,.25);
 }
+
+@keyframes recBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+#recDot {
+  display: inline-block;
+  animation: recBlink 1s infinite;
+}
 </style>
 
 <script>
@@ -173,6 +192,8 @@ const metadataDisplay = document.getElementById("metadataDisplay");
 
 let isRecording = false;
 let reader = null;
+let recStartTime = null;
+let recTimerInterval = null;
 let hideControlsTimeout = null;
 let mouseOverControls = false;
 let previousVolume = 0.75;
@@ -254,6 +275,8 @@ function applyStateToUI(state) {
             const wasRecording = isRecording;
             isRecording = state.states.is_video_recording;
             updateRecordButton();
+            if (isRecording) startRecOverlay(state.states.recording_elapsed_seconds);
+            else if (wasRecording) stopRecOverlay();
 
             const captureBtn = document.getElementById("captureButton");
             if (isRecording) {
@@ -655,6 +678,40 @@ function startVideoRecording() {
 
 function stopVideoRecording() {
     socket.emit("stop_recording", { camera_num: cameraNum });
+}
+
+// -------------------------------------------------------
+// Recording indicator overlay: ● REC  00:00
+// -------------------------------------------------------
+function _fmtRecDuration(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return h > 0
+        ? `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
+        : `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+function startRecOverlay(elapsedSeconds) {
+    // elapsedSeconds is computed on the server at broadcast time (time.time() - recording_start_time).
+    // Reconstruct recStartTime so Date.now() - recStartTime always gives the correct elapsed ms,
+    // using only the client's own clock from this point forward.
+    recStartTime = Date.now() - (elapsedSeconds ? elapsedSeconds * 1000 : 0);
+    const tick = () => {
+        document.getElementById("recTimer").textContent = _fmtRecDuration(Date.now() - recStartTime);
+    };
+    tick();
+    document.getElementById("recIndicator").classList.remove("d-none");
+    clearInterval(recTimerInterval);
+    recTimerInterval = setInterval(tick, 1000);
+}
+
+function stopRecOverlay() {
+    clearInterval(recTimerInterval);
+    recTimerInterval = null;
+    recStartTime = null;
+    document.getElementById("recIndicator").classList.add("d-none");
 }
 
 // Update the record button appearance based on the current recording state

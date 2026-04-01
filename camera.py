@@ -8,6 +8,7 @@ import logging
 import shutil
 import threading
 import subprocess
+import time
 
 
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
@@ -49,7 +50,7 @@ class Camera:
     DEFAULT_STATES = {
         "is_video_streaming": False,
         "is_video_recording": False,
-        "is_capturing_still_image": False
+        "is_capturing_still_image": False,
     }
 
     DEFAULT_CONFIGS = {
@@ -118,6 +119,7 @@ class Camera:
         }
         # self.states = Camera.DEFAULT_STATES
         self.states = copy.deepcopy(Camera.DEFAULT_STATES)
+        self._recording_start_time: Optional[float] = None  # set when recording starts; internal only
         self.lock = threading.Lock()
 
         self.picam2 = Picamera2(self.camera_num)
@@ -343,11 +345,16 @@ class Camera:
     #         return default_val
 
     def get_settings(self) -> Dict:
+        states = copy.deepcopy(self.states)
+        states["recording_elapsed_seconds"] = (
+            time.time() - self._recording_start_time
+            if self._recording_start_time is not None else None
+        )
         return {
             "infos": copy.deepcopy(self.infos),
             "configs": copy.deepcopy(self.configs),
             "controls": copy.deepcopy(self.controls),
-            "states": copy.deepcopy(self.states),
+            "states": states,
         }
     
     def set_control(self, name: Union[str, Dict[str, Any]], value: Any = None) -> bool:
@@ -1117,6 +1124,7 @@ class Camera:
             return False
 
         self.filename_recording = filename
+        self._recording_start_time = time.time()
         self._set_state("is_video_recording", True)
         logger.info("Recording started: %s (audio=%s)", filename, bool(self.audio_device))
         return True
@@ -1137,6 +1145,7 @@ class Camera:
             logger.error("Failed to stop recording: %s", e, exc_info=True)
 
         self.output_recording = None
+        self._recording_start_time = None
         self._set_state("is_video_recording", False)
         self._set_state("is_video_streaming", False)
 
