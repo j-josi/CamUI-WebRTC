@@ -101,6 +101,15 @@
 
       </div>
 
+      <!-- Autoplay disabled warning: shown once when the browser blocks autoplay -->
+      <div id="autoplayWarning"
+           class="alert alert-warning alert-dismissible fade show mt-2 d-none"
+           role="alert">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream. <strong>For better experience it is recommended to enable autoplay for this site.</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+
       {% include "animated_logo.html" %}
 
       <!-- Action buttons: capture image, record video, show metadata -->
@@ -191,6 +200,7 @@ const metadataButtonText = document.getElementById("metadataButtonText");
 const metadataDisplay = document.getElementById("metadataDisplay");
 
 let isRecording = false;
+let userHasInteracted = false;  // true once the user has clicked Play or autoplay succeeded
 let reader = null;
 let recStartTime = null;
 let recTimerInterval = null;
@@ -287,7 +297,7 @@ function applyStateToUI(state) {
                 // PyAV briefly stalls the RTSP publisher while finalizing the MP4 atom.
                 reader?.close();
                 video.srcObject = null;
-                showOverlay();
+                if (isLiveStreamVisible()) showOverlay();
                 initReader();
 
                 const fallback = setTimeout(() => {
@@ -364,7 +374,7 @@ function setVolumeControlEnabled(enabled) {
 // initReader: fetch the WebRTC stream URL and start the
 // MediaMTX WebRTC reader; audio is embedded directly in the cam0 RTSP stream
 // -------------------------------------------------------
-async function initReader() {
+async function initReader(onConnected) {
   setVolumeControlEnabled(streamHasAudio);
 
   const response = await fetch(`/video_webrtc_url/${cameraNum}`);
@@ -375,11 +385,29 @@ async function initReader() {
     onTrack: evt => {
       video.srcObject = evt.streams[0];
       volumeSlider.value = video.volume;
+      onConnected?.();
       // Detect autoplay block: only show the overlay for NotAllowedError
       // (browser policy). Other rejections (AbortError, NotSupportedError) are
       // transient and must not trigger the fallback overlay.
-      video.play().catch(err => {
-        if (err.name === 'NotAllowedError') showOverlay();
+      video.play().then(() => {
+        userHasInteracted = true;
+      }).catch(err => {
+        if (err.name === 'NotAllowedError') {
+          userHasInteracted = false;
+          // Show the persistent autoplay warning banner the first time autoplay
+          // is blocked, so the user knows they need to enable it for this site.
+          document.getElementById("autoplayWarning")?.classList.remove("d-none");
+          const animatedOverlay = document.getElementById("animatedOverlay");
+          if (animatedOverlay && animatedOverlay.style.display !== "none") {
+            // Animated overlay is visible — wait for it to finish before showing
+            // the Play button so both overlays are never visible at the same time.
+            video.addEventListener("animatedOverlayHidden", function onHidden() {
+              overlay.style.display = "flex";
+            }, { once: true });
+          } else {
+            overlay.style.display = "flex";
+          }
+        }
       });
     }
   });
@@ -401,16 +429,23 @@ function setButtonState(button, enabled) {
 }
 
 // -------------------------------------------------------
-// Autoplay fallback: show overlay only when the browser
+// Autoplay fallback: show #videoOverlay only when the browser
 // blocks autoplay; hide it as soon as video starts playing.
-// Detection happens in onTrack (see initReader) by catching
-// a rejected video.play() promise.
+// showOverlay() / hideOverlay() are defined in animated_logo.html
+// and control the animated loading logo — do NOT redefine them here.
 // -------------------------------------------------------
-function showOverlay() { overlay.style.display = "flex"; }
-function hideOverlay() { overlay.style.display = "none"; }
 
-video.addEventListener("playing", hideOverlay);
-startBtn.addEventListener("click", () => video.play().catch(() => {}));
+// Returns true if the livestream is currently visible (i.e. the Play button
+// overlay is not shown). Used to suppress the animated loading overlay on
+// clients that are waiting for user interaction to start playback.
+function isLiveStreamVisible() {
+    return overlay.style.display !== "flex";
+}
+video.addEventListener("playing", () => overlay.style.display = "none");
+startBtn.addEventListener("click", () => {
+  userHasInteracted = true;
+  video.play().catch(() => {});
+});
 
 // -------------------------------------------------------
 // Video controls visibility: show on mouse move,
@@ -556,7 +591,7 @@ socket.on("capture_start", (data) => {
     setButtonState(document.getElementById("captureButton"), false);
     setButtonState(recordBtn, false);
     reader?.close();
-    showOverlay();
+    if (isLiveStreamVisible()) showOverlay();
 });
 
 socket.on("capture_done", (data) => {
@@ -591,46 +626,44 @@ socket.on("stream_reinit", (data) => {
     const captureBtn = document.getElementById("captureButton");
     reader?.close();
     video.srcObject = null;
-    showOverlay();
+    if (isLiveStreamVisible()) showOverlay();
     setButtonState(captureBtn, false);
     setButtonState(recordBtn, false);
 
-    let done = false;
+    const overlayShownAt = Date.now();
+    const MIN_OVERLAY_MS = 1500;
+    let retryDone = false;
     let retryTimer;
 
     function finish() {
-        if (done) return;
-        done = true;
+        if (retryDone) return;
+        retryDone = true;
         clearTimeout(retryTimer);
-        hideOverlay();
-        setButtonState(captureBtn, true);
-        setButtonState(recordBtn, true);
+        const elapsed = Date.now() - overlayShownAt;
+        const delay = Math.max(0, MIN_OVERLAY_MS - elapsed);
+        setTimeout(() => {
+            hideOverlay();
+            setButtonState(captureBtn, true);
+            setButtonState(recordBtn, true);
+            video.dispatchEvent(new Event("animatedOverlayHidden"));
+        }, delay);
     }
 
-    // Hard deadline: give up after 20s
+    // Hard deadline: give up after 20s.
     setTimeout(finish, 20000);
 
+    // Retry initReader() every 1s until the WebRTC track is received (onConnected).
+    // onConnected fires immediately in onTrack, stopping the retry loop before
+    // the next attempt() can interrupt an in-flight play() call.
+    // For autoplay-enabled browsers, playing starts right after onTrack.
+    // For autoplay-disabled browsers, play() is blocked → the Play button
+    // overlay is shown by the NotAllowedError handler in onTrack.
     function attempt() {
-        if (done) return;
+        if (retryDone) return;
         reader?.close();
         video.srcObject = null;
-        initReader();
-
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-            // Fires when the browser paints the first decoded video frame
-            video.requestVideoFrameCallback(() => finish());
-        }
-
-        // Retry in 1s if no frame has arrived yet
-        retryTimer = setTimeout(() => { if (!done) attempt(); }, 1000);
-    }
-
-    // Fallback for browsers without requestVideoFrameCallback
-    if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) {
-        video.addEventListener("playing", function onPlaying() {
-            video.removeEventListener("playing", onPlaying);
-            finish();
-        });
+        initReader(() => finish());
+        retryTimer = setTimeout(() => { if (!retryDone) attempt(); }, 1000);
     }
 
     attempt();

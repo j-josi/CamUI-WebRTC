@@ -454,6 +454,7 @@ def handle_set_camera_setting(data):
         if changed:
             logger.debug("Restarting picamera2 video pipeline")
             camera.reconfigure_video_pipeline()
+            time.sleep(0.5)  # give MediaMTX time to receive the first keyframe
             emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
 
     # =====================================================
@@ -792,6 +793,7 @@ def reset_profile(camera_num):
     success = camera.reset_camera_to_defaults()
     if success:
         room_name = f"camera_{camera_num}"
+        time.sleep(0.5)  # give MediaMTX time to receive the first keyframe
         socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
         return jsonify({"success": True, "message": "Profile reset to default values"})
     return jsonify({"success": False, "message": "Failed to reset profile to default values"}), 500
@@ -835,6 +837,7 @@ def load_profile():
 
     if success:
         room_name = f"camera_{camera_num}"
+        time.sleep(0.5)  # give MediaMTX time to receive the first keyframe
         socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
         return jsonify({"message": f"Profile '{profile_name}' loaded successfully"})
     return jsonify({"error": "Failed to load profile"}), 500
