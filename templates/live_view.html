@@ -28,6 +28,20 @@
 <script type="text/javascript" src="{{ url_for('static', filename='js/socketio/socket.io.min.js') }}"></script>
 
 <div class="mx-4">
+
+  {% if camera_list|length > 1 %}
+  <ul class="nav nav-tabs mb-3">
+    {% for cam_info, cam_module_info in camera_list %}
+    <li class="nav-item">
+      <a class="nav-link {% if cam_info.Num == camera.Num %}active{% endif %}"
+         href="{{ url_for('live_view', cam=cam_info.Num) }}">
+        Camera {{ cam_info.Num }}: {{ cam_info.Model }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
   <div class="row">
     <div class="col-lg-8 pb-2">
 

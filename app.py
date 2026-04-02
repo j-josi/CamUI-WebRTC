@@ -516,18 +516,25 @@ def set_theme(theme):
 
 @app.route('/')
 def home():
-    """Render home page with list of cameras."""
-    return render_template('home.html')
+    """Redirect to the first camera page, or to an error if no cameras are found."""
+    cameras = list(camera_manager.cameras.values())
+    if cameras:
+        return redirect(url_for('live_view'))
+    return render_template('error.html', message="No cameras found"), 404
 
-@app.route('/camera_info_<int:camera_num>')
-def camera_info(camera_num):
-    """Display camera module info page."""
+@app.route('/info')
+def info():
+    """Display camera info page."""
+    cameras = list(camera_manager.cameras.values())
+    if not cameras:
+        return render_template('error.html', message="Error: No cameras found"), 404
+    default_num = cameras[0].camera_num
+    camera_num = request.args.get('cam', default_num, type=int)
     camera = camera_manager.get_camera(camera_num)
     if not camera:
-        return render_template('error.html', message="Error: Camera not found"), 404
-
+        return redirect(url_for('info'))
     camera_module_spec = camera.get_camera_module_spec()
-    return render_template('camera_info.html', camera_data=camera_module_spec, camera_num=camera_num)
+    return render_template('info.html', camera_data=camera_module_spec, camera_num=camera_num)
 
 @app.route("/about")
 def about():
@@ -682,16 +689,21 @@ def restart():
 # Flask routes - Camera Control
 ####################
 
-@app.route("/camera_<int:camera_num>")
-def camera(camera_num):
-    """Camera view route."""
+@app.route("/live_view")
+def live_view():
+    """Live view route."""
     try:
+        cameras = list(camera_manager.cameras.values())
+        if not cameras:
+            return render_template('camera_not_found.html', camera_num=0)
+        default_num = cameras[0].camera_num
+        camera_num = request.args.get('cam', default_num, type=int)
         camera = camera_manager.get_camera(camera_num)
         if not camera:
-            return render_template('camera_not_found.html', camera_num=camera_num)
+            return redirect(url_for('live_view'))
 
         return render_template(
-            'camera.html',
+            'live_view.html',
             camera = camera.camera_info,
             settings = camera.ui_settings,
             profiles = camera_manager.list_profiles(),

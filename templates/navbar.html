@@ -58,7 +58,7 @@
 
 <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
     <div class="container-fluid">
-      <a class="navbar-brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo" height="40" class="d-inline-block align-top">      </a>
+      <a class="navbar-brand" href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo" height="40" class="d-inline-block align-top"></a>
       {# Battery icon — shown next to the toggler on mobile, inside the collapse on desktop #}
       {% if battery_percent is defined and battery_percent is not none %}
       <span class="d-flex d-md-none ms-auto me-2 align-items-center nav-link py-0 battery-display {{ battery_color }}"
@@ -81,54 +81,16 @@
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav nav-pills me-auto mb-2 mb-md-0">
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" aria-current="page" href="{{ url_for('home') }}">Home</a>
+            <a class="nav-link {% if request.endpoint == 'live_view' %}active{% endif %}" href="{{ url_for('live_view') }}">Live View</a>
           </li>
-
-          {% if camera_list|length == 1 %}
-            {% for camera_info, camera_module_info in camera_list %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'camera' %}active{% endif %}" href="/camera_{{ camera_info.Num }}">
-                  Camera
-                </a>
-              </li>
-            {% endfor %}
-          {% elif camera_list|length > 1 %}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle {% if request.endpoint == 'camera' %}active{% endif %}" href="#" id="cameraDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Cameras
-              </a>
-              <ul class="dropdown-menu">
-                {% for camera_info, camera_module_info in camera_list %}
-                  <li><a class="dropdown-item" href="/camera_{{ camera_info.Num }}">Camera: {{ camera_info.Model }}</a></li>
-                {% endfor %}
-              </ul>
-            </li>
-          {% endif %}
 
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'media_gallery' %}active{% endif %}" href="{{ url_for('media_gallery') }}">Media Gallery</a>
           </li>
 
-          {% if camera_list|length == 1 %}
-            {% for camera_info, camera_module_info in camera_list %}
-              <li class="nav-item">
-                <a class="nav-link {% if request.endpoint == 'camera_info' %}active{% endif %}" href="/camera_info_{{ camera_info.Num }}">
-                  Camera Info
-                </a>
-              </li>
-            {% endfor %}
-          {% elif camera_list|length > 1 %}
-            <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle {% if request.endpoint == 'camera_info' %}active{% endif %}" href="#" id="cameraInfoDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Camera Info
-              </a>
-              <ul class="dropdown-menu">
-                {% for camera_info, camera_module_info in camera_list %}
-                  <li><a class="dropdown-item" href="/camera_info_{{ camera_info.Num }}">{{ camera_info.Model }}</a></li>
-                {% endfor %}
-              </ul>
-            </li>
-          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link {% if request.endpoint == 'info' %}active{% endif %}" href="{{ url_for('info') }}">Info</a>
+          </li>
 
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}">About</a>

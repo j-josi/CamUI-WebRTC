@@ -4,6 +4,20 @@
 
 <div class="container-xxl">
     <div class="container" id="custom-cards">
+
+      {% if camera_list|length > 1 %}
+      <ul class="nav nav-tabs mb-3">
+        {% for cam_info, cam_module_info in camera_list %}
+        <li class="nav-item">
+          <a class="nav-link {% if cam_info.Num == camera_num %}active{% endif %}"
+             href="{{ url_for('info', cam=cam_info.Num) }}">
+            Camera {{ cam_info.Num }}: {{ cam_info.Model }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
       {% if camera_data %}
         
         <div class="row row-cols-1 row-cols-md-2">
@@ -15,6 +29,7 @@
             <p class="text-body-secondary">
               {{ camera_data.manufacturer }} {{ camera_data.sensor_model }}
             </p>
+            <p class="text-body-secondary">Detected as Camera: {{ camera_num }}</p>
           </div>
 
           <div class="col">
