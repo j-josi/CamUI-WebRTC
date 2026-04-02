@@ -718,7 +718,7 @@ def snapshot(camera_num):
     """Take a snapshot from the camera feed and send it as JPG."""
     camera = camera_manager.get_camera(camera_num)
     if camera:
-        image_filename = f"snapshot_{generate_filename(camera_manager, camera_num, ".jpg")}"
+        image_filename = generate_filename(camera_manager, camera_num, "_snapshot.jpg")
         image_filepath = os.path.join(camera_manager.media_upload_folder, image_filename)
         success = camera.capture_still_from_feed(image_filepath)
         
@@ -727,7 +727,7 @@ def snapshot(camera_num):
             return send_file(
                 image_filepath,
                 as_attachment=False,
-                download_name="snapshot.jpg",
+                download_name=image_filename,
                 mimetype='image/jpeg'
             )
     else:
