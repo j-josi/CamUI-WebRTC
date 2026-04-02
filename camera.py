@@ -990,10 +990,6 @@ class Camera:
     # Camera Information Functions
     #-----
 
-    def capture_metadata(self) -> dict:
-        self.metadata = self.picam2.capture_metadata()
-        logger.debug("Sensor resolution: %s", self.picam2.sensor_resolution)
-        return self.metadata
 
     def get_camera_module_spec(self) -> Optional[dict]:
         """Return camera module details for this camera."""

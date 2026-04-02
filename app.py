@@ -810,16 +810,6 @@ def delete_profile():
     else:
         return jsonify({"success": False, "message": f"Failed to delete profile {filename}"}), 500
 
-@app.route("/fetch_metadata_<int:camera_num>")
-def fetch_metadata(camera_num):
-    """Return camera metadata as JSON."""
-    camera = camera_manager.get_camera(camera_num)
-    if not camera:
-        return jsonify({"error": "Invalid camera number"}), 400
-
-    metadata = camera.capture_metadata()
-    logger.debug(f"Camera {camera_num} Metadata: {metadata}")
-    return jsonify(metadata)
 
 @app.route("/load_profile", methods=["POST"])
 def load_profile():

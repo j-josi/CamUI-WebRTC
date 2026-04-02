@@ -106,18 +106,18 @@
            class="alert alert-warning alert-dismissible fade show mt-2 d-none"
            role="alert">
         <i class="bi bi-info-circle-fill me-2"></i>
-        Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream. <strong>For better experience it is recommended to enable autoplay for this site.</strong>
+        Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream. <strong>For better experience it is recommended to enable autoplay for this site in the settings of your browser.</strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
 
       {% include "animated_logo.html" %}
 
-      <!-- Action buttons: capture image, record video, show metadata -->
+      <!-- Action buttons: capture image, record video -->
       <div class="container text-center mt-4">
         <div class="row justify-content-center g-3">
 
             <!-- Take Photo -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-6">
               <button class="btn btn-lg w-100 btn-success" id="captureButton">
                   <i class="bi bi-camera fs-2"></i>
                   <span class="fw-bold mt-1 d-block">Take Photo</span>
@@ -125,22 +125,13 @@
             </div>
 
             <!-- Record Video -->
-            <div class="col-12 col-md-4">
+            <div class="col-12 col-md-6">
               <button class="btn btn-lg w-100 btn-danger" id="recordVideoButton">
                 <i id="recordVideoIcon" class="bi bi-record-circle fs-2"></i>
                 <span id="recordVideoText" class="fw-bold mt-1 d-block">Record Video</span>
               </button>
             </div>
 
-            <!-- Fetch Metadata -->
-            <div class="col-12 col-md-4">
-            <button class="btn btn-lg w-100 btn-secondary" id="metadataButton">
-                <i class="bi bi-card-list fs-2"></i>
-                <span id="metadataButtonText" class="fw-bold mt-1 d-block">Show Metadata</span>
-            </button>
-            </div>
-
-            <div id="metadataDisplay" class="mt-3"></div>
         </div>
       </div>
     </div>
@@ -195,9 +186,6 @@ const volumeSlider = document.getElementById("volumeSlider");
 const volumeIcon = document.getElementById("volumeIcon");
 const volumeContainer = document.getElementById("volumeContainer");
 const recordBtn      = document.getElementById("recordVideoButton");
-const metadataButton = document.getElementById("metadataButton");
-const metadataButtonText = document.getElementById("metadataButtonText");
-const metadataDisplay = document.getElementById("metadataDisplay");
 
 let isRecording = false;
 let userHasInteracted = false;  // true once the user has clicked Play or autoplay succeeded
@@ -542,30 +530,6 @@ video.addEventListener("webkitendfullscreen", () => {
   fsBtn.innerHTML = '<i class="bi bi-fullscreen fs-4"></i>';
 });
 
-// -------------------------------------------------------
-// Metadata: fetch and display live camera metadata in a
-// table; toggle visibility on repeated button clicks
-// -------------------------------------------------------
-metadataButton.addEventListener("click", () => {
-    // If metadata is already visible, clear it
-    if (metadataDisplay.innerHTML.trim() !== "") {
-        metadataDisplay.innerHTML = "";
-        metadataButtonText.textContent = "Show Metadata";
-        return;
-    }
-
-    // Fetch and render metadata as a table
-    fetch(`/fetch_metadata_${cameraNum}`)
-        .then(r => r.json())
-        .then(data => {
-            let html = `<table class="table mt-3 table-hover">
-                <thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>`;
-            for (const [k,v] of Object.entries(data)) html += `<tr><td>${k}</td><td>${v}</td></tr>`;
-            html += "</tbody></table>";
-            metadataDisplay.innerHTML = html;
-            metadataButtonText.textContent = "Hide Metadata";
-        });
-});
 
 // -------------------------------------------------------
 // Image capture: WebSocket-driven flow

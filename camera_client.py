@@ -197,8 +197,6 @@ class CameraProxy:
     def capture_still_from_feed(self, filepath: str):
         return self._rpc("capture_still_from_feed", filepath)
 
-    def capture_metadata(self):
-        return self._rpc("capture_metadata")
 
     def start_recording(self, filename: str) -> bool:
         return self._rpc("start_recording", filename)
