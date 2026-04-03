@@ -22,27 +22,42 @@
     </div>
     {% endif %}
 
-    <!-- Label + Value -->
-    {% if setting.label %}
+    <!-- Label + Value: only shown for sliders with unit conversion (converted value
+         is different from the raw number shown in the input field) -->
+    {% if setting.label and setting.conversion and setting.conversion.enabled %}
     <label for="{{ setting.id }}" class="form-label mb-0" id="current{{ setting.id }}">
         {% set raw_value = setting.get("value", setting.get("default")) %}
-        {% if setting.conversion and setting.conversion.enabled and setting.conversion.always_on %}
+        {% if setting.conversion.always_on %}
         Value: {{ (raw_value / setting.conversion.factor) | round(6) }}
         {% else %}
         Value: {{ raw_value }}
         {% endif %}
-        {% if setting.conversion and setting.conversion.enabled %}
         <span id="{{ setting.id }}_unit_label">({{ setting.conversion.label }})</span>
-        {% endif %}
     </label>
+    {% else %}
+    {# Hidden label keeps the id="current<id>" target alive for adjustSliderSetting #}
+    <span id="current{{ setting.id }}" style="display:none;"></span>
     {% endif %}
 
-    <!-- Slider -->
+    <!-- Slider + Number Input -->
+    {% set prec = setting.precision if setting.precision is defined else 3 %}
+    {% if prec == 0 %}{% set num_step = "1" %}{% else %}{% set num_step = "0." + "0" * (prec - 1) + "1" %}{% endif %}
+    {# Compute decimal places in step (e.g. 0.1 → 1, 0.01 → 2, 1 → 0) #}
+    {% set step_str = setting.step | string %}
+    {% if '.' in step_str %}{% set step_prec = step_str.split('.')[1] | length %}{% else %}{% set step_prec = 0 %}{% endif %}
+    {# Round min/max to step precision so browser step-grid starts on a clean value.
+       Hardware min values (e.g. AnalogueGain = 1.12480702...) are off-grid and cause
+       the browser to shift the entire valid-step grid, producing spurious warnings. #}
+    {% set slider_min = setting.min | round(step_prec) %}
+    {% set slider_max = setting.max | round(step_prec) %}
+    {# Round initial value to precision so number input uses an on-grid base too. #}
+    {% set num_initial = setting.get("value", setting.get("default")) | round(prec) %}
+    <div class="d-flex align-items-center">
     <input type="range"
-        class="form-range"
+        class="form-range flex-grow-1 me-3"
         id="{{ setting.id }}"
-        min="{{ setting.min }}"
-        max="{{ setting.max }}"
+        min="{{ slider_min }}"
+        max="{{ slider_max }}"
         step="{{ setting.step }}"
         value="{{ setting.get("value", setting.get("default")) }}"
         data-original-step="{{ setting.step }}"
@@ -75,7 +90,50 @@
             {% endif %}
         {% endif %}
 
-        onchange="adjustSliderSetting('{{ setting.id }}', this.value)">
+        data-precision="{{ prec }}"
+        onchange="onSliderChange('{{ setting.id }}', this)">
+    <div class="input-group input-group-sm" style="width:130px; flex-shrink:0;">
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm px-1"
+                id="{{ setting.id }}_btn_down"
+                onmousedown="startSpinHold('{{ setting.id }}', -1)"
+                onmouseup="stopSpinHold()"
+                onmouseleave="stopSpinHold()"
+                ontouchstart="startSpinHold('{{ setting.id }}', -1)"
+                ontouchend="stopSpinHold()"
+                style="line-height:1;">&#8722;</button>
+        <input type="number"
+            class="form-control form-control-sm text-center"
+            id="{{ setting.id }}_number"
+            min="{{ slider_min }}"
+            max="{{ slider_max }}"
+            step="{{ num_step }}"
+            value="{{ num_initial }}"
+            style="-moz-appearance:textfield; min-width:0;"
+            onchange="syncSliderFromNumber('{{ setting.id }}', this)">
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm px-1"
+                id="{{ setting.id }}_btn_up"
+                onmousedown="startSpinHold('{{ setting.id }}', +1)"
+                onmouseup="stopSpinHold()"
+                onmouseleave="stopSpinHold()"
+                ontouchstart="startSpinHold('{{ setting.id }}', +1)"
+                ontouchend="stopSpinHold()"
+                style="line-height:1;">&#43;</button>
+    </div>
+    {% if setting.unit %}
+    {% set unit_desc = settings.units[setting.unit] if settings.units is defined and setting.unit in settings.units else None %}
+    <span class="text-body-secondary"
+          style="font-size:0.85rem; flex-shrink:0; min-width:2rem; display:inline-block; margin-left:0.4rem;"
+          {% if unit_desc %}
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          title="{{ unit_desc }}"
+          {% endif %}>{{ setting.unit }}</span>
+    {% else %}
+    <span style="min-width:2rem; display:inline-block; margin-left:0.4rem;"></span>
+    {% endif %}
+    </div>
 
     <!-- Conversion Switch -->
     {% if setting.conversion and setting.conversion.enabled %}
@@ -98,7 +156,7 @@
     <!-- Validation -->
     {% if setting.validation_text %}
     <small class="text-muted">
-        {{ setting.validation_text.replace("{min}", setting.min|string).replace("{max}", setting.max|string) }}
+        {{ setting.validation_text.replace("{min}", slider_min|string).replace("{max}", slider_max|string) }}
     </small>
     {% endif %}
 

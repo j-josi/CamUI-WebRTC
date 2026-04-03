@@ -679,6 +679,13 @@ function showAlert(element, type, message) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Bootstrap tooltips for unit labels (500 ms show delay)
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        new bootstrap.Tooltip(el, { delay: { show: 500, hide: 0 } });
+    });
+});
+
+document.addEventListener("DOMContentLoaded", function () {
     // Initialize visibility for switches
     document.querySelectorAll('.form-check-input[type="checkbox"]').forEach(switchElement => {
         let settingId = switchElement.id;
@@ -764,14 +771,15 @@ function updateRadioChildVisibility(settingId) {
 //     });
 // }
 
-function updateSettingFromElement(element) {
+function updateSettingFromElement(element, valueOverride) {
 
     // Use NAME for grouped inputs (radio / checkbox groups)
     const id = element.name ? element.name : element.id;
 
-    const value = element.type === "checkbox"
-        ? element.checked
-        : element.value;
+    // valueOverride bypasses element.value to avoid browser step-snapping on range inputs
+    const value = valueOverride !== undefined
+        ? valueOverride
+        : (element.type === "checkbox" ? element.checked : element.value);
 
     const type = element.dataset.type || "controls";
 
@@ -782,9 +790,62 @@ function updateSettingFromElement(element) {
     });
 }
 
-// Function for slider settings
+// Tracks the last value sent to / confirmed by the server for each slider.
+// Used by onSliderChange to compute ±step from a known-good baseline.
+const _sliderLastValue = {};
+
+// Returns the number of decimal places in a step string (e.g. "0.1" → 1, "1" → 0).
+function _stepPrecision(stepStr) {
+    const dot = String(stepStr).indexOf('.');
+    return dot === -1 ? 0 : String(stepStr).length - dot - 1;
+}
+
+// Called from slider onchange.
+// The browser may carry an off-grid internal position (e.g. AnalogueGain min=1.123)
+// which causes every drag to be offset by the fractional remainder.
+// Fix: keep a snapped baseline in _sliderLastValue and compute the number of steps
+// from the difference between the browser's DOM value and that baseline.
+// This allows free multi-step drags while staying on-grid.
+function onSliderChange(settingId, sliderEl) {
+    const step   = parseFloat(sliderEl.step);
+    const min    = parseFloat(sliderEl.min);
+    const max    = parseFloat(sliderEl.max);
+    const prec   = _stepPrecision(sliderEl.step);
+    const newDom = parseFloat(sliderEl.value);
+
+    // Initialise baseline on first interaction (snap to grid relative to min)
+    if (_sliderLastValue[settingId] === undefined) {
+        _sliderLastValue[settingId] = (!isNaN(step) && step > 0)
+            ? parseFloat((Math.round((newDom - min) / step) * step + min).toFixed(prec))
+            : newDom;
+    }
+
+    const last   = _sliderLastValue[settingId];
+    // How many steps did the user drag? Based on DOM position vs our snapped baseline.
+    const steps  = Math.round((newDom - last) / step);
+    let newVal   = parseFloat((last + steps * step).toFixed(prec));
+    newVal       = Math.min(Math.max(newVal, min), max);
+
+    _sliderLastValue[settingId] = newVal;
+    sliderEl.value = newVal;
+    adjustSliderSetting(settingId, newVal);
+}
+
+// Updates label, number input, slider DOM and sends value to server.
 function adjustSliderSetting(settingId, value) {
     const slider = document.getElementById(settingId);
+    const precision = slider ? parseInt(slider.dataset.precision ?? "3", 10) : 3;
+    value = parseFloat(parseFloat(value).toFixed(precision));
+    // Store snapped baseline so onSliderChange always starts on-grid.
+    // Off-grid hardware values (e.g. AnalogueGain = 1.123) are snapped here
+    // so that subsequent drags compute integer step counts correctly.
+    if (slider) {
+        const _s = parseFloat(slider.step), _m = parseFloat(slider.min);
+        const _p = _stepPrecision(slider.step);
+        _sliderLastValue[settingId] = (!isNaN(_s) && _s > 0)
+            ? parseFloat((Math.round((value - _m) / _s) * _s + _m).toFixed(_p))
+            : value;
+    }
     const valueLabel = document.getElementById("current" + settingId);
     const unitLabel = document.getElementById(settingId + "_unit_label");
     const conversionSwitch = document.getElementById(settingId + "_conversion");
@@ -801,8 +862,7 @@ function adjustSliderSetting(settingId, value) {
                     displayValue = `${seconds.toFixed(3).replace(/\.?0+$/, '')} s`;
                 } else {
                     const denom = Math.round(1 / seconds);
-                    const decStr = seconds.toFixed(4).replace(/\.?0+$/, '');
-                    displayValue = `1/${denom} s (${decStr} s)`;
+                    displayValue = `~1/${denom} s`;
                 }
             } else {
                 displayValue = seconds.toFixed(6).replace(/\.?0+$/, '') || '0';
@@ -817,12 +877,138 @@ function adjustSliderSetting(settingId, value) {
         }
     }
 
+    // Always snap slider.value to the nearest step grid, regardless of caller.
+    // This prevents off-grid hardware values (e.g. AnalogueGain min = 1.123)
+    // from causing every subsequent drag to be offset by the fractional remainder.
+    if (slider) {
+        const _step = parseFloat(slider.step);
+        const _min  = parseFloat(slider.min);
+        if (!isNaN(_step) && _step > 0) {
+            slider.value = parseFloat((Math.round((value - _min) / _step) * _step + _min).toFixed(precision));
+        } else {
+            slider.value = value;
+        }
+    }
+
+    // Keep number input in sync with slider, clamped to its min/max so browser
+    // correctly enables/disables the spinner arrows at the boundaries.
+    const numberInput = document.getElementById(settingId + "_number");
+    if (numberInput) {
+        const numMin = parseFloat(numberInput.min);
+        const numMax = parseFloat(numberInput.max);
+        let numVal = value;
+        if (!isNaN(numMin)) numVal = Math.max(numVal, numMin);
+        if (!isNaN(numMax)) numVal = Math.min(numVal, numMax);
+        numberInput.value = numVal;
+        _updateSpinnerButtons(numberInput);
+    }
+
     // Always send raw value to server
     // console.log("adjustSliderSetting calls updateSetting");
     // updateSetting(settingId, value);
 
     console.log("adjustSliderSetting calls updateSettingFromElement");
-    updateSettingFromElement(slider);
+    updateSettingFromElement(slider, value);
+}
+
+// Sync slider from direct number input, then apply the setting.
+function syncSliderFromNumber(settingId, inputEl) {
+    const slider = document.getElementById(settingId);
+    if (!slider) return;
+    let val = parseFloat(inputEl.value);
+    if (isNaN(val)) return;
+    const min  = parseFloat(slider.min);
+    const max  = parseFloat(slider.max);
+    const step = parseFloat(slider.step);
+    const prec = _stepPrecision(slider.step);
+    const precision = parseInt(slider.dataset.precision ?? "3", 10);
+
+    const clamped = val < min ? "min" : val > max ? "max" : null;
+    val = Math.min(Math.max(val, min), max);
+    val = parseFloat(val.toFixed(precision));
+    inputEl.value = val;
+    _updateSpinnerButtons(inputEl);
+
+    // Show inline clamp feedback if value was out of range
+    _showClampFeedback(inputEl, clamped, min, max, precision);
+
+    // Snap slider thumb to nearest step so next drag starts on-grid
+    const snapped = !isNaN(step) && step > 0
+        ? parseFloat((Math.round((val - min) / step) * step + min).toFixed(prec))
+        : val;
+    slider.value = snapped;
+    _sliderLastValue[settingId] = snapped;
+    adjustSliderSetting(settingId, val);
+}
+
+// Step the number input by ±1 precision-unit, then sync to slider.
+function stepNumberInput(settingId, dir) {
+    const inputEl = document.getElementById(settingId + "_number");
+    if (!inputEl) return;
+    const step = parseFloat(inputEl.step) || 1;
+    const val  = parseFloat(inputEl.value) || 0;
+    inputEl.value = parseFloat((val + dir * step).toFixed(10));
+    syncSliderFromNumber(settingId, inputEl);
+}
+
+// Hold-to-repeat for +/- buttons: fires once immediately, then repeats after
+// a 400 ms delay at 100 ms intervals — matching native spinner behaviour.
+let _spinHoldTimer  = null;
+let _spinHoldRepeat = null;
+
+function startSpinHold(settingId, dir) {
+    stepNumberInput(settingId, dir);
+    _spinHoldTimer = setTimeout(() => {
+        _spinHoldRepeat = setInterval(() => stepNumberInput(settingId, dir), 80);
+    }, 400);
+}
+
+function stopSpinHold() {
+    clearTimeout(_spinHoldTimer);
+    clearInterval(_spinHoldRepeat);
+    _spinHoldTimer  = null;
+    _spinHoldRepeat = null;
+}
+
+// Enable/disable +/- buttons based on current value vs min/max.
+function _updateSpinnerButtons(inputEl) {
+    if (!inputEl) return;
+    const val = parseFloat(inputEl.value);
+    const min = parseFloat(inputEl.min);
+    const max = parseFloat(inputEl.max);
+    const id  = inputEl.id.replace(/_number$/, '');
+    const btnDown = document.getElementById(id + "_btn_down");
+    const btnUp   = document.getElementById(id + "_btn_up");
+    if (btnDown) btnDown.disabled = !isNaN(min) && val <= min;
+    if (btnUp)   btnUp.disabled   = !isNaN(max) && val >= max;
+}
+
+const _clampTimers = {};
+function _showClampFeedback(inputEl, clamped, min, max, precision) {
+    const feedbackId = inputEl.id + "_clamp_feedback";
+    clearTimeout(_clampTimers[inputEl.id]);
+
+    // Remove any existing feedback
+    document.getElementById(feedbackId)?.remove();
+    inputEl.classList.remove("is-invalid");
+
+    if (!clamped) return;
+
+    const limit = clamped === "min" ? min : max;
+    const label = clamped === "min" ? "Minimum" : "Maximum";
+
+    inputEl.classList.add("is-invalid");
+    const msg = document.createElement("div");
+    msg.id = feedbackId;
+    msg.className = "invalid-feedback d-block";
+    msg.style.fontSize = "0.75rem";
+    msg.textContent = `${label}: ${parseFloat(limit.toFixed(precision))}`;
+    inputEl.closest("div")?.after(msg);
+
+    _clampTimers[inputEl.id] = setTimeout(() => {
+        msg.remove();
+        inputEl.classList.remove("is-invalid");
+    }, 2000);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -859,11 +1045,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const settingId = slider.id;
             const conversionEnabled = slider.dataset.conversionEnabled === "true";
             const conversionSwitch = document.getElementById(settingId + "_conversion");
-    
+
             const conversionAlwaysOn = slider.dataset.conversionAlwaysOn === "true";
             if (conversionEnabled && (conversionSwitch?.checked || conversionAlwaysOn)) {
                 adjustSliderSetting(settingId, slider.value);
             }
+            // Initialise +/- button state on page load
+            _updateSpinnerButtons(document.getElementById(settingId + "_number"));
         });
     });
 

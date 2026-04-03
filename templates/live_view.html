@@ -42,20 +42,20 @@
   </ul>
   {% endif %}
 
-  <div class="row">
-    <div class="col-lg-8 pb-2">
+  <div class="row flex-nowrap-xl">
+    <div class="col-12 col-xl pb-2">
 
       <h2 class="pb-2 mb-4 border-bottom">Camera: {{ camera.Model }}</h2>
 
       <!-- Video Container -->
-      <div id="videoFeedContainer" class="position-relative">
+      <div id="videoFeedContainer" class="position-relative" style="max-height:calc(100vh - 280px);">
         <video
             id="videoFeed"
             autoplay
             muted
             playsinline
             class="w-100 d-block"
-            style="object-fit:contain; aspect-ratio: 16 / 9;">
+            style="object-fit:contain; aspect-ratio:16/9; max-height:inherit;">
         </video>
 
         <!-- Video controls overlay (volume, fullscreen) — shown on mouse hover -->
@@ -149,7 +149,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-4 pb-4 overflow-y-scroll" style="height:100vh;">
+    <div class="col-12 col-xl-auto pb-4 overflow-y-auto" id="cameraControlsCol" style="height:calc(100vh - 82px); max-width:100%;">
       {% include "camera_controls.html" %}
     </div>
   </div>
@@ -157,6 +157,26 @@
 
 <!-- Volume slider styling (Bootstrap-compatible, dark theme) -->
 <style>
+/* Prevent page scroll on desktop — all content fits in viewport */
+@media (min-width: 1200px) {
+  html, body { overflow: hidden; height: 100%; }
+  main { margin-bottom: 0 !important; }
+}
+
+/* Fixed width of 450 px for controls column only on xl+ (desktop side-by-side layout) */
+@media (min-width: 1200px) {
+  #cameraControlsCol { width: 450px; }
+}
+/* Small top gap in mobile mode (controls stacked below buttons) */
+@media (max-width: 1199px) {
+  #cameraControlsCol { margin-top: 1.5rem; }
+}
+
+/* Hide native number-input spinners — replaced by explicit +/- buttons in slider.html */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
 #volumeContainer.audio-disabled {
   opacity: 0.35;
   pointer-events: none;
@@ -241,11 +261,14 @@ function applyStateToUI(state) {
                 if (el.type === "checkbox") {
                     el.checked = Boolean(value);
                 } else {
-                    el.value = value;
                     if (el.type === "range") {
+                        // Do NOT set el.value first — adjustSliderSetting snaps and
+                        // writes slider.value itself, preventing an unsnapped value
+                        // from being cached as the browser's drag-start position.
                         adjustSliderSetting(key, value);
                         continue;
                     }
+                    el.value = value;
                 }
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;
@@ -265,11 +288,14 @@ function applyStateToUI(state) {
                 if (el.type === "checkbox") {
                     el.checked = Boolean(value);
                 } else {
-                    el.value = value;
                     if (el.type === "range") {
+                        // Do NOT set el.value first — adjustSliderSetting snaps and
+                        // writes slider.value itself, preventing an unsnapped value
+                        // from being cached as the browser's drag-start position.
                         adjustSliderSetting(key, value);
                         continue;
                     }
+                    el.value = value;
                 }
                 const label = document.getElementById("current" + key);
                 if (label) label.textContent = `Value: ${value}`;
@@ -531,7 +557,7 @@ function _onFullscreenChange() {
   fsBtn.innerHTML = isFs
     ? '<i class="bi bi-fullscreen-exit fs-4"></i>'
     : '<i class="bi bi-fullscreen fs-4"></i>';
-  showControlsTemporarily();
+showControlsTemporarily();
 }
 document.addEventListener("fullscreenchange",       _onFullscreenChange);
 document.addEventListener("webkitfullscreenchange", _onFullscreenChange);
