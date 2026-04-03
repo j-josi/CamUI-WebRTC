@@ -99,6 +99,12 @@ class CameraRPCServer:
             return m.load_profile(*params)
         if method == "manager.delete_profile":
             return m.delete_profile(*params)
+        if method == "manager.save_param":
+            return m.save_param(*params)
+        if method == "manager.get_saved_params":
+            return m.get_saved_params(*params)
+        if method == "manager.get_param_states":
+            return m.get_param_states(*params)
         if method == "manager.get_attr":
             val = getattr(m, params[0])
             return list(val) if isinstance(val, tuple) else val

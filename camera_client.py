@@ -300,6 +300,15 @@ class CameraManagerClient:
     def delete_profile(self, profile_filename: str) -> bool:
         return self._client.call("manager.delete_profile", profile_filename)
 
+    def save_param(self, camera_num: int, param_type: str, param_id: str, value) -> bool:
+        return self._client.call("manager.save_param", camera_num, param_type, param_id, value)
+
+    def get_saved_params(self, camera_num: int) -> dict:
+        return self._client.call("manager.get_saved_params", camera_num)
+
+    def get_param_states(self, camera_num: int) -> dict:
+        return self._client.call("manager.get_param_states", camera_num)
+
     def get_storage_info(self) -> dict:
         return self._client.call("manager.get_storage_info")
 

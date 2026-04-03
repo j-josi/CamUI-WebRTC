@@ -174,13 +174,22 @@ def generate_filename(camera_manager, cam_num: int, file_extension: str = ".jpg"
     else:
         return f"{timestamp}{file_extension}"
 
+def _build_camera_state(camera_num: int) -> dict:
+    """Build a camera state dict that includes current settings and per-param button states."""
+    camera = camera_manager.get_camera(camera_num)
+    if not camera:
+        return {}
+    state = camera.get_settings()
+    state["param_states"] = camera_manager.get_param_states(camera_num)
+    return state
+
 def handle_camera_setting_changed(camera):
     logger.debug(f"Camera {camera.camera_num} changed settings")
     socketio.emit(
         "camera_state",
         {
             "camera_num": camera.camera_num,
-            "state": camera.get_settings()
+            "state": _build_camera_state(camera.camera_num)
         },
         room=f"camera_{camera.camera_num}"
     )
@@ -305,13 +314,12 @@ def handle_join_camera_room(data):
     camera = camera_manager.get_camera(camera_num)
 
     if camera:
-    # send/push initial/current camera settings/states to webui-ui (websocket)
-
+        # send/push initial/current camera settings/states to webui-ui (websocket)
         emit(
             "camera_state",
             {
                 "camera_num": camera_num,
-                "state": camera.get_settings()
+                "state": _build_camera_state(camera_num)
             },
             room=request.sid
         )
@@ -477,6 +485,17 @@ def handle_set_camera_setting(data):
     else:
         emit("error", {"message": f"Unsupported source '{source}'"}, room=room_name)
         return
+
+    # Always broadcast param_states so every client's save/reset buttons stay in sync,
+    # even when the effective value didn't change (e.g. clamped to hardware min/max).
+    socketio.emit(
+        "param_states_changed",
+        {
+            "camera_num": camera_num,
+            "param_states": camera_manager.get_param_states(camera_num)
+        },
+        room=room_name
+    )
 
 ####################
 # Flask routes - WebUI routes
@@ -848,6 +867,33 @@ def load_profile():
 def get_profiles():
     """Return a list of all saved camera profiles."""
     return camera_manager.list_profiles()
+
+@app.route("/save_param", methods=["POST"])
+def save_param():
+    """Save a single parameter to the active profile on disk."""
+    data = request.get_json()
+    camera_num = data.get("camera_num")
+    param_type = data.get("type")   # "controls" or "config"
+    param_id   = data.get("id")
+    value      = data.get("value")
+
+    if camera_num is None or not param_type or not param_id:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    success = camera_manager.save_param(camera_num, param_type, param_id, value)
+    if success:
+        # Broadcast updated param_states to all clients viewing this camera
+        room_name = f"camera_{camera_num}"
+        socketio.emit(
+            "param_states_changed",
+            {
+                "camera_num": camera_num,
+                "param_states": camera_manager.get_param_states(camera_num)
+            },
+            room=room_name
+        )
+        return jsonify({"success": True})
+    return jsonify({"error": "Failed to save parameter"}), 500
 
 ####################
 # Flask routes - Media Gallery

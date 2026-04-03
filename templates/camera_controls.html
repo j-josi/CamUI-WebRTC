@@ -298,6 +298,98 @@
 let camera_num = {{ camera.Num }};
 let pendingDeleteFilename = null;
 
+// -------------------------------------------------------
+// Per-parameter save / reset buttons
+// -------------------------------------------------------
+
+// Apply param_states received from the server to enable/disable save and reset buttons.
+// param_states: {param_id: {reset_enabled: bool, save_enabled: bool}}
+function applyParamStates(paramStates) {
+    if (!paramStates) return;
+    for (const [id, state] of Object.entries(paramStates)) {
+        const resetBtn = document.getElementById(id + "_reset_btn");
+        if (resetBtn) {
+            resetBtn.disabled = !state.reset_enabled;
+            resetBtn.classList.toggle("btn-warning", state.reset_enabled);
+            resetBtn.classList.toggle("btn-outline-secondary", !state.reset_enabled);
+        }
+        const saveBtn = document.getElementById(id + "_save_btn");
+        if (saveBtn && !saveBtn.classList.contains("btn-success")) {
+            saveBtn.disabled = !state.save_enabled;
+            saveBtn.classList.toggle("btn-primary", state.save_enabled);
+            saveBtn.classList.toggle("btn-outline-secondary", !state.save_enabled);
+        }
+    }
+}
+
+// Save a single parameter to the active profile on the server.
+function saveParam(settingId, dataType) {
+    const el = document.getElementById(settingId)
+             || document.querySelector(`[name="${settingId}"]`);
+    if (!el) return;
+
+    let value;
+    if (el.type === "checkbox") {
+        value = el.checked;
+    } else if (el.type === "radio") {
+        const checked = document.querySelector(`input[name="${settingId}"]:checked`);
+        value = checked ? checked.value : null;
+    } else {
+        value = el.value;
+    }
+    if (value === null) return;
+
+    fetch("/save_param", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            camera_num: camera_num,
+            type: dataType,
+            id: settingId,
+            value: value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Brief visual feedback — server will push updated param_states to all clients
+            const btn = document.getElementById(settingId + "_save_btn");
+            if (btn) {
+                btn.classList.add("btn-success");
+                btn.classList.remove("btn-primary", "btn-outline-secondary");
+                setTimeout(() => btn.classList.remove("btn-success"), 1000);
+            }
+        }
+    })
+    .catch(e => console.error("saveParam failed:", e));
+}
+
+// Reset a setting to its default value and notify the server.
+// Button states update automatically via the server's camera_state broadcast.
+function resetParam(settingId, defaultValue) {
+    const el = document.getElementById(settingId);
+    if (el) {
+        if (el.type === "checkbox") {
+            el.checked = Boolean(defaultValue);
+            updateSettingFromElement(el);
+        } else {
+            el.value = defaultValue;
+            if (el.type === "range") {
+                onSliderChange(settingId, el);
+            } else {
+                updateSettingFromElement(el);
+            }
+        }
+    } else {
+        // Radio group: check the option matching defaultValue
+        const radio = document.getElementById(`${settingId}_${defaultValue}`);
+        if (radio) {
+            radio.checked = true;
+            updateSettingFromElement(radio);
+        }
+    }
+}
+
 function showProfileSection(sectionId) {
     // Hide all profile sections
     document.querySelectorAll('.profile-section').forEach(section => {

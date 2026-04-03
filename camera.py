@@ -53,37 +53,9 @@ class Camera:
         "is_capturing_still_image": False,
     }
 
+    # Only default parameters/configs not represented in camera_controls_db.json
     DEFAULT_CONFIGS = {
-        "hflip": False,
-        "vflip": False,
-        "saveRAW": False,
         "sensor_mode": 0,
-        "still_capture_resolution": 0,
-        "recording_resolution": 0,
-        "streaming_resolution": 0,
-    }
-
-    DEFAULT_CONTROLS = {
-    "AfMode": 0,
-    "LensPosition": 1.0,
-    "AfRange": 0,
-    "AfSpeed": 0,
-    "ExposureTime": 33000,
-    "AnalogueGain": 1.12,
-    "AeEnable": 1,
-    "ExposureValue": 0.0,
-    "AeConstraintMode": 0,
-    "AeExposureMode": 0,
-    "AeMeteringMode": 0,
-    "AeFlickerMode": 0,
-    "AeFlickerPeriod": 100,
-    "AwbEnable": 0,
-    "AwbMode": 0,
-    "Brightness": 0,
-    "Contrast": 1.0,
-    "Saturation": 1.0,
-    "Sharpness": 1.0,
-    "ColourTemperature": 4000,
     }
 
     # ---------------------------------------------------
@@ -112,8 +84,7 @@ class Camera:
         self.camera_num: int = camera_info["Num"]
         self._setting_changed_callback = None
         self.filename_recording = None
-        self.configs = copy.deepcopy(Camera.DEFAULT_CONFIGS)
-        self.controls = copy.deepcopy(Camera.DEFAULT_CONTROLS)
+        self.configs, self.controls = self._defaults_from_ui_settings_db()
         self.infos = {
             "model": self.camera_info.get("Model"),
         }
@@ -357,6 +328,63 @@ class Camera:
             "states": states,
         }
     
+    def get_param_states(self, saved_params: dict) -> dict:
+        """
+        Return {param_id: {reset_enabled, save_enabled}} for every UI setting.
+
+        reset_enabled  — current value differs from the parameter's default
+        save_enabled   — current value differs from what is stored in the active profile
+        """
+        def _vals_equal(a, b, prec=None):
+            try:
+                fa, fb = float(a), float(b)
+                if prec is not None:
+                    fa = round(fa, prec)
+                    fb = round(fb, prec)
+                return fa == fb
+            except (TypeError, ValueError):
+                return str(a).lower() == str(b).lower()
+
+        result = {}
+
+        def _process(s):
+            sid = s.get("id")
+            if not sid or not s.get("enabled"):
+                return
+            default = s.get("default")
+            # Read live value directly from controls/configs — ui_settings["value"] is a
+            # cache that may not yet be synced after a recent set_control/set_config call.
+            if sid in self.controls:
+                current = self.controls[sid]
+            elif sid in self.configs:
+                current = self.configs[sid]
+            else:
+                current = default
+            if current is None:
+                current = default
+            saved = saved_params.get(sid)
+
+            # Use the slider precision for comparisons so that hardware values with more
+            # decimal places than the UI displays (e.g. AnalogueGain min=1.1228...) are
+            # compared at the same resolution as what the frontend sends back.
+            prec = s.get("precision")
+
+            reset_enabled = default is not None and not _vals_equal(current, default, prec)
+            save_enabled  = saved is None or not _vals_equal(current, saved, prec)
+
+            result[sid] = {
+                "reset_enabled": reset_enabled,
+                "save_enabled":  save_enabled,
+            }
+
+        for section in self.ui_settings.get("sections", []):
+            for setting in section.get("settings", []):
+                _process(setting)
+                for child in setting.get("childsettings", []):
+                    _process(child)
+
+        return result
+
     def set_control(self, name: Union[str, Dict[str, Any]], value: Any = None) -> bool:
         """
         Set camera control(s).
@@ -466,6 +494,25 @@ class Camera:
                 return copy.deepcopy(self.controls.get(name))
             return copy.deepcopy(self.controls)
 
+    def _coerce_config_value(self, key: str, value):
+        """Coerce a config value to match the type of the existing entry in self.configs."""
+        existing = self.configs.get(key)
+        if existing is None:
+            return value
+        expected_type = type(existing)
+        try:
+            if expected_type is bool:
+                if isinstance(value, str):
+                    return value.lower() in ("1", "true")
+                return bool(value)
+            elif expected_type is int:
+                return int(float(value)) if isinstance(value, str) else int(value)
+            elif expected_type is float:
+                return float(value)
+        except (ValueError, TypeError):
+            pass
+        return value
+
     def set_config(self, name: Union[str, Dict[str, Any]], value=None) -> bool:
         """
         Set camera config(s).
@@ -485,8 +532,9 @@ class Camera:
                         logger.warning("Unknown config parameter '%s', skipping", key)
                         continue
 
-                    if self.configs.get(key) != val:
-                        self.configs[key] = val
+                    coerced = self._coerce_config_value(key, val)
+                    if self.configs.get(key) != coerced:
+                        self.configs[key] = coerced
                         updated = True
 
             if updated:
@@ -504,6 +552,7 @@ class Camera:
                 logger.warning("Attempted to set unknown config parameter '%s'", name)
                 return False
 
+            value = self._coerce_config_value(name, value)
             if self.configs[name] == value:
                 return False
 
@@ -535,9 +584,8 @@ class Camera:
         self.stop_streaming()
         self.stop_recording()
 
-        # Canonical state reset
-        self.configs = copy.deepcopy(self.DEFAULT_CONFIGS)
-        self.controls = copy.deepcopy(self.DEFAULT_CONTROLS)
+        # Canonical state reset — use processed ui_settings defaults (includes picamera2 hardware defaults)
+        self.configs, self.controls = self._defaults_from_ui_settings()
 
         # Rebuild pipeline
         self.reconfigure_video_pipeline()
@@ -634,6 +682,74 @@ class Camera:
         self.apply_controls()
         self.sync_ui_settings()
 
+    def _defaults_from_ui_settings_db(self) -> tuple[dict, dict]:
+        """
+        Read camera_controls_db.json and return (default_configs, default_controls)
+        dicts built from the 'default' field of every setting entry.
+        Used only during __init__ before self.ui_settings exists.
+        Falls back to Camera.DEFAULT_CONFIGS for params not in the DB (e.g. sensor_mode).
+        """
+        default_configs  = copy.deepcopy(Camera.DEFAULT_CONFIGS)
+        default_controls = {}
+
+        if not os.path.isfile(self.ui_settings_db_path):
+            return default_configs, default_controls
+
+        try:
+            with open(self.ui_settings_db_path, "r") as f:
+                db = json.load(f)
+        except Exception as e:
+            logger.error("Failed to read defaults from DB '%s': %s", self.ui_settings_db_path, e)
+            return default_configs, default_controls
+
+        def _collect(s):
+            sid = s.get("id")
+            default = s.get("default")
+            if sid is None or default is None:
+                return
+            source = s.get("source", "")
+            if source == "controls":
+                default_controls[sid] = default
+            elif source in ("configs", "configs_no_picamera_restart"):
+                default_configs[sid] = default
+
+        for section in db.get("sections", []):
+            for setting in section.get("settings", []):
+                _collect(setting)
+                for child in setting.get("childsettings", []):
+                    _collect(child)
+
+        return default_configs, default_controls
+
+    def _defaults_from_ui_settings(self) -> tuple[dict, dict]:
+        """
+        Extract (default_configs, default_controls) from the already-processed
+        self.ui_settings (which has picamera2 hardware defaults applied).
+        Used by reset_camera_to_defaults() so it matches the values shown in the UI.
+        Falls back to Camera.DEFAULT_CONFIGS for params not in ui_settings (e.g. sensor_mode).
+        """
+        default_configs  = copy.deepcopy(Camera.DEFAULT_CONFIGS)
+        default_controls = {}
+
+        def _collect(s):
+            sid = s.get("id")
+            default = s.get("default")
+            if sid is None or default is None:
+                return
+            source = s.get("source", "")
+            if source == "controls":
+                default_controls[sid] = default
+            elif source in ("configs", "configs_no_picamera_restart"):
+                default_configs[sid] = default
+
+        for section in self.ui_settings.get("sections", []):
+            for setting in section.get("settings", []):
+                _collect(setting)
+                for child in setting.get("childsettings", []):
+                    _collect(child)
+
+        return default_configs, default_controls
+
     def _init_ui_settings_from_db(
         self,
         picamera2_controls: Dict,
@@ -690,9 +806,26 @@ class Camera:
                         setting["max"] = max_val
 
                         if default_val is not None:
-                            setting["default"] = default_val
+                            # Clamp hardware default to its own min/max — picamera2 can
+                            # report a default that lies outside the valid range (e.g.
+                            # AnalogueGain: min=1.1228, default=1.0).
+                            eff_default = default_val
+                            if isinstance(eff_default, (int, float)):
+                                if min_val is not None and eff_default < min_val:
+                                    eff_default = min_val
+                                    logger.info("Clamped default for %s: %s -> %s (below min)", setting_id, default_val, eff_default)
+                                elif max_val is not None and eff_default > max_val:
+                                    eff_default = max_val
+                                    logger.info("Clamped default for %s: %s -> %s (above max)", setting_id, default_val, eff_default)
+                            setting["default"] = eff_default
                         else:
-                            default_val = False if isinstance(min_val, bool) else min_val
+                            # No hardware default: clamp DB default to hardware min/max.
+                            db_default = setting.get("default")
+                            if db_default is not None and isinstance(db_default, (int, float)):
+                                if min_val is not None and db_default < min_val:
+                                    setting["default"] = min_val
+                                elif max_val is not None and db_default > max_val:
+                                    setting["default"] = max_val
 
                         setting["enabled"] = original_enabled
 
@@ -721,7 +854,20 @@ class Camera:
                                 child["max"] = max_val
 
                                 if default_val is not None:
-                                    child["default"] = default_val
+                                    eff_default = default_val
+                                    if isinstance(eff_default, (int, float)):
+                                        if min_val is not None and eff_default < min_val:
+                                            eff_default = min_val
+                                        elif max_val is not None and eff_default > max_val:
+                                            eff_default = max_val
+                                    child["default"] = eff_default
+                                else:
+                                    db_default = child.get("default")
+                                    if db_default is not None and isinstance(db_default, (int, float)):
+                                        if min_val is not None and db_default < min_val:
+                                            child["default"] = min_val
+                                        elif max_val is not None and db_default > max_val:
+                                            child["default"] = max_val
 
                                 child["enabled"] = child.get("enabled", False)
 
@@ -858,8 +1004,9 @@ class Camera:
         To apply a camera (live) control parameter, no restart of the camera (Picamera2) recording is necessary."""
         with self.lock:
             try:
-                self.picam2.set_controls(self.controls)
-                logger.debug("Applied controls to hardware: %s", self.controls)
+                coerced = {k: self._coerce_control_value(k, v) for k, v in self.controls.items()}
+                self.picam2.set_controls(coerced)
+                logger.debug("Applied controls to hardware: %s", coerced)
             except Exception as e:
                 logger.error("Error applying profile controls: %s", e, exc_info=True)
                 return False
@@ -934,8 +1081,8 @@ class Camera:
         if self.states["is_video_recording"] or self.states["is_capturing_still_image"]:
             return False
 
-        rec = self.video_resolutions_supported[self.configs["recording_resolution"]]
-        stream = self.video_resolutions_supported[self.configs["streaming_resolution"]]
+        rec = self.video_resolutions_supported[int(self.configs["recording_resolution"])]
+        stream = self.video_resolutions_supported[int(self.configs["streaming_resolution"])]
 
         main_size, lores_size = (rec, stream) if rec[0]*rec[1] >= stream[0]*stream[1] else (stream, rec)
         self.main_stream, self.lores_stream = ("recording", "streaming") if rec[0]*rec[1] >= stream[0]*stream[1] else ("streaming", "recording")
@@ -1179,10 +1326,10 @@ class Camera:
 
         try:
             # Determine target resolutions
-            still_index = self.configs["still_capture_resolution"]
+            still_index = int(self.configs["still_capture_resolution"])
             still_resolution = self.still_resolutions_supported[still_index]
 
-            rec_index = self.configs["recording_resolution"]
+            rec_index = int(self.configs["recording_resolution"])
             recording_resolution = self.video_resolutions_supported[rec_index]
 
             # Select the sensor mode based on the higher resolution (streaming or recording)

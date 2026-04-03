@@ -372,7 +372,16 @@ function applyStateToUI(state) {
         const modelEl = document.getElementById("cameraModel");
         if (modelEl && state.infos.model) modelEl.textContent = state.infos.model;
     }
+
+    if (state.param_states) {
+        applyParamStates(state.param_states);
+    }
 }
+
+socket.on("param_states_changed", payload => {
+    if (payload.camera_num !== cameraNum) return;
+    applyParamStates(payload.param_states);
+});
 
 // -------------------------------------------------------
 // Volume slider: show on icon hover, hide after leaving

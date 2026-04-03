@@ -28,7 +28,7 @@
           "label": "Vertical Flip",
           "enabled": true,
           "source": "configs",
-          "default": true
+          "default": false
         }
       ]
     },
@@ -59,13 +59,13 @@
               "precision": 3,
               "unit": "dpt",
               "label": "Lens Position:",
-              "validation_text": "In dioptres (1 / distance in metres)",
               "enabled": true,
               "source": "controls",
               "step": 0.1,
               "min": 0.0,
               "max": 10.0,
-              "default": 0.0
+              "default": 0.0,
+              "hr": true
             }
           ]
         },
@@ -92,7 +92,7 @@
           "enabled": true,
           "source": "controls",
           "default": 0,
-          "hr": true,
+          "hr": false,
           "options": [
             { "value": 0, "label": "Normal", "enabled": true, "show_child": true },
             { "value": 1, "label": "Fast", "enabled": true, "show_child": false }
@@ -231,7 +231,7 @@
           "enabled": true,
           "source": "controls",
           "default": false,
-          "hr": true,
+          "hr": false,
           "childsettings": [ 
             {
               "name": "AE Flicker Period",
@@ -349,7 +349,8 @@
           "step": 0.1,
           "min": 0.0,
           "max": 16.0,
-          "default": 1.0
+          "default": 1.0,
+          "hr": true
         },
         {
           "name": "Colour Temperature",
@@ -363,7 +364,8 @@
           "source": "controls",
           "step": 1,
           "min": 100,
-          "max": 10000
+          "max": 10000,
+          "default": 4000.0
         }
       ]
     },
@@ -406,9 +408,10 @@
         "type": "radio",
         "enabled": true,
         "action": "set_recording_resolution",
-        "default": null,
+        "default": 0,
         "source": "configs",
-        "info": "Resolution used for video recording."
+        "info": "Resolution used for video recording.",
+        "hr": true
         },
         {
         "name": "Live Stream Resolution",
@@ -416,9 +419,10 @@
         "type": "radio",
         "enabled": true,
         "action": "set_streaming_resolution",
-        "default": null,
+        "default": 0,
         "source": "configs",
-        "info": "Resolution used for the live stream. Can differ from recording resolution."
+        "info": "Resolution used for the live stream. Can differ from recording resolution.",
+        "hr": false
         }
       ]
     }

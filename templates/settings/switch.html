@@ -2,16 +2,39 @@
 <div>
     {% if setting.name or setting.info %}
     <!-- Setting Label & Info -->
-    <div class="d-flex w-100 align-items-center justify-content-between">
-        {% if setting.name %}
+    <div class="d-flex w-100 align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2">
+            {% if setting.name %}
             <strong class="mb-1">{{ setting.name }}</strong>
-        {% endif %}
-        
-        {% if setting.info %}                            
+            {% endif %}
+            {% if setting.info %}
             <a data-bs-toggle="collapse" href="#{{ setting.id }}_info" role="button">
                 <i class="bi bi-info-circle"></i>
             </a>
-        {% endif %}
+            {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-1">
+            {% set dtype = "controls" if setting.source == "controls" else "configs" %}
+            {% set default_val = setting.get("default", false) | lower %}
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    id="{{ setting.id }}_reset_btn"
+                    title="Reset to default"
+                    disabled
+                    data-default="{{ default_val }}"
+                    onclick="resetParam('{{ setting.id }}', {{ default_val }})">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    id="{{ setting.id }}_save_btn"
+                    title="Save to profile"
+                    disabled
+                    data-save-id="{{ setting.id }}"
+                    onclick="saveParam('{{ setting.id }}', '{{ dtype }}')">
+                <i class="bi bi-floppy"></i>
+            </button>
+        </div>
     </div>
 {% endif %}
 
@@ -53,6 +76,7 @@
                 checked
             {% endif %}
 
+            data-save-id="{{ setting.id }}"
             onchange="updateSettingFromElement(this)">
 
         {% if setting.label %}

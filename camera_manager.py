@@ -546,6 +546,80 @@ class CameraManager:
                 camera_num,
             )
 
+    def save_param(self, camera_num: int, param_type: str, param_id: str, value) -> bool:
+        """Save a single parameter to the active profile file on disk."""
+        camera = self.get_camera(camera_num)
+        if not camera:
+            return False
+
+        # Find the active profile filename for this camera
+        active = self.get_active_profile()
+        cameras = active.get("cameras", [])
+        filename = next(
+            (c.get("Config_Location") for c in cameras if c.get("Num") == camera_num),
+            None
+        )
+        if not filename:
+            logger.warning("No active profile for camera %s — cannot save param", camera_num)
+            return False
+
+        path = os.path.join(self.camera_profile_folder, filename)
+        if not os.path.exists(path):
+            logger.warning("Active profile file not found: %s", path)
+            return False
+
+        try:
+            with open(path, "r") as f:
+                profile = json.load(f)
+
+            section = "controls" if param_type == "controls" else "config"
+            if section not in profile:
+                profile[section] = {}
+            profile[section][param_id] = value
+
+            with open(path, "w") as f:
+                json.dump(profile, f, indent=2)
+
+            logger.info("Saved param %s.%s = %s to profile %s", section, param_id, value, filename)
+            return True
+        except Exception as e:
+            logger.error("Failed to save param to profile: %s", e)
+            return False
+
+    def get_param_states(self, camera_num: int) -> dict:
+        """Return per-param button states (reset_enabled, save_enabled) for all UI settings."""
+        camera = self.get_camera(camera_num)
+        if not camera:
+            return {}
+        saved_params = self.get_saved_params(camera_num)
+        return camera.get_param_states(saved_params)
+
+    def get_saved_params(self, camera_num: int) -> dict:
+        """Return a flat dict of all param values currently saved in the active profile."""
+        active = self.get_active_profile()
+        cameras = active.get("cameras", [])
+        filename = next(
+            (c.get("Config_Location") for c in cameras if c.get("Num") == camera_num),
+            None
+        )
+        if not filename:
+            return {}
+
+        path = os.path.join(self.camera_profile_folder, filename)
+        if not os.path.exists(path):
+            return {}
+
+        try:
+            with open(path, "r") as f:
+                profile = json.load(f)
+            result = {}
+            result.update(profile.get("controls", {}))
+            result.update(profile.get("config", {}))
+            return result
+        except Exception as e:
+            logger.error("Failed to read saved params from profile: %s", e)
+            return {}
+
     def delete_profile(self, profile_filename: str) -> bool:
         """Delete a camera profile file."""
         profile_path = os.path.join(self.camera_profile_folder, profile_filename)
