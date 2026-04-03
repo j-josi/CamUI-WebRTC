@@ -48,7 +48,7 @@
       <h2 class="pb-2 mb-4 border-bottom">Camera: {{ camera.Model }}</h2>
 
       <!-- Video Container -->
-      <div id="videoFeedContainer" class="position-relative" style="max-height:calc(100vh - 280px);">
+      <div id="videoFeedContainer" class="position-relative" style="max-height:calc(100vh - 320px); max-width:calc((100vh - 320px) * 16 / 9);">
         <video
             id="videoFeed"
             autoplay
@@ -127,7 +127,7 @@
       {% include "animated_logo.html" %}
 
       <!-- Action buttons: capture image, record video -->
-      <div class="container text-center mt-4">
+      <div class="container text-center mt-4 mb-3">
         <div class="row justify-content-center g-3">
 
             <!-- Take Photo -->
