@@ -1,9 +1,14 @@
 {
   "max_recording_duration_min": 19,
+  "theme": "light",
   "live_view_title": "TrainCam",
   "live_view_hide_title": false,
   "camera_names": {
     "0": "Front",
     "1": "Back"
+  },
+  "camera_audio_devices": {
+    "0": "",
+    "1": ""
   }
 }

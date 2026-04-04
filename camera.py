@@ -7,7 +7,6 @@ import copy
 import logging
 import shutil
 import threading
-import subprocess
 import time
 
 
@@ -71,6 +70,7 @@ class Camera:
         on_setting_changed: Optional[Callable[["Camera"], None]] = None,
         on_media_created: Optional[Callable] = None,
         storage_min_free_bytes: int = 510 * 1024 * 1024,
+        audio_device: Optional[str] = None,
     ) -> None:
 
         self.camera_info = camera_info
@@ -108,20 +108,14 @@ class Camera:
         # ------------------------------------------------
         # Picamera2 Encoders and Outputs (used for Streaming and Recording)
         # ------------------------------------------------
-        self.audio_device = self._detect_audio_device()
+        # audio_device is determined by camera_manager before construction.
+        self.audio_device: Optional[str] = audio_device
+        self._configured_audio_device: Optional[str] = None  # user's saved choice (never changed by auto-fallback)
 
-        self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
-        self.encoder_stream.audio = bool(self.audio_device)
-        if self.audio_device:
-            logger.info(f"microphone detected: {self.audio_device}")
-            self.encoder_stream.audio_output = {"codec_name": "libopus"}
-            self.encoder_stream.audio_sync = 0
-        else:
-            logger.info(f"no microphone detected")
-        self.output_stream = PyavOutput(
-            f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
-            format="rtsp",
-        )
+        # Placeholder; start_streaming() always creates a fresh encoder so that
+        # _first_audio_time and other internal state are reset between sessions.
+        self.encoder_stream: Optional[H264Encoder] = None
+        self.output_stream: Optional[PyavOutput] = None
 
         self.output_recording = None
 
@@ -144,8 +138,7 @@ class Camera:
         # Sync actual camera values
         self._sync_controls_from_camera()
 
-        # Start stream
-        self.start_streaming()
+        # Note: start_streaming() is called by camera_manager after audio_device is fully configured.
 
         # Debug information
         logger.debug("Available Camera Controls: %s", self._get_picam_control_capabilities())
@@ -262,60 +255,6 @@ class Camera:
             # Fallback: if default_val is None, return the original value
             return default_val if default_val is not None else value
 
-
-    # def _coerce_control_value(self, name: str, value: Any) -> Any:
-    #     """Convert incoming control values based on libcamera metadata."""
-
-    #     meta = self.picam2.camera_controls.get(name)
-    #     if not meta:
-    #         logger.debug(f"unknown libcamera metadata for picamera2 control {name} -> failed to convert data type")
-    #         return value
-
-    #     try:
-    #         min_val, max_val, default_val = meta
-    #         expected_type = type(default_val)
-
-    #         logger.debug(f"Convert data type {type(name)} -> {expected_type} for picamera2 control {name}")
-
-    #         # --- Type convertion ---
-    #         if expected_type is NoneType:
-    #             logger.debug(f"expected_type is None, value: {value}")
-    #             if isinstance(value, str):
-    #                 if value.isnumeric():
-    #                     coerced = float(value)
-    #             else:
-    #                 coerced = value
-
-    #         elif expected_type is bool:
-    #             coerced = bool(int(value)) if isinstance(value, str) else bool(value)
-
-    #         elif expected_type is int:
-    #             coerced = int(float(value))
-
-    #         elif expected_type is float:
-    #             coerced = float(value)
-
-    #         else:
-    #             coerced = value
-
-    #         # --- Clamping ---
-    #         if isinstance(coerced, (int, float)):
-    #             if min_val is not None:
-    #                 coerced = max(min_val, coerced)
-    #             if max_val is not None:
-    #                 coerced = min(max_val, coerced)
-
-    #         return coerced
-
-    #     except (ValueError, TypeError) as exc:
-    #         logger.warning(
-    #             "Failed to coerce control '%s' value '%s': %s",
-    #             name,
-    #             value,
-    #             exc,
-    #         )
-    #         return default_val
-
     def get_settings(self) -> Dict:
         states = copy.deepcopy(self.states)
         states["recording_elapsed_seconds"] = (
@@ -426,19 +365,6 @@ class Camera:
                 if not controls_to_apply:
                     logger.debug("controls_to_apply is empty -> return False")
                     return False
-
-                # try:
-                #     self.picam2.set_controls(controls_to_apply)
-                #     self.controls.update(controls_to_apply)
-                #     updated = True
-                # except Exception as exc:
-                #     logger.error(
-                #         "Failed to apply bulk camera controls %s: %s",
-                #         controls_to_apply,
-                #         exc,
-                #         exc_info=True,
-                #     )
-                #     return False
 
                 for ctrl, value in controls_to_apply.items():
                     try:
@@ -937,50 +863,6 @@ class Camera:
         logger.debug("Initialized camera UI settings")
         return cam_ctrl_json
 
-
-    # def update_settings(self, setting_id: str, setting_value, init: bool = False):
-    #     """Update a camera setting or control in STATE."""
-    #     try:
-    #         if setting_id in ("hflip", "vflip"):
-    #             self.set_state(setting_id, bool(setting_value))
-    #             if not init:
-    #                 self.reconfigure_video_pipeline()
-    #             logger.info("Applied transform: %s -> %s", setting_id, setting_value)
-
-    #         elif setting_id == "saveRAW":
-    #             self.set_state(setting_id, bool(setting_value))
-    #             logger.info("Applied setting: %s -> %s", setting_id, setting_value)
-
-    #         elif setting_id in ("still_capture_resolution", "recording_resolution", "streaming_resolution"):
-    #             self.configs[setting_id] = int(setting_value)
-    #             if setting_id in ("recording_resolution", "streaming_resolution") and not init:
-    #                 self.reconfigure_video_pipeline()
-    #             logger.info("Applied resolution %s -> %s", setting_id, setting_value)
-
-    #         else:
-    #             # convert setting_value for camera controls from string to numeric value (int or float)
-    #             if isinstance(setting_value, str) and "." in setting_value:
-    #                 setting_value = float(setting_value)
-    #             elif isinstance(setting_value, (int, float)):
-    #                 pass
-    #             elif isinstance(setting_value, bool):
-    #                 pass
-    #             else:
-    #                 try:
-    #                     setting_value = int(setting_value)
-    #                 except Exception:
-    #                     logger.warning("Cannot convert setting_value '%s' to int/float", setting_value)
-
-    #             self.set_control(setting_id, setting_value)
-    #             logger.info("Applied control %s -> %s", setting_id, setting_value)
-
-    #         self.sync_ui_settings()
-    #         return setting_value
-
-    #     except Exception as e:
-    #         logger.error("Error updating setting '%s' with value '%s': %s", setting_id, setting_value, e)
-    #         return None
-
     def sync_ui_settings(self) -> None:
         """Sync ui_settings with current camera controls and camera configs."""
         for section in self.ui_settings.get("sections", []):
@@ -1040,27 +922,7 @@ class Camera:
 
         return sorted(resolutions, reverse=True)
 
-    @staticmethod
-    def _detect_audio_device() -> Optional[str]:
-        """
-        Detect the first available PulseAudio/PipeWire capture source.
-        Returns the source name (e.g. 'alsa_input.usb-...') or None if not found.
-        """
-        try:
-            result = subprocess.run(
-                ["pactl", "list", "sources", "short"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            for line in result.stdout.splitlines():
-                parts = line.split()
-                if len(parts) >= 2 and "monitor" not in parts[1]:
-                    logger.info("Detected PulseAudio audio source: %s", parts[1])
-                    return parts[1]
-        except Exception as e:
-            logger.warning("Audio device detection failed: %s", e)
-        return None
+
 
     def _find_best_sensor_mode(self, video_resolution: tuple) -> Dict:
         tw, th = video_resolution
@@ -1214,6 +1076,16 @@ class Camera:
                 logger.info("Skip starting stream, already active")
                 return
 
+            # Always create a fresh encoder so that _first_audio_time and other
+            # internal PyAV state are reset. Reusing the same object across
+            # start/stop cycles causes audio timestamps to drift by the elapsed
+            # time (e.g. the duration of a recording).
+            self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
+            self.encoder_stream.audio = bool(self.audio_device)
+            if self.audio_device:
+                self.encoder_stream.audio_output = {"codec_name": "libopus"}
+                self.encoder_stream.audio_sync = 0
+
             self.output_stream = PyavOutput(
                 f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
                 format="rtsp",
@@ -1225,7 +1097,7 @@ class Camera:
                 name=stream_name,
             )
         self._set_state("is_video_streaming", True)
-        logger.info("Streaming started on '%s' stream", stream_name)
+        logger.info("Streaming started on '%s' stream (audio=%s)", stream_name, bool(self.audio_device))
 
     def stop_streaming(self) -> None:
         with self.lock:

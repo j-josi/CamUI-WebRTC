@@ -1,6 +1,7 @@
 import os
 import json
 import shutil
+import subprocess
 import threading
 import time
 import logging
@@ -159,28 +160,45 @@ class CameraManager:
         self.connected_cameras = self._detect_connected_cameras()
         self._update_active_profiles_file(self.connected_cameras)
 
+        saved_settings = self._settings.get_all()
+        available_sources = CameraManager.get_available_audio_sources()
+
         for cam_info in self.connected_cameras:
             try:
+                saved_audio = saved_settings.get("camera_audio_devices", {}).get(str(cam_info["Num"]))
+                # Resolve the initial audio device here so Camera receives a clean,
+                # already-validated value and never has to detect it itself.
+                if saved_audio and saved_audio in available_sources:
+                    initial_audio = saved_audio
+                else:
+                    # Unavailable or not set — fallback assigned later by _auto_assign_fallback_audio
+                    initial_audio = None
+
                 camera = Camera(
-                    camera_info = cam_info,
-                    camera_module_info = self.camera_module_info,
-                    upload_folder = self.media_upload_folder,
-                    camera_ui_settings_db_path = self.camera_ui_settings_db_path,
+                    camera_info=cam_info,
+                    camera_module_info=self.camera_module_info,
+                    upload_folder=self.media_upload_folder,
+                    camera_ui_settings_db_path=self.camera_ui_settings_db_path,
                     on_setting_changed=self._handle_camera_setting_changed,
                     on_media_created=self._handle_media_created,
                     storage_min_free_bytes=CameraManager.STORAGE_MIN_FREE_BYTES + CameraManager.STORAGE_START_MARGIN_BYTES,
-
-                    # CameraManager.DEFAULT_CONFIG,
-                    # CameraManager.DEFAULT_CONTROLS,
-                    # copy.deepcopy(CameraManager.DEFAULT_CONFIG),
-                    # copy.deepcopy(CameraManager.DEFAULT_CONTROLS),
+                    audio_device=initial_audio,
                 )
 
-                # camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
-                saved_name = self._settings.get_all().get("camera_names", {}).get(str(cam_info["Num"]))
+                saved_name = saved_settings.get("camera_names", {}).get(str(cam_info["Num"]))
                 if saved_name:
                     camera.name = saved_name
+                if saved_audio:
+                    # Record the user's intent even when the device is currently unavailable
+                    camera._configured_audio_device = saved_audio
+                    if not initial_audio:
+                        logger.warning(
+                            "Camera %s: saved audio device '%s' is not available — audio disabled",
+                            cam_info["Num"], saved_audio,
+                        )
+
                 self.cameras[cam_info["Num"]] = camera
+
                 # apply/load active profile -> set camera configs and controls
                 self._load_active_profile(cam_info["Num"])
             except Exception as e:
@@ -189,12 +207,58 @@ class CameraManager:
         for key, camera in self.cameras.items():
             logger.info("Initialized camera %s: %s", key, camera.camera_info)
 
+        # Assign fallback mics to cameras that still have no audio device, then
+        # start streaming once the audio state is fully resolved.
+        self._auto_assign_fallback_audio(saved_settings)
+
+        for camera in self.cameras.values():
+            try:
+                camera.start_streaming()
+            except Exception as e:
+                logger.error("Failed to start streaming for camera %s: %s", camera.camera_num, e)
+
         self._start_recording_watchdog()
 
         threading.Thread(
             target=self._gallery.backfill_video_thumbnails,
             daemon=True,
         ).start()
+
+    def _auto_assign_fallback_audio(self, saved_settings: dict) -> None:
+        """
+        Assign audio devices to cameras that have none active yet:
+        - Cameras whose configured device is unavailable → try an unclaimed mic as fallback
+        - Cameras with no saved setting at all → auto-detect first available unclaimed mic
+        The saved setting (_configured_audio_device) is never modified here.
+        """
+        cameras_needing_audio = [
+            cam for cam in self.cameras.values() if cam.audio_device is None
+        ]
+        if not cameras_needing_audio:
+            return
+
+        configured_devices = {
+            d for d in saved_settings.get("camera_audio_devices", {}).values() if d
+        }
+        available = CameraManager.get_available_audio_sources()
+        already_active = {c.audio_device for c in self.cameras.values() if c.audio_device}
+
+        for camera in cameras_needing_audio:
+            if camera._configured_audio_device:
+                # Saved device unavailable — try a mic not assigned to any camera in settings
+                candidates = [m for m in available if m not in configured_devices and m not in already_active]
+            else:
+                # No saved setting — auto-detect first available unclaimed mic
+                candidates = [m for m in available if m not in already_active]
+
+            if candidates:
+                self.set_camera_fallback_audio_device(camera, candidates[0])
+                already_active.add(candidates[0])
+            else:
+                logger.info(
+                    "Camera %s: no fallback audio device available",
+                    camera.camera_num,
+                )
 
     def on_camera_setting_changed(self, camera: Camera):
         """
@@ -257,7 +321,74 @@ class CameraManager:
                         cam.name = str(name)
                 except (ValueError, TypeError):
                     pass
+        if "camera_audio_devices" in data:
+            for cam_num_str, device in data["camera_audio_devices"].items():
+                try:
+                    cam = self.get_camera(int(cam_num_str))
+                    if cam:
+                        self.set_camera_audio_device(cam, device if device else None)
+                except (ValueError, TypeError):
+                    pass
         return result
+
+    # ------------------------------------------------------------------
+    # Audio device management
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_available_audio_sources() -> List[str]:
+        """Return PulseAudio/PipeWire source names currently available (monitors excluded)."""
+        try:
+            result = subprocess.run(
+                ["pactl", "list", "sources", "short"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            )
+            sources = []
+            for line in result.stdout.splitlines():
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    name = parts[1].strip()
+                    if "monitor" not in name:
+                        sources.append(name)
+            return sources
+        except Exception as exc:
+            logger.warning("Audio source listing failed: %s", exc)
+            return []
+
+    @staticmethod
+    def is_audio_device_available(source_name: str) -> bool:
+        """Return True if the given PulseAudio source name is currently available."""
+        return source_name in CameraManager.get_available_audio_sources()
+
+    def set_camera_audio_device(self, camera: Camera, source_name: Optional[str]) -> None:
+        """Assign an audio source from user configuration (persisted setting).
+        Records the user's intent in _configured_audio_device regardless of
+        availability; disables audio with a warning if the device is not present."""
+        camera._configured_audio_device = source_name or None
+        if source_name and not CameraManager.is_audio_device_available(source_name):
+            logger.warning(
+                "Camera %s: saved audio device '%s' is not available — disabling audio",
+                camera.camera_num, source_name,
+            )
+            source_name = None
+        self._apply_camera_audio_device(camera, source_name)
+
+    def set_camera_fallback_audio_device(self, camera: Camera, source_name: Optional[str]) -> None:
+        """Assign a fallback audio source at runtime without changing the user's saved setting."""
+        logger.info("Camera %s: using fallback audio device '%s'", camera.camera_num, source_name)
+        self._apply_camera_audio_device(camera, source_name)
+
+    @staticmethod
+    def _apply_camera_audio_device(camera: Camera, source_name: Optional[str]) -> None:
+        """Set the runtime audio device on a camera. If the stream encoder is already
+        running, updates it in place (takes effect on next stream restart)."""
+        camera.audio_device = source_name or None
+        if camera.encoder_stream is not None:
+            camera.encoder_stream.audio = bool(camera.audio_device)
+            if camera.audio_device:
+                camera.encoder_stream.audio_output = {"codec_name": "libopus"}
+                camera.encoder_stream.audio_sync = 0
+        logger.info("Camera %s audio device set to: %s", camera.camera_num, camera.audio_device)
 
     # ------------------------------------------------------------------
     # Recording watchdog

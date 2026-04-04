@@ -95,6 +95,77 @@
       {% else %}
         <p>Error: Camera module data not found</p>
       {% endif %}
+
+      <!-- Microphone / Audio Sources -->
+      <div class="mt-5">
+        <h2 class="pb-2 mb-4 border-bottom">
+          <i class="bi bi-mic me-2"></i>Microphones
+        </h2>
+
+        {% if audio_sources %}
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+          {% for src in audio_sources %}
+          <div class="col">
+            <div class="card h-100">
+              <div class="card-body">
+                <h5 class="card-title d-flex align-items-center gap-2">
+                  <i class="bi bi-mic-fill text-secondary"></i>
+                  Microphone {{ src.index }}
+                </h5>
+                <table class="table table-sm mb-0">
+                  <tbody>
+                    {% if src.description and src.description != src.name %}
+                    <tr><th scope="row" style="width:40%">Description</th><td>{{ src.description }}</td></tr>
+                    {% endif %}
+                    <tr><th scope="row" style="width:40%">Name</th><td class="text-break font-monospace" style="font-size:0.8rem">{{ src.name }}</td></tr>
+                    {% if src.sample_spec %}
+                    <tr><th scope="row">Sample Format</th><td>{{ src.sample_spec }}</td></tr>
+                    {% endif %}
+                    <tr>
+                      <th scope="row">State</th>
+                      <td>
+                        {% if src.state == "RUNNING" %}
+                          <span class="badge bg-success">Running</span>
+                        {% elif src.state == "SUSPENDED" %}
+                          <span class="badge bg-secondary">Suspended</span>
+                        {% elif src.state == "IDLE" %}
+                          <span class="badge bg-warning text-dark">Idle</span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">{{ src.state }}</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    <tr>
+                      <th scope="row">Used by</th>
+                      <td>
+                        {% set used_by = [] %}
+                        {% for cam_num, dev in cameras_audio.items() %}
+                          {% if dev == src.name %}
+                            {% set _ = used_by.append("Cam" ~ cam_num) %}
+                          {% endif %}
+                        {% endfor %}
+                        {% if used_by %}
+                          <span class="badge bg-primary">{{ used_by | join(", ") }}</span>
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+          <i class="bi bi-mic-mute-fill"></i>
+          No microphones detected. Connect a USB microphone and restart the application.
+        </div>
+        {% endif %}
+      </div>
+
   </div>
 </div>
 <script>

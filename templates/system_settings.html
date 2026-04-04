@@ -41,7 +41,50 @@
     <div id="recordingSettingsMsg" class="mt-2 small d-none"></div>
   </div>
 
-  <!-- 2. Live View Section -->
+  <!-- 2. Microphone Assignment Section -->
+  <div class="mb-5">
+    <h2 class="pb-2 mb-4 border-bottom">Microphone Assignment</h2>
+    <p class="text-muted small">
+      Assign a microphone to each camera for live stream and video recording.
+      Changes take effect after restarting the stream.
+    </p>
+    <div class="d-flex flex-column gap-3" style="max-width: 560px;">
+      {% for cam_info, _ in camera_list %}
+      <div>
+        <label class="form-label" for="micSelect_{{ cam_info.Num }}">
+          <strong>{{ cam_info.Model }}</strong>
+          <span class="text-muted">(Camera {{ cam_info.Num }})</span>
+        </label>
+        <select class="form-select mic-select"
+                id="micSelect_{{ cam_info.Num }}"
+                data-cam-num="{{ cam_info.Num }}">
+          <option value="">— No audio —</option>
+          {% for src in audio_sources %}
+          <option value="{{ src.name }}">
+            {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endfor %}
+    </div>
+    <div id="micSharedWarning" class="alert alert-warning d-none mt-3" role="alert">
+      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Experimental:</strong>
+      Assigning a single microphone to multiple cameras has not yet been tested on real hardware.
+      If you have experience with this feature on real hardware, you are welcome to leave a comment on 
+      <a href="https://github.com/j-josi/CamUI-WebRTC.git" target="_blank" class="alert-link">
+        GitHub <i class="bi bi-box-arrow-up-right" style="font-size:0.8em;"></i>
+      </a>
+       letting me know whether you have had success with this feature or if you have encountered any issues.
+      Thank you.
+    </div>
+    <div class="mt-3">
+      <button class="btn btn-primary btn-sm" onclick="saveMicrophoneAssignments()">Save</button>
+    </div>
+    <div id="micMsg" class="mt-2 small d-none"></div>
+  </div>
+
+  <!-- 3. Live View Section -->
   <div class="mb-5">
     <h2 class="pb-2 mb-4 border-bottom">Live View</h2>
 
@@ -221,6 +264,19 @@
       // Live View title
       document.getElementById('liveViewTitle').value = data.live_view_title || '';
       document.getElementById('liveViewHideTitle').checked = !!data.live_view_hide_title;
+      // Microphone assignments
+      // activeAudio: runtime device (may be auto-fallback); audioDevices: saved user config
+      const audioDevices = data.camera_audio_devices || {};
+      const activeAudio = data.camera_audio_devices_active || {};
+      document.querySelectorAll('.mic-select').forEach(sel => {
+        const num = sel.dataset.camNum;
+        // Show active runtime device first (covers fallback case); fall back to saved setting
+        const active = activeAudio[num];
+        const value = (active != null) ? active : (audioDevices[num] ?? '');
+        sel.value = value;
+        sel.addEventListener('change', checkMicSharing);
+      });
+      checkMicSharing();
       // Camera names
       const cameraNames = data.camera_names || {};
       document.querySelectorAll('.camera-name-input').forEach(input => {
@@ -245,6 +301,42 @@
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(() => showSettingMsg('recordingSettingsMsg', true, LABEL, minutes, UNIT, MIN, MAX))
     .catch(() => showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX));
+  }
+
+  function checkMicSharing() {
+    const selects = document.querySelectorAll('.mic-select');
+    const counts = {};
+    selects.forEach(sel => {
+      if (sel.value) counts[sel.value] = (counts[sel.value] || 0) + 1;
+    });
+    const shared = Object.values(counts).some(c => c > 1);
+    document.getElementById('micSharedWarning').classList.toggle('d-none', !shared);
+  }
+
+  function saveMicrophoneAssignments() {
+    const assignments = {};
+    document.querySelectorAll('.mic-select').forEach(sel => {
+      assignments[sel.dataset.camNum] = sel.value;
+    });
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ camera_audio_devices: assignments })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => {
+      const el = document.getElementById('micMsg');
+      el.textContent = 'Microphone assignments saved.';
+      el.className = 'mt-2 small text-success';
+      el.classList.remove('d-none');
+      setTimeout(() => el.classList.add('d-none'), 3000);
+    })
+    .catch(() => {
+      const el = document.getElementById('micMsg');
+      el.textContent = 'Failed to save microphone assignments.';
+      el.className = 'mt-2 small text-danger';
+      el.classList.remove('d-none');
+    });
   }
 
   function saveLiveViewTitle() {

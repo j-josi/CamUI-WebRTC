@@ -166,6 +166,10 @@ class CameraProxy:
         return self._attr("audio_device")
 
     @property
+    def _configured_audio_device(self):
+        return self._attr("_configured_audio_device")
+
+    @property
     def still_resolutions_supported(self):
         val = self._attr("still_resolutions_supported")
         # JSON transmits tuples as lists; restore the inner tuples.

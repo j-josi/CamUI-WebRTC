@@ -18,6 +18,7 @@ DEFAULTS: dict = {
     "live_view_title": "",           # global heading shown above the video feed (hostname if empty)
     "live_view_hide_title": False,   # hide the heading entirely
     "camera_names": {},              # {str(camera_num): str}  — tab name per camera object
+    "camera_audio_devices": {},      # {str(camera_num): str}  — audio source name ("" = none)
 }
 
 

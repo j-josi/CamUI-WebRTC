@@ -539,7 +539,6 @@ def inject_battery_status():
         battery_runtime_min=_battery_state["runtime_min"],
     )
 
-
 @app.route('/')
 def home():
     """Redirect to the first camera page, or to an error if no cameras are found."""
@@ -547,6 +546,47 @@ def home():
     if cameras:
         return redirect(url_for('live_view'))
     return render_template('error.html', message="No cameras found"), 404
+
+def _list_audio_sources() -> list:
+    """Return all non-monitor PulseAudio/PipeWire capture sources with descriptions."""
+    try:
+        short = subprocess.run(
+            ["pactl", "list", "sources", "short"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        verbose = subprocess.run(
+            ["pactl", "list", "sources"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        # Parse human-readable descriptions from verbose output
+        descriptions: dict = {}
+        current_name = None
+        for line in verbose.stdout.splitlines():
+            line = line.strip()
+            if line.startswith("Name:"):
+                current_name = line.split(":", 1)[1].strip()
+            elif line.startswith("Description:") and current_name:
+                descriptions[current_name] = line.split(":", 1)[1].strip()
+        sources = []
+        for line in short.stdout.splitlines():
+            parts = line.split("\t")
+            if len(parts) < 2:
+                continue
+            name = parts[1].strip()
+            if "monitor" in name:
+                continue
+            sources.append({
+                "index":       parts[0].strip(),
+                "name":        name,
+                "description": descriptions.get(name, name),
+                "driver":      parts[2].strip() if len(parts) > 2 else "",
+                "sample_spec": parts[3].strip() if len(parts) > 3 else "",
+                "state":       parts[4].strip() if len(parts) > 4 else "",
+            })
+        return sources
+    except Exception as exc:
+        logger.warning("Failed to list audio sources: %s", exc)
+        return []
 
 @app.route('/info')
 def info():
@@ -560,7 +600,15 @@ def info():
     if not camera:
         return redirect(url_for('info'))
     camera_module_spec = camera.get_camera_module_spec()
-    return render_template('info.html', camera_data=camera_module_spec, camera_num=camera_num)
+    # Collect which audio source each camera is using
+    cameras_audio = {c.camera_num: c.audio_device for c in camera_manager.cameras.values()}
+    return render_template(
+        'info.html',
+        camera_data=camera_module_spec,
+        camera_num=camera_num,
+        audio_sources=_list_audio_sources(),
+        cameras_audio=cameras_audio,
+    )
 
 @app.route("/about")
 def about():
@@ -571,11 +619,14 @@ def about():
 def system_settings():
     """Render system settings page."""
     logger.debug(camera_manager.camera_module_info)
+    cameras_audio = {c.camera_num: c.audio_device for c in camera_manager.cameras.values()}
     return render_template(
         'system_settings.html',
         firmware_control=firmware_control,
         camera_modules=camera_manager.camera_module_info.get("camera_modules", []),
         hostname=_hostname,
+        audio_sources=_list_audio_sources(),
+        cameras_audio=cameras_audio,
     )
 
 @app.route('/set_camera_config', methods=['POST'])
@@ -681,7 +732,13 @@ def reset_camera_detection():
 
 @app.route('/api/system_settings', methods=['GET'])
 def get_system_settings():
-    return jsonify(camera_manager.get_system_settings())
+    settings = camera_manager.get_system_settings()
+    # Include runtime-active audio devices so the UI can show fallback assignments
+    settings['camera_audio_devices_active'] = {
+        str(cam_num): cam.audio_device
+        for cam_num, cam in camera_manager.cameras.items()
+    }
+    return jsonify(settings)
 
 @app.route('/api/system_settings', methods=['POST'])
 def update_system_settings():
