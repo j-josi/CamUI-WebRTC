@@ -18,6 +18,9 @@ from datetime import datetime, timedelta
 import subprocess
 import argparse
 import secrets
+import socket as _socket
+
+_hostname = _socket.gethostname()
 
 # Flask Imports
 from flask import (
@@ -181,6 +184,13 @@ def _build_camera_state(camera_num: int) -> dict:
         return {}
     state = camera.get_settings()
     state["param_states"] = camera_manager.get_param_states(camera_num)
+    sys_settings = camera_manager.get_system_settings()
+    state["display"] = {
+        "title": sys_settings.get("live_view_title", ""),
+        "hide_title": sys_settings.get("live_view_hide_title", False),
+        "default_title": _hostname,
+        "camera_name": camera.name,
+    }
     return state
 
 def handle_camera_setting_changed(camera):
@@ -514,6 +524,8 @@ def inject_camera_list():
         (camera.camera_info, camera.get_camera_module_spec())
         for camera in camera_manager.cameras.values()  # CameraObject instances
     ]
+    # DEV: uncomment following line to add a second fake camera to simulate/test ux with multiple cameras
+    camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
     return dict(camera_list=camera_list, navbar=True)
 
 @app.context_processor
@@ -567,7 +579,8 @@ def system_settings():
     return render_template(
         'system_settings.html',
         firmware_control=firmware_control,
-        camera_modules=camera_manager.camera_module_info.get("camera_modules", [])
+        camera_modules=camera_manager.camera_module_info.get("camera_modules", []),
+        hostname=_hostname,
     )
 
 @app.route('/set_camera_config', methods=['POST'])
@@ -681,6 +694,34 @@ def update_system_settings():
     if not data:
         return jsonify({"error": "No data provided"}), 400
     updated = camera_manager.update_system_settings(data)
+    # Broadcast live-view title changes to all camera rooms
+    if "live_view_title" in data or "live_view_hide_title" in data:
+        display_payload = {
+            "title": updated.get("live_view_title", ""),
+            "hide_title": updated.get("live_view_hide_title", False),
+            "default_title": _hostname,
+        }
+        for cam_num in camera_manager.cameras:
+            cam = camera_manager.get_camera(cam_num)
+            if cam:
+                display_payload["camera_name"] = cam.name
+            socketio.emit(
+                "camera_display_changed",
+                {"camera_num": cam_num, "display": display_payload},
+                room=f"camera_{cam_num}"
+            )
+    # Broadcast camera name changes to all clients (real Camera.name is set by update_system_settings in camera_server)
+    if "camera_names" in data:
+        names_payload = {}
+        for k, v in data["camera_names"].items():
+            try:
+                cam_num = int(k)
+                if camera_manager.get_camera(cam_num) is not None:
+                    names_payload[cam_num] = str(v)
+            except (ValueError, TypeError):
+                pass
+        if names_payload:
+            socketio.emit("camera_names_changed", {"names": names_payload})
     return jsonify(updated)
 
 @app.route('/shutdown', methods=['POST'])
@@ -721,12 +762,21 @@ def live_view():
         if not camera:
             return redirect(url_for('live_view'))
 
+        sys_settings = camera_manager.get_system_settings()
+        cam_display = {
+            "title": sys_settings.get("live_view_title", ""),
+            "hide_title": sys_settings.get("live_view_hide_title", False),
+        }
+        camera_names = {c.camera_num: c.name for c in camera_manager.cameras.values()}
         return render_template(
             'live_view.html',
             camera = camera.camera_info,
             settings = camera.ui_settings,
             profiles = camera_manager.list_profiles(),
             has_audio = bool(camera.audio_device),
+            hostname = _hostname,
+            camera_display = cam_display,
+            camera_names = camera_names,
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")

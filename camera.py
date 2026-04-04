@@ -82,6 +82,7 @@ class Camera:
         self._storage_min_free_bytes = storage_min_free_bytes
 
         self.camera_num: int = camera_info["Num"]
+        self.name: str = f"Cam{self.camera_num}"
         self._setting_changed_callback = None
         self.filename_recording = None
         self.configs, self.controls = self._defaults_from_ui_settings_db()

@@ -14,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 DEFAULTS: dict = {
     "max_recording_duration_min": 90,
+    "live_view_title": "",           # global heading shown above the video feed (hostname if empty)
+    "live_view_hide_title": False,   # hide the heading entirely
+    "camera_names": {},              # {str(camera_num): str}  — tab name per camera object
 }
 
 
@@ -48,9 +51,19 @@ class SystemSettings:
         return dict(self._settings)
 
     def update(self, data: dict) -> dict:
-        """Update one or more known settings and persist to disk."""
+        """Update one or more known settings and persist to disk.
+
+        Dict-typed DEFAULTS entries (e.g. camera_display_settings) are
+        deep-merged so that per-camera sub-keys don't overwrite each other.
+        """
         for k, v in data.items():
-            if k in DEFAULTS:
+            if k not in DEFAULTS:
+                continue
+            if isinstance(DEFAULTS[k], dict) and isinstance(v, dict):
+                merged = dict(self._settings.get(k, {}))
+                merged.update(v)
+                self._settings[k] = merged
+            else:
                 self._settings[k] = v
         self._save()
         return dict(self._settings)

@@ -19,7 +19,52 @@
     <div id="recordingSettingsMsg" class="mt-2 small d-none"></div>
   </div>
 
-  <!-- 2. System Control Section -->
+  <!-- 2. Live View Section -->
+  <div class="mb-5">
+    <h2 class="pb-2 mb-4 border-bottom">Live View</h2>
+
+    <!-- 2a. Page title -->
+    <div class="row g-3 align-items-end mb-4" style="max-width: 480px;">
+      <div class="col">
+        <label for="liveViewTitle" class="form-label">Page Title</label>
+        <input type="text" class="form-control" id="liveViewTitle"
+               placeholder="{{ hostname }}">
+        <div class="form-text">Displayed above the video feed. Defaults to the hostname if left empty.</div>
+      </div>
+      <div class="col-auto d-flex flex-column gap-2">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="liveViewHideTitle">
+          <label class="form-check-label" for="liveViewHideTitle">Hide title</label>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="saveLiveViewTitle()">Save</button>
+      </div>
+    </div>
+    <div id="liveViewTitleMsg" class="mt-2 small d-none"></div>
+
+    {% if camera_list|length > 1 %}
+    <!-- 2b. Per-camera names (only shown when multiple cameras are connected) -->
+    <label class="form-label">Camera Names</label>
+    <div class="row g-3 align-items-end" style="max-width: 480px;">
+      {% for cam_info, cam_module_info in camera_list %}
+      <div class="col-12">
+        <div class="input-group">
+          <span class="input-group-text">Camera {{ cam_info.Num }}</span>
+          <input type="text" class="form-control camera-name-input"
+                 id="cameraNameInput_{{ cam_info.Num }}"
+                 placeholder="Cam{{ cam_info.Num }}"
+                 data-cam-num="{{ cam_info.Num }}">
+        </div>
+      </div>
+      {% endfor %}
+      <div class="col-auto">
+        <button class="btn btn-primary btn-sm" onclick="saveCameraNames()">Save</button>
+      </div>
+    </div>
+    <div id="cameraNamesMsg" class="mt-2 small d-none"></div>
+    {% endif %}
+  </div>
+
+  <!-- 3. System Control Section -->
   <div class="mb-5">
     <h2 class="pb-2 mb-4 border-bottom">System Controls</h2>
     <div class="d-flex gap-3">
@@ -121,6 +166,15 @@
       if (data.max_recording_duration_min !== undefined) {
         document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;
       }
+      // Live View title
+      document.getElementById('liveViewTitle').value = data.live_view_title || '';
+      document.getElementById('liveViewHideTitle').checked = !!data.live_view_hide_title;
+      // Camera names
+      const cameraNames = data.camera_names || {};
+      document.querySelectorAll('.camera-name-input').forEach(input => {
+        const num = input.dataset.camNum;
+        input.value = cameraNames[num] || '';
+      });
     });
 
   function saveRecordingSettings() {
@@ -139,6 +193,45 @@
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(() => showSettingMsg('recordingSettingsMsg', true, LABEL, minutes, UNIT, MIN, MAX))
     .catch(() => showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX));
+  }
+
+  function saveLiveViewTitle() {
+    const title = document.getElementById('liveViewTitle').value;
+    const hide_title = document.getElementById('liveViewHideTitle').checked;
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ live_view_title: title, live_view_hide_title: hide_title })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => showSettingMsg('liveViewTitleMsg', true, 'Live View title', title || '(hostname)', '', '', ''))
+    .catch(() => showSettingMsg('liveViewTitleMsg', false, 'Live View title', title, '', '', ''));
+  }
+
+  function saveCameraNames() {
+    const names = {};
+    document.querySelectorAll('.camera-name-input').forEach(input => {
+      names[input.dataset.camNum] = input.value;
+    });
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ camera_names: names })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => {
+      const el = document.getElementById('cameraNamesMsg');
+      el.textContent = 'Camera names saved.';
+      el.className = 'mt-2 small text-success';
+      el.classList.remove('d-none');
+      setTimeout(() => el.classList.add('d-none'), 3000);
+    })
+    .catch(() => {
+      const el = document.getElementById('cameraNamesMsg');
+      el.textContent = 'Failed to save camera names.';
+      el.className = 'mt-2 small text-danger';
+      el.classList.remove('d-none');
+    });
   }
 
   let currentAction = null;

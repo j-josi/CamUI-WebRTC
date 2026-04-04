@@ -138,6 +138,10 @@ class CameraProxy:
     # ---- Attributes (fetched from server on access) ----
 
     @property
+    def name(self):
+        return self._attr("name")
+
+    @property
     def camera_info(self):
         return self._attr("camera_info")
 

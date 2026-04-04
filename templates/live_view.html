@@ -29,23 +29,27 @@
 
 <div class="mx-4">
 
-  {% if camera_list|length > 1 %}
-  <ul class="nav nav-tabs mb-3">
-    {% for cam_info, cam_module_info in camera_list %}
-    <li class="nav-item">
-      <a class="nav-link {% if cam_info.Num == camera.Num %}active{% endif %}"
-         href="{{ url_for('live_view', cam=cam_info.Num) }}">
-        Camera {{ cam_info.Num }}: {{ cam_info.Model }}
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-
   <div class="row flex-nowrap-xl">
     <div class="col-12 col-xl pb-2">
 
-      <h2 class="pb-2 mb-4 border-bottom">Camera: {{ camera.Model }}</h2>
+      <h2 id="cameraTitle"
+          class="pb-2 mb-4 border-bottom{% if camera_display.hide_title %} d-none{% endif %}">
+          {{ camera_display.title or hostname }}
+      </h2>
+
+      {% if camera_list|length > 1 %}
+      <ul class="nav nav-tabs mb-3" id="cameraTabBar">
+        {% for cam_info, cam_module_info in camera_list %}
+        <li class="nav-item">
+          <a class="nav-link {% if cam_info.Num == camera.Num %}active{% endif %}"
+             id="cameraTab_{{ cam_info.Num }}"
+             href="{{ url_for('live_view', cam=cam_info.Num) }}">
+            {{ camera_names.get(cam_info.Num, "Cam" ~ cam_info.Num) }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
 
       <!-- Video Container -->
       <div id="videoFeedContainer" class="position-relative" style="max-height:calc(100vh - 320px); max-width:calc((100vh - 320px) * 16 / 9);">
@@ -127,7 +131,7 @@
       {% include "animated_logo.html" %}
 
       <!-- Action buttons: capture image, record video -->
-      <div class="container text-center mt-4 mb-3">
+      <div id="actionButtons" class="text-center mt-4 mb-3">
         <div class="row justify-content-center g-3">
 
             <!-- Take Photo -->
@@ -210,6 +214,7 @@ input[type=number] { -moz-appearance: textfield; }
 // DOM references and state variables
 // -------------------------------------------------------
 const cameraNum = JSON.parse('{{ camera.Num | tojson }}');
+const defaultCameraTitle = {{ hostname | tojson }};
 const video = document.getElementById("videoFeed");
 const videoControls = document.getElementById("videoControls");
 const videoContainer = document.getElementById("videoFeedContainer");
@@ -376,11 +381,91 @@ function applyStateToUI(state) {
     if (state.param_states) {
         applyParamStates(state.param_states);
     }
+
+    if (state.display) {
+        applyDisplay(state.display);
+    }
+}
+
+// -------------------------------------------------------
+// Video container size: grow when title is hidden
+// -------------------------------------------------------
+// The inline max-height of the video container (calc(100vh - 320px)) was
+// calibrated with the title visible. When the title is hidden the freed
+// vertical space is added back so the buttons stay at the same position.
+
+const _VIDEO_BASE_OFFSET = 320; // px consumed by everything except the title
+let _titleH = null;             // cached title height + margin-bottom (px)
+
+function _cacheTitleH() {
+    const el = document.getElementById("cameraTitle");
+    if (!el) { _titleH = 0; return; }
+    if (!el.classList.contains("d-none")) {
+        // Title is visible — measure directly
+        const marginBottom = parseFloat(getComputedStyle(el).marginBottom) || 0;
+        _titleH = el.offsetHeight + marginBottom;
+    } else {
+        // Title is hidden — reveal temporarily (invisible) to measure
+        el.style.visibility = "hidden";
+        el.classList.remove("d-none");
+        const marginBottom = parseFloat(getComputedStyle(el).marginBottom) || 0;
+        _titleH = el.offsetHeight + marginBottom;
+        el.classList.add("d-none");
+        el.style.visibility = "";
+    }
+}
+
+function syncVideoSize() {
+    if (_titleH === null) _cacheTitleH();
+    const container = document.getElementById("videoFeedContainer");
+    if (!container) return;
+
+    const titleHidden = !!document.getElementById("cameraTitle")?.classList.contains("d-none");
+
+    const tabBar = document.getElementById("cameraTabBar");
+    let tabBarH = 0;
+    if (tabBar) {
+        tabBarH = tabBar.offsetHeight + (parseFloat(getComputedStyle(tabBar).marginBottom) || 0);
+    }
+
+    const offset = _VIDEO_BASE_OFFSET - (titleHidden ? _titleH : 0) + tabBarH;
+    const maxW = `calc((100vh - ${offset}px) * 16 / 9)`;
+    container.style.maxHeight = `calc(100vh - ${offset}px)`;
+    container.style.maxWidth  = maxW;
+    const actionButtons = document.getElementById("actionButtons");
+    if (actionButtons) actionButtons.style.maxWidth = maxW;
+}
+
+function applyDisplay(display) {
+    const titleEl = document.getElementById("cameraTitle");
+    if (titleEl) {
+        titleEl.textContent = display.title || display.default_title || defaultCameraTitle;
+        titleEl.classList.toggle("d-none", !!display.hide_title);
+    }
+    syncVideoSize();
+    // Keep the settings inputs in sync across clients
+    const titleInput = document.getElementById("cameraTitleInput");
+    if (titleInput) titleInput.value = display.title || "";
+    const hideInput = document.getElementById("cameraHideTitleInput");
+    if (hideInput) hideInput.checked = !!display.hide_title;
 }
 
 socket.on("param_states_changed", payload => {
     if (payload.camera_num !== cameraNum) return;
     applyParamStates(payload.param_states);
+});
+
+socket.on("camera_display_changed", payload => {
+    if (payload.camera_num !== cameraNum) return;
+    applyDisplay(payload.display);
+});
+
+socket.on("camera_names_changed", payload => {
+    if (!payload.names) return;
+    for (const [camNum, name] of Object.entries(payload.names)) {
+        const tab = document.getElementById("cameraTab_" + camNum);
+        if (tab) tab.textContent = name;
+    }
 });
 
 // -------------------------------------------------------
@@ -806,6 +891,7 @@ window.addEventListener("beforeunload", () => reader?.close());
 
 initReader();
 video.volume = 0;
+syncVideoSize();
 </script>
 
 {% endblock %}

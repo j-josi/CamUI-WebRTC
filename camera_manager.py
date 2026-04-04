@@ -177,6 +177,9 @@ class CameraManager:
                 )
 
                 # camera._on_setting_changed = lambda cam=camera: self.on_camera_setting_changed(cam)
+                saved_name = self._settings.get_all().get("camera_names", {}).get(str(cam_info["Num"]))
+                if saved_name:
+                    camera.name = saved_name
                 self.cameras[cam_info["Num"]] = camera
                 # apply/load active profile -> set camera configs and controls
                 self._load_active_profile(cam_info["Num"])
@@ -245,7 +248,16 @@ class CameraManager:
         return self._settings.get_all()
 
     def update_system_settings(self, data: dict) -> dict:
-        return self._settings.update(data)
+        result = self._settings.update(data)
+        if "camera_names" in data:
+            for cam_num_str, name in data["camera_names"].items():
+                try:
+                    cam = self.get_camera(int(cam_num_str))
+                    if cam:
+                        cam.name = str(name)
+                except (ValueError, TypeError):
+                    pass
+        return result
 
     # ------------------------------------------------------------------
     # Recording watchdog
