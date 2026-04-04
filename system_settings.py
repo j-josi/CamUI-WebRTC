@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULTS: dict = {
     "max_recording_duration_min": 90,
+    "theme": "light",                # global default theme for new clients ("light" | "dark")
     "live_view_title": "",           # global heading shown above the video feed (hostname if empty)
     "live_view_hide_title": False,   # hide the heading entirely
     "camera_names": {},              # {str(camera_num): str}  — tab name per camera object

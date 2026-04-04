@@ -3,7 +3,29 @@
 {% block content %}
 <div class="container-fluid px-4 py-4">
 
-  <!-- 1. Recording Settings Section -->
+  <!-- 1. Theme Section -->
+  <div class="mb-5">
+    <h2 class="pb-2 mb-4 border-bottom">Theme</h2>
+    <p class="text-muted small">Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.</p>
+    <div class="d-flex gap-3 mb-2">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="defaultTheme" id="themeLight" value="light">
+        <label class="form-check-label" for="themeLight">
+          <i class="bi bi-brightness-high-fill me-1"></i> Light
+        </label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="defaultTheme" id="themeDark" value="dark">
+        <label class="form-check-label" for="themeDark">
+          <i class="bi bi-moon-stars-fill me-1"></i> Dark
+        </label>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveDefaultTheme()">Save as default</button>
+    <div id="themeMsg" class="mt-2 small d-none"></div>
+  </div>
+
+  <!-- 2. Recording Settings Section -->
   <div class="mb-5">
     <h2 class="pb-2 mb-4 border-bottom">Recording Settings</h2>
     <div class="row g-3 align-items-end" style="max-width: 480px;">
@@ -159,10 +181,40 @@
     el.classList.remove('d-none');
   }
 
+  function saveDefaultTheme() {
+    const selected = document.querySelector('input[name="defaultTheme"]:checked');
+    if (!selected) return;
+    const theme = selected.value;
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ theme })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => {
+      const el = document.getElementById('themeMsg');
+      el.textContent = `Default theme set to "${theme}".`;
+      el.className = 'mt-2 small text-success';
+      el.classList.remove('d-none');
+      setTimeout(() => el.classList.add('d-none'), 3000);
+    })
+    .catch(() => {
+      const el = document.getElementById('themeMsg');
+      el.textContent = 'Failed to save default theme.';
+      el.className = 'mt-2 small text-danger';
+      el.classList.remove('d-none');
+    });
+  }
+
   // Load current settings on page load
   fetch('/api/system_settings')
     .then(r => r.json())
     .then(data => {
+      // Theme
+      const currentTheme = data.theme || 'light';
+      const radio = document.querySelector(`input[name="defaultTheme"][value="${currentTheme}"]`);
+      if (radio) radio.checked = true;
+
       if (data.max_recording_duration_min !== undefined) {
         document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;
       }

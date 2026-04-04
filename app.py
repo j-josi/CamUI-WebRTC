@@ -513,8 +513,8 @@ def handle_set_camera_setting(data):
 
 @app.context_processor
 def inject_theme():
-    """Inject theme and version info into templates."""
-    theme = session.get('theme', 'light')  # Default to 'light'
+    """Inject server-default theme and version info into all templates."""
+    theme = camera_manager.get_system_settings().get('theme', 'light')
     return dict(version=version, title=project_title, theme=theme)
 
 @app.context_processor
@@ -525,7 +525,7 @@ def inject_camera_list():
         for camera in camera_manager.cameras.values()  # CameraObject instances
     ]
     # DEV: uncomment following line to add a second fake camera to simulate/test ux with multiple cameras
-    camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
+    # camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
     return dict(camera_list=camera_list, navbar=True)
 
 @app.context_processor
@@ -539,11 +539,6 @@ def inject_battery_status():
         battery_runtime_min=_battery_state["runtime_min"],
     )
 
-@app.route('/set_theme/<theme>')
-def set_theme(theme):
-    """Set the user-selected theme in the session."""
-    session['theme'] = theme
-    return jsonify(success=True, ok=True, message="Theme updated successfully")
 
 @app.route('/')
 def home():

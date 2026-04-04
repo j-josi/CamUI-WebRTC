@@ -1,9 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="{{ theme }}">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ project_title }}</title>
+    <!-- Resolve theme before CSS to prevent flash of wrong theme.
+         localStorage overrides the server-side default (hybrid approach). -->
+    <script>
+    (function () {
+        var resolved = localStorage.getItem('camui_theme') || {{ theme | tojson }};
+        document.documentElement.setAttribute('data-bs-theme', resolved);
+    })();
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
@@ -42,20 +50,21 @@
 
 
 document.addEventListener("DOMContentLoaded", function () {
-    const theme = "{{ theme }}";  // This should be injected from Flask
+    const serverDefault = {{ theme | tojson }};
     const themeIcon = document.getElementById("theme-icon");
 
-    function updateTheme(theme) {
-        document.documentElement.setAttribute("data-bs-theme", theme);
-        themeIcon.className = theme === "light" ? "bi bi-brightness-high-fill" : "bi bi-moon-stars-fill";
+    function updateThemeIcon(t) {
+        if (themeIcon) themeIcon.className = t === "light" ? "bi bi-brightness-high-fill" : "bi bi-moon-stars-fill";
     }
 
-    updateTheme(theme);  // Apply the correct theme and icon on page load
+    // Sync icon with the theme already applied by the <head> script
+    updateThemeIcon(localStorage.getItem('camui_theme') || serverDefault);
 
+    // Per-client toggle: saves to localStorage, no server call
     window.setTheme = function (newTheme) {
-        updateTheme(newTheme);
-        fetch(`/set_theme/${newTheme}`, { method: "GET", headers: { "Content-Type": "application/json" } })
-            .catch(error => console.error("Error:", error));
+        localStorage.setItem('camui_theme', newTheme);
+        document.documentElement.setAttribute('data-bs-theme', newTheme);
+        updateThemeIcon(newTheme);
     };
 });
   </script>
