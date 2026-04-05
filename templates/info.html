@@ -5,13 +5,23 @@
 <div class="container-xxl">
     <div class="container" id="custom-cards">
 
-      {% if camera_list|length > 1 %}
+      <h2 class="pb-2 mb-4 border-bottom">
+        <i class="bi bi-cpu me-2"></i>Detected Hardware
+      </h2>
+
+      <!-- Cameras -->
+      <div class="mb-5">
+        <h3 class="pb-2 mb-3 border-bottom">
+          <i class="bi bi-camera-video me-2"></i>Cameras
+        </h3>
+
+      {% if camera_list|length >= 1 %}
       <ul class="nav nav-tabs mb-3">
         {% for cam_info, cam_module_info in camera_list %}
         <li class="nav-item">
           <a class="nav-link {% if cam_info.Num == camera_num %}active{% endif %}"
              href="{{ url_for('info', cam=cam_info.Num) }}">
-            Camera {{ cam_info.Num }}: {{ cam_info.Model }}
+            Cam{{ cam_info.Num }}
           </a>
         </li>
         {% endfor %}
@@ -19,17 +29,13 @@
       {% endif %}
 
       {% if camera_data %}
-        
+
         <div class="row row-cols-1 row-cols-md-2">
           <div class="col d-flex flex-column align-items-start flex-column align-items-center">
             <div class="card mb-3" style="width: 18rem;">
               <img class="m-1" src="{{ url_for('static', filename='img/' + (camera_data.sensor_model if camera_data.sensor_model else 'unknown') + '.jpg') }}" alt="Camera Image">
             </div>
             <h2 class="fw-bold text-body-emphasis">{{ camera_data.module_name }}</h2>
-            <p class="text-body-secondary">
-              {{ camera_data.manufacturer }} {{ camera_data.sensor_model }}
-            </p>
-            <p class="text-body-secondary">Detected as Camera: {{ camera_num }}</p>
           </div>
 
           <div class="col">
@@ -46,6 +52,7 @@
                     <div class="tab-pane fade show active table-responsive" id="tech_info">
                       <table class="table">
                         <tbody>
+                            <tr><th scope="row">Sensor</th><td>{{ camera_data.manufacturer }} {{ camera_data.sensor_model }}</td></tr>
                             <tr><th scope="row">Megapixels</th><td>{{ camera_data.megapixels }}</td></tr>
                             <tr><th scope="row">Sensor Resolution</th><td>{{ camera_data.sensor_resolution }}</td></tr>
                             <tr><th scope="row">Video Modes</th><td>{{ camera_data.video_modes }}</td></tr>
@@ -93,14 +100,19 @@
           </div>
         </div>
       {% else %}
-        <p>Error: Camera module data not found</p>
+        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+          <i class="bi bi-camera-video-off-fill"></i>
+          No camera detected.
+        </div>
       {% endif %}
 
-      <!-- Microphone / Audio Sources -->
-      <div class="mt-5">
-        <h2 class="pb-2 mb-4 border-bottom">
+      </div><!-- /Cameras -->
+
+      <!-- Microphones -->
+      <div class="mb-5">
+        <h3 class="pb-2 mb-3 border-bottom">
           <i class="bi bi-mic me-2"></i>Microphones
-        </h2>
+        </h3>
 
         {% if audio_sources %}
         <div class="row row-cols-1 row-cols-md-2 g-4">
@@ -110,7 +122,7 @@
               <div class="card-body">
                 <h5 class="card-title d-flex align-items-center gap-2">
                   <i class="bi bi-mic-fill text-secondary"></i>
-                  Microphone {{ src.index }}
+                  Mic{{ loop.index0 }}
                 </h5>
                 <table class="table table-sm mb-0">
                   <tbody>
@@ -136,7 +148,7 @@
                       </td>
                     </tr>
                     <tr>
-                      <th scope="row">Used by</th>
+                      <th scope="row">Assigned to</th>
                       <td>
                         {% set used_by = [] %}
                         {% for cam_num, dev in cameras_audio.items() %}
@@ -161,10 +173,11 @@
         {% else %}
         <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
           <i class="bi bi-mic-mute-fill"></i>
-          No microphones detected. Connect a USB microphone and restart the application.
+          No microphones detected.
         </div>
         {% endif %}
-      </div>
+
+      </div><!-- /Microphones -->
 
   </div>
 </div>

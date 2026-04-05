@@ -49,11 +49,11 @@
       Changes take effect after restarting the stream.
     </p>
     <div class="d-flex flex-column gap-3" style="max-width: 560px;">
-      {% for cam_info, _ in camera_list %}
+      {% for cam_info, cam_module_info in camera_list %}
       <div>
         <label class="form-label" for="micSelect_{{ cam_info.Num }}">
-          <strong>{{ cam_info.Model }}</strong>
-          <span class="text-muted">(Camera {{ cam_info.Num }})</span>
+          <strong>Cam{{ cam_info.Num }}</strong>
+          <span class="text-muted">({% if cam_module_info and cam_module_info.is_pi_cam %}{{ cam_module_info.module_name }}{% else %}{{ cam_info.Model }}{% endif %})</span>
         </label>
         <select class="form-select mic-select"
                 id="micSelect_{{ cam_info.Num }}"
@@ -61,7 +61,7 @@
           <option value="">— No audio —</option>
           {% for src in audio_sources %}
           <option value="{{ src.name }}">
-            {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
+            Mic{{ loop.index0 }}: {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
           </option>
           {% endfor %}
         </select>
