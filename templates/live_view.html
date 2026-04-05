@@ -243,6 +243,21 @@ const socket = io();
 
 socket.emit("join_camera_room", { camera_num: cameraNum });
 
+// Server asks for client timestamp (used as fallback if raspberry pi system time is not synced with ntp server)
+socket.on("request_client_time", () => {
+  const now = new Date();
+
+  // Send local time including timezone offset to UTC timezone
+  const clientTime = {
+      iso: now.toISOString(), // timestamp in UTC timezone
+      timezoneOffset: now.getTimezoneOffset() // in minutes
+  };
+
+  socket.emit("client_time_response", {
+      client_timestamp: clientTime
+  });
+});
+
 // Apply server-pushed state to the UI whenever camera settings change
 socket.on("camera_state", payload => {
     if (payload.camera_num !== cameraNum) return;

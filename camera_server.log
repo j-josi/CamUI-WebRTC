@@ -25062,3 +25062,741 @@ KeyboardInterrupt
 2026-04-05 02:06:37,829 INFO [camera_manager] Camera 0: no fallback audio device available
 2026-04-05 02:06:38,484 INFO [camera] Streaming started on 'lores' stream (audio=False)
 2026-04-05 02:06:38,487 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 02:11:20,388 INFO [picamera2.picamera2] Camera stopped
+[113:06:51.428429457] [472394]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:06:51.868224870] [472397]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:06:51.876286155] [472397]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:06:51.876351580] [472397]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:06:51.876391728] [472397]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:15:49,063 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:15:49,381 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:15:49,381 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:15:49,389 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:06:52.203841674] [472394]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:06:52.204727518] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:15:49,392 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:15:49,414 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:06:52.229254832] [472394]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:06:52.229987251] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:15:49,416 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:15:49,431 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:06:52.246548131] [472394]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:06:52.247245996] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:15:49,434 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:15:49,465 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:15:49,467 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:06:52.282456479] [472394]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:06:52.283128122] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:15:49,469 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:15:49,569 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:15:49,578 INFO [camera] All profile controls applied successfully
+2026-04-05 16:15:49,578 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:15:49,987 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:15:49,989 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:06:52.804638703] [472408]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:06:52.805579529] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:15:49,992 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:15:50,055 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:15:50,065 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:15:50,065 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:15:50,066 INFO [camera] All profile controls applied successfully
+2026-04-05 16:15:50,066 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:15:50,075 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:15:50,076 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:15:50,077 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:15:50,094 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:15:53,231 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:15:53,233 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:16:13,421 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:16:13,450 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:16:13,875 INFO [camera] Streaming stopped
+[113:07:16.691473195] [472430]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:07:16.692779369] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:16:13,879 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:16:14,022 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:16:14,046 INFO [picamera2.picamera2] Camera stopped
+[113:07:16.862068711] [472430]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:07:16.867422463] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:16:14,054 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:16:14,191 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:16:14,382 INFO [picamera2.picamera2] Camera stopped
+[113:07:17.197748550] [472430]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:07:17.202965987] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:16:14,389 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:16:14,537 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:16:14,883 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f847b7230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-16-13.jpg.
+2026-04-05 16:16:14,884 INFO [picamera2.request] Time taken for encode: 246.49258505087346 ms.
+2026-04-05 16:16:14,891 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-16-13.jpg'
+2026-04-05 16:16:14,931 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:16:14,935 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:07:17.750729199] [472430]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:07:17.755263587] [472397]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:16:14,942 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:16:15,004 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:16:15,014 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:16:15,015 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:16:15,015 INFO [camera] All profile controls applied successfully
+2026-04-05 16:16:15,015 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:16:15,048 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:17:05,799 INFO [picamera2.picamera2] Camera stopped
+[113:08:39.020191897] [472689]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:08:39.157703189] [472692]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:08:39.164683649] [472692]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:08:39.164750537] [472692]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:08:39.164786018] [472692]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:17:36,351 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:17:36,381 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:17:36,382 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:17:36,389 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:08:39.203856728] [472689]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:08:39.204714887] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:17:36,393 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:17:36,407 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:08:39.222301981] [472689]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:08:39.224443351] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:17:36,411 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:17:36,426 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:08:39.240918102] [472689]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:08:39.241693429] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:17:36,428 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:17:36,459 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:17:36,462 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:08:39.277449814] [472689]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:08:39.278469824] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:17:36,465 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:17:36,547 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:17:36,556 INFO [camera] All profile controls applied successfully
+2026-04-05 16:17:36,556 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:17:36,964 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:17:36,966 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:08:39.781453589] [472697]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:08:39.782663598] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:17:36,969 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:17:37,033 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:17:37,043 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:17:37,043 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:17:37,044 INFO [camera] All profile controls applied successfully
+2026-04-05 16:17:37,044 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:17:37,053 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:17:37,054 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:17:37,055 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:17:37,073 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:17:37,716 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:17:37,718 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:18:01,324 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:18:01,356 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:18:01,383 INFO [camera] Streaming stopped
+[113:09:04.199651385] [472712]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:09:04.201250224] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:18:01,387 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:18:01,533 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:18:01,555 INFO [picamera2.picamera2] Camera stopped
+[113:09:04.371776775] [472712]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:09:04.376440773] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:18:01,563 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:18:01,700 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:18:01,890 INFO [picamera2.picamera2] Camera stopped
+[113:09:04.706679300] [472712]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:09:04.711841516] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:18:01,898 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:18:02,032 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:18:02,331 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7fa0f87230> to file /home/pi/CamUI-WebRTC/static/gallery/1970-01-01_00-00-25.jpg.
+2026-04-05 16:18:02,332 INFO [picamera2.request] Time taken for encode: 203.72875401517376 ms.
+2026-04-05 16:18:02,338 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/1970-01-01_00-00-25.jpg'
+2026-04-05 16:18:02,359 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:18:02,361 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:09:05.176549026] [472712]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:09:05.181463725] [472692]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:18:02,368 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:18:02,427 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:18:02,436 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:18:02,437 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:18:02,437 INFO [camera] All profile controls applied successfully
+2026-04-05 16:18:02,437 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:18:02,461 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:21:03,977 INFO [picamera2.picamera2] Camera stopped
+[113:12:18.139522365] [473167]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:12:18.265958746] [473170]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:12:18.272366118] [473170]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:12:18.272432062] [473170]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:12:18.272470636] [473170]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:21:15,458 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:21:15,480 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:21:15,480 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:21:15,487 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:18.302425810] [473167]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:12:18.302901991] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:21:15,490 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:15,501 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:18.316662061] [473167]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:12:18.317096057] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:21:15,503 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:15,519 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:18.333756880] [473167]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:12:18.334194191] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:21:15,520 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:15,557 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:21:15,560 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:18.374748128] [473167]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:12:18.375168235] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:21:15,561 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:15,662 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:15,671 INFO [camera] All profile controls applied successfully
+2026-04-05 16:21:15,671 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:21:16,078 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:21:16,081 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:18.896318816] [473175]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:12:18.897610138] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:21:16,084 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:16,146 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:16,156 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:21:16,157 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:21:16,157 INFO [camera] All profile controls applied successfully
+2026-04-05 16:21:16,157 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:21:16,167 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:21:16,167 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:21:16,168 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:21:16,186 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:21:16,785 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:21:16,787 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:21:29,913 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:21:29,943 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:21:30,351 INFO [camera] Streaming stopped
+[113:12:33.167708056] [473190]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:12:33.169695965] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:21:30,356 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:30,500 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:30,523 INFO [picamera2.picamera2] Camera stopped
+[113:12:33.339284132] [473190]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:12:33.344233127] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:21:30,531 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:30,669 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:30,862 INFO [picamera2.picamera2] Camera stopped
+[113:12:33.678297466] [473190]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:12:33.683160388] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:21:30,870 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:31,016 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:31,329 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7fb1df7230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-21-29.jpg.
+2026-04-05 16:21:31,329 INFO [picamera2.request] Time taken for encode: 212.95002399710938 ms.
+2026-04-05 16:21:31,340 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-21-29.jpg'
+2026-04-05 16:21:31,368 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:21:31,373 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:12:34.188112215] [473190]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:12:34.196575718] [473170]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:21:31,384 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:21:31,452 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:21:31,461 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:21:31,462 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:21:31,462 INFO [camera] All profile controls applied successfully
+2026-04-05 16:21:31,462 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:21:31,484 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:22:22,217 INFO [picamera2.picamera2] Camera stopped
+[113:13:31.775542783] [473342]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:13:31.902144551] [473345]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:13:31.909034085] [473345]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:13:31.909098659] [473345]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:13:31.909135584] [473345]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:22:29,095 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:22:29,116 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:22:29,116 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:22:29,123 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:31.938171396] [473342]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:13:31.938648077] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:22:29,126 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:29,137 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:31.952302573] [473342]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:13:31.952748551] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:22:29,139 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:29,154 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:31.968910415] [473342]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:13:31.969678556] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:22:29,156 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:29,192 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:22:29,195 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:32.010034606] [473342]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:13:32.010890006] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:22:29,197 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:29,290 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:29,298 INFO [camera] All profile controls applied successfully
+2026-04-05 16:22:29,299 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:22:29,706 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:22:29,709 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:32.523828782] [473350]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:13:32.524799329] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:22:29,711 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:29,771 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:29,781 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:22:29,781 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:22:29,782 INFO [camera] All profile controls applied successfully
+2026-04-05 16:22:29,782 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:22:29,791 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:22:29,792 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:22:29,793 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:22:29,810 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:22:30,416 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:22:30,419 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:22:41,356 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:22:41,388 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:22:41,796 INFO [camera] Streaming stopped
+[113:13:44.612761136] [473371]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:13:44.613809392] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:22:41,800 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:41,938 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:41,960 INFO [picamera2.picamera2] Camera stopped
+[113:13:44.776416788] [473371]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:13:44.781126125] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:22:41,968 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:42,102 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:42,291 INFO [picamera2.picamera2] Camera stopped
+[113:13:45.106784080] [473371]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:13:45.111608119] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:22:42,298 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:42,429 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:42,727 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f9d2e7230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-22-41.jpg.
+2026-04-05 16:22:42,728 INFO [picamera2.request] Time taken for encode: 203.95946397911757 ms.
+2026-04-05 16:22:42,734 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-22-41.jpg'
+2026-04-05 16:22:42,753 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:22:42,756 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:13:45.571014934] [473371]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:13:45.575705752] [473345]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:22:42,762 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:22:42,820 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:22:42,829 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:22:42,830 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:22:42,830 INFO [camera] All profile controls applied successfully
+2026-04-05 16:22:42,830 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:22:42,851 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:23:46,416 INFO [picamera2.picamera2] Camera stopped
+[113:14:53.364427191] [473530]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:14:53.490088616] [473539]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:14:53.496400333] [473539]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:14:53.496465481] [473539]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:14:53.496500851] [473539]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:23:50,682 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:23:50,703 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:23:50,704 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:23:50,711 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:14:53.526162644] [473530]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:14:53.526636198] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:23:50,713 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:23:50,730 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:14:53.545478496] [473530]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:14:53.545913161] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:23:50,732 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:23:50,747 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:14:53.562619597] [473530]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:14:53.563050873] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:23:50,749 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:23:50,782 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:23:50,785 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:14:53.599696084] [473530]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:14:53.600121490] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:23:50,786 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:23:50,875 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:23:50,884 INFO [camera] All profile controls applied successfully
+2026-04-05 16:23:50,884 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:23:51,290 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:23:51,293 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:14:54.108312833] [473544]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:14:54.109347421] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:23:51,295 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:23:51,360 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:23:51,369 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:23:51,370 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:23:51,370 INFO [camera] All profile controls applied successfully
+2026-04-05 16:23:51,370 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:23:51,380 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:23:51,381 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:23:51,382 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:23:51,399 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:23:52,017 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:23:52,020 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:24:05,340 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:24:05,368 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:24:05,776 INFO [camera] Streaming stopped
+[113:15:08.593020902] [473559]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:15:08.594087268] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:24:05,780 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:05,921 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:05,943 INFO [picamera2.picamera2] Camera stopped
+[113:15:08.759759983] [473559]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:15:08.764593315] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:24:05,951 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:06,091 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:06,280 INFO [picamera2.picamera2] Camera stopped
+[113:15:09.096821295] [473559]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:15:09.101560684] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:24:06,288 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:06,423 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:06,725 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f7af97230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-08_14-23-56.jpg.
+2026-04-05 16:24:06,725 INFO [picamera2.request] Time taken for encode: 203.52772995829582 ms.
+2026-04-05 16:24:06,731 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-08_14-23-56.jpg'
+2026-04-05 16:24:06,752 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:24:06,755 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:15:09.570988008] [473559]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:15:09.576113988] [473539]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:24:06,762 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:06,827 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:06,837 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:24:06,837 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:24:06,838 INFO [camera] All profile controls applied successfully
+2026-04-05 16:24:06,838 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:24:06,863 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:24:52,956 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:24:52,959 INFO [picamera2.picamera2] Camera closed successfully.
+[113:16:00.118704147] [473691]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:16:00.246480297] [473700]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:16:00.253226786] [473700]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:16:00.253291786] [473700]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:16:00.253328860] [473700]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:24:57,439 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:24:57,461 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:24:57,461 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:24:57,469 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:00.283710858] [473691]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:16:00.284216745] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:24:57,471 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:57,483 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:00.297998259] [473691]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:16:00.298457627] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:24:57,485 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:57,500 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:00.315306443] [473691]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:16:00.315955440] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:24:57,502 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:57,536 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:24:57,539 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:00.353850832] [473691]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:16:00.354412940] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:24:57,541 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:57,635 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:57,643 INFO [camera] All profile controls applied successfully
+2026-04-05 16:24:57,644 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:24:58,051 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:24:58,054 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:00.869159024] [473705]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:16:00.870245834] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:24:58,057 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:24:58,119 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:24:58,129 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:24:58,130 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:24:58,130 INFO [camera] All profile controls applied successfully
+2026-04-05 16:24:58,131 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:24:58,140 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:24:58,141 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:24:58,142 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:24:58,160 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:24:58,750 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:24:58,753 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:25:10,143 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:25:10,170 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:25:10,549 INFO [camera] Streaming stopped
+[113:16:13.365775773] [473720]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:16:13.367852930] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:25:10,554 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:25:10,709 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:25:10,731 INFO [picamera2.picamera2] Camera stopped
+[113:16:13.547117063] [473720]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:16:13.551943024] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:25:10,738 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:25:10,876 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:25:11,068 INFO [picamera2.picamera2] Camera stopped
+[113:16:13.883999517] [473720]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:16:13.889016569] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:25:11,075 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:25:11,211 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:25:11,512 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f9f327230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-25-10.jpg.
+2026-04-05 16:25:11,512 INFO [picamera2.request] Time taken for encode: 203.45317298779264 ms.
+2026-04-05 16:25:11,518 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_14-25-10.jpg'
+2026-04-05 16:25:11,537 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:25:11,539 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:16:14.354699414] [473720]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:16:14.359994983] [473700]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:25:11,546 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:25:11,606 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:25:11,615 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:25:11,616 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:25:11,616 INFO [camera] All profile controls applied successfully
+2026-04-05 16:25:11,617 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:25:11,638 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:25:37,875 INFO [picamera2.picamera2] Camera stopped
+[113:27:38.957560613] [475089]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:27:39.086164864] [475092]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:27:39.092853614] [475092]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:27:39.092918466] [475092]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:27:39.092956113] [475092]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:36:36,279 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:36:36,300 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:36:36,300 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:36:36,307 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:39.122514574] [475089]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:27:39.123025996] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:36:36,310 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:36,321 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:39.136370385] [475089]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:27:39.136878807] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:36:36,323 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:36,338 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:39.152823326] [475089]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:27:39.153295156] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:36:36,339 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:36,369 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:36:36,371 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:39.186635924] [475089]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:27:39.187113235] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:36:36,373 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:36,472 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:36,481 INFO [camera] All profile controls applied successfully
+2026-04-05 16:36:36,481 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:36:36,890 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:36:36,893 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:39.707999809] [475097]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:27:39.709150412] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:36:36,895 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:36,954 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:36,964 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:36:36,964 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:36:36,965 INFO [camera] All profile controls applied successfully
+2026-04-05 16:36:36,965 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:36:36,975 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:36:36,975 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:36:36,976 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:36:36,994 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:36:37,584 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:36:37,587 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:36:45,473 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:36:45,510 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:36:45,917 INFO [camera] Streaming stopped
+[113:27:48.732967168] [475112]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:27:48.734098271] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:36:45,920 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:46,063 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:46,086 INFO [picamera2.picamera2] Camera stopped
+[113:27:48.901864895] [475112]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:27:48.906792009] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:36:46,093 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:46,233 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:46,480 INFO [picamera2.picamera2] Camera stopped
+[113:27:49.296506157] [475112]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:27:49.301608732] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:36:46,488 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:46,622 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:46,919 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f9f577230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-36-45.jpg.
+2026-04-05 16:36:46,920 INFO [picamera2.request] Time taken for encode: 203.01367400679737 ms.
+2026-04-05 16:36:46,926 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-36-45.jpg'
+2026-04-05 16:36:46,945 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:36:46,948 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:27:49.763144285] [475112]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:27:49.768389082] [475092]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:36:46,955 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:36:47,013 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:36:47,023 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:36:47,024 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:36:47,024 INFO [camera] All profile controls applied successfully
+2026-04-05 16:36:47,024 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:36:47,045 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:37:17,432 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:37:17,435 INFO [picamera2.picamera2] Camera closed successfully.
+[113:33:58.530170872] [476030]  INFO Camera camera_manager.cpp:340 libcamera v0.7.0+rpt20260205
+[113:33:58.658460455] [476039]  INFO IPAProxy ipa_proxy.cpp:180 Using tuning file /usr/share/libcamera/ipa/rpi/vc4/imx708.json
+[113:33:58.665148405] [476039]  INFO Camera camera_manager.cpp:223 Adding camera '/base/soc/i2c0mux/i2c@0/imx708@1a' for pipeline handler rpi/vc4
+[113:33:58.665212016] [476039]  INFO RPI vc4.cpp:445 Registered camera /base/soc/i2c0mux/i2c@0/imx708@1a to Unicam device /dev/media2 and ISP device /dev/media0
+[113:33:58.665245664] [476039]  INFO RPI pipeline_base.cpp:1117 Using configuration file '/usr/share/libcamera/pipeline/rpi/vc4/rpi_apps.yaml'
+2026-04-05 16:42:55,851 INFO [camera_manager] Detected Raspberry Pi Camera: model=imx708
+2026-04-05 16:42:55,872 INFO [picamera2.picamera2] Initialization successful.
+2026-04-05 16:42:55,872 INFO [picamera2.picamera2] Camera now open.
+2026-04-05 16:42:55,879 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:33:58.694359151] [476030]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 1536x864-SBGGR10_CSI2P/RAW
+[113:33:58.694863517] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 1536x864-SBGGR10_1X10/RAW - Selected unicam format: 1536x864-pBAA/RAW
+2026-04-05 16:42:55,882 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:42:55,894 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:33:58.708769432] [476030]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 2304x1296-SBGGR10_CSI2P/RAW
+[113:33:58.709362354] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:42:55,896 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:42:55,911 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:33:58.725956564] [476030]  INFO Camera camera.cpp:1215 configuring streams: (0) 640x480-XBGR8888/sRGB (1) 4608x2592-SBGGR10_CSI2P/RAW
+[113:33:58.726541800] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SBGGR10_1X10/RAW - Selected unicam format: 4608x2592-pBAA/RAW
+2026-04-05 16:42:55,913 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:42:55,946 INFO [camera] Clamped default for AnalogueGain: 1.0 -> 1.1228070259094238 (below min)
+2026-04-05 16:42:55,948 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:33:58.763525914] [476030]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SBGGR10_CSI2P/RAW
+[113:33:58.764283223] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SBGGR10_1X10/RAW - Selected unicam format: 2304x1296-pBAA/RAW
+2026-04-05 16:42:55,951 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:42:56,054 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:42:56,062 INFO [camera] All profile controls applied successfully
+2026-04-05 16:42:56,063 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:42:56,469 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:42:56,472 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:33:59.286682095] [476044]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:33:59.287648995] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:42:56,474 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:42:56,536 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:42:56,545 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '(1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:42:56,546 WARNING [camera] Failed to coerce control 'ColourGains' value '(1.792555570602417, 2.0278091430664062)': float() argument must be a string or a real number, not 'tuple'
+2026-04-05 16:42:56,547 INFO [camera] All profile controls applied successfully
+2026-04-05 16:42:56,547 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:42:56,556 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:42:56,557 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:42:56,558 INFO [camera_manager] Initialized camera 0: {'Num': 0, 'Model': 'imx708', 'Is_Pi_Cam': True, 'Has_Config': True, 'Config_Location': 'vflip.json'}
+2026-04-05 16:42:56,575 INFO [camera_manager] Camera 0: no fallback audio device available
+2026-04-05 16:42:57,166 INFO [camera] Streaming started on 'lores' stream (audio=False)
+2026-04-05 16:42:57,169 INFO [__main__] Camera RPC server listening on /home/pi/CamUI-WebRTC/camera.sock
+2026-04-05 16:43:12,632 INFO [camera] Skip stopping recording, no active recording
+2026-04-05 16:43:12,670 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:43:12,698 INFO [camera] Streaming stopped
+[113:34:15.514372424] [476060]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:34:15.515466768] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:43:12,702 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:43:12,845 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:43:12,866 INFO [picamera2.picamera2] Camera stopped
+[113:34:15.681921731] [476060]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:34:15.687570114] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:43:12,874 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:43:13,012 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:43:13,202 INFO [picamera2.picamera2] Camera stopped
+[113:34:16.018004077] [476060]  INFO Camera camera.cpp:1215 configuring streams: (0) 4608x2592-BGR888/sRGB
+[113:34:16.023158964] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 4608x2592-SRGGB10_1X10/RAW - Selected unicam format: 4608x2592-pRAA/RAW
+2026-04-05 16:43:13,210 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:43:13,345 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:43:13,643 INFO [picamera2.request] Saved <picamera2.request.Helpers object at 0x7f85947230> to file /home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-43-12.jpg.
+2026-04-05 16:43:13,643 INFO [picamera2.request] Time taken for encode: 202.36388000193983 ms.
+2026-04-05 16:43:13,649 INFO [camera] Successfully captured image '/home/pi/CamUI-WebRTC/static/gallery/2026-04-05_16-43-12.jpg'
+2026-04-05 16:43:13,668 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:43:13,671 INFO [picamera2.picamera2] Camera configuration has been adjusted!
+[113:34:16.485847218] [476060]  INFO Camera camera.cpp:1215 configuring streams: (0) 1920x1080-XBGR8888/Rec709/Rec709/None/Full (1) 1920x1080-YUV420/Rec709 (2) 2304x1296-SRGGB10_CSI2P/RAW
+[113:34:16.491036439] [476039]  INFO RPI vc4.cpp:620 Sensor: /base/soc/i2c0mux/i2c@0/imx708@1a - Selected sensor format: 2304x1296-SRGGB10_1X10/RAW - Selected unicam format: 2304x1296-pRAA/RAW
+2026-04-05 16:43:13,678 INFO [picamera2.picamera2] Configuration successful!
+2026-04-05 16:43:13,736 INFO [picamera2.picamera2] Camera started
+2026-04-05 16:43:13,746 WARNING [camera] Failed to coerce control 'ColourCorrectionMatrix' value '[1.5392018556594849, -0.3521248698234558, -0.18707072734832764, -0.3366783559322357, 1.6769955158233643, -0.34030717611312866, 0.0024309989530593157, -0.557864248752594, 1.555443286895752]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:43:13,747 WARNING [camera] Failed to coerce control 'ColourGains' value '[1.792555570602417, 2.0278091430664062]': float() argument must be a string or a real number, not 'list'
+2026-04-05 16:43:13,747 INFO [camera] All profile controls applied successfully
+2026-04-05 16:43:13,747 INFO [camera] Video pipeline reconfigured: main=(1920, 1080) lores=(1920, 1080)
+2026-04-05 16:43:13,768 INFO [camera] Streaming started on 'lores' stream (audio=False)
+Traceback (most recent call last):
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 255, in <module>
+    main()
+    ~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 251, in main
+    server.serve_forever()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/pi/CamUI-WebRTC/camera_server.py", line 202, in serve_forever
+    conn, _ = srv.accept()
+              ~~~~~~~~~~^^
+  File "/usr/lib/python3.13/socket.py", line 295, in accept
+    fd, addr = self._accept()
+               ~~~~~~~~~~~~^^
+KeyboardInterrupt
+2026-04-05 16:43:29,608 INFO [picamera2.picamera2] Camera stopped
+2026-04-05 16:43:29,611 INFO [picamera2.picamera2] Camera closed successfully.

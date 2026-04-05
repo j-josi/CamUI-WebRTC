@@ -134,8 +134,19 @@ app.config['camera_profile_folder'] = camera_profile_folder
 media_upload_folder = os.path.join(current_dir, 'static/gallery')
 app.config['media_upload_folder'] = media_upload_folder
 
+# DEFAULT_EPOCH = datetime(1970, 1, 1)
+# _MONOTONIC_START = time.monotonic()
+
+# Default epoch (constant fallback)
 DEFAULT_EPOCH = datetime(1970, 1, 1)
-_MONOTONIC_START = time.monotonic()
+
+# Monotonic reference point for fallback calculations
+monotonic_epoch = time.monotonic()
+
+# Client-provided epoch (None = not yet received)
+CLIENT_EPOCH: datetime | None = None
+
+sys_time_synchronized = False
 
 
 ####################
@@ -144,6 +155,9 @@ _MONOTONIC_START = time.monotonic()
 
 def system_time_is_synced() -> bool:
     """Check if system time of Raspberry Pi is synced with NTP server"""
+    global sys_time_synchronized
+    if sys_time_synchronized:
+        return True
     try:
         result = subprocess.run(
             ["timedatectl", "show", "-p", "NTPSynchronized", "--value"],
@@ -152,30 +166,51 @@ def system_time_is_synced() -> bool:
             timeout=2,
             check=True
         )
-        return result.stdout.strip().lower() == "yes"
+        sys_time_synchronized = result.stdout.strip().lower() == "yes"
+        return sys_time_synchronized
     except Exception:
         return False
 
+def request_client_time_if_needed():
+    """
+    Requests client time via WebSocket if system time is not synchronized
+    and no client epoch has been set yet.
+    """
+    if not system_time_is_synced() and CLIENT_EPOCH is None:
+        socketio.emit("request_client_time")
+
 def generate_filename(camera_manager, cam_num: int, file_extension: str = ".jpg") -> str:
-    """Generate a timestamped filename for a camera, optionally including camera number."""
+    """
+    Generates a filename timestamp based on the following priority:
+    1) System time (if NTP synchronized)
+    2) Client-provided time (first connected client)
+    3) Fallback using DEFAULT_EPOCH + monotonic elapsed time
+    """
     # Normalize file extension
     if not file_extension.startswith("."):
         file_extension = "." + file_extension
 
-    # Determine timestamp using system time or monotonic fallback
+    # 1) Use system time if synced
     if system_time_is_synced():
-        ts = datetime.now()
-    else:
-        elapsed = int(time.monotonic() - _MONOTONIC_START)
-        ts = DEFAULT_EPOCH + timedelta(seconds=elapsed)
+        timestamp = datetime.now()
 
-    timestamp = ts.strftime("%Y-%m-%d_%H-%M-%S")
+    # 2) Use client-provided timestamp if available
+    elif CLIENT_EPOCH is not None:
+        elapsed = time.monotonic() - monotonic_epoch
+        timestamp = CLIENT_EPOCH + timedelta(seconds=elapsed)
+
+    # 3) Last fallback: app start time
+    else:
+        elapsed = time.monotonic() - monotonic_epoch
+        timestamp = DEFAULT_EPOCH + timedelta(seconds=elapsed)
+    
+    str_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
 
     # add camera number to filename, if more than one camera is connected
-    if len(camera_manager.cameras.items()) > 1:
-        return f"{timestamp}_cam{cam_num}{file_extension}"
+    if len(camera_manager.cameras.items()) > 1 and cam_num:
+        return f"{str_timestamp}_cam{cam_num}{file_extension}"
     else:
-        return f"{timestamp}{file_extension}"
+        return f"{str_timestamp}{file_extension}"
 
 def _build_camera_state(camera_num: int) -> dict:
     """Build a camera state dict that includes current settings and per-param button states."""
@@ -302,6 +337,7 @@ media_gallery_manager.recover_interrupted_mux()
 @socketio.on("connect")
 def handle_connect():
     logger.info(f"Client connected: {request.sid}")
+    request_client_time_if_needed()
     if _battery_state["percent"] is not None:
         emit("battery_state", {"percent": _battery_state["percent"]})
 
@@ -340,6 +376,44 @@ def handle_leave_camera_room(data):
     room = f"camera_{camera_num}"
     leave_room(room)
     logger.info("Client %s left room %s", request.sid, room)
+
+@socketio.on("client_time_response")
+def handle_client_time_response(data):
+    """
+    Receives client timestamp (UTC + timezone offset) and reconstructs
+    the client's local time. Sets CLIENT_EPOCH only once.
+    """
+    global CLIENT_EPOCH, monotonic_epoch
+
+    if CLIENT_EPOCH is not None:
+        return
+
+    if "client_timestamp" not in data:
+        return
+
+    try:
+        ts_data = data["client_timestamp"]
+
+        # Extract values
+        iso_utc = ts_data.get("iso")
+        offset_minutes = ts_data.get("timezoneOffset")
+
+        if iso_utc is None or offset_minutes is None:
+            return
+
+        # Convert ISO string (UTC) to datetime
+        utc_dt = datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+
+        # Convert to client local time
+        # getTimezoneOffset(): minutes behind UTC (e.g. -120 for CEST)
+        CLIENT_EPOCH = utc_dt - timedelta(minutes=offset_minutes)
+
+        # Reset monotonic reference point
+        monotonic_epoch = time.monotonic()
+
+    except Exception:
+        # Ignore invalid timestamps
+        pass
 
 @socketio.on("capture_still")
 def handle_capture_still(data):
