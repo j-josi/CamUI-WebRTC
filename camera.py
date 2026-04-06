@@ -922,22 +922,62 @@ class Camera:
 
         return sorted(resolutions, reverse=True)
 
+    def _find_best_sensor_mode(self, video_resolution: tuple) -> dict:
+        """
+        Selects the best sensor mode based on:
+        1) Aspect ratio match (highest priority)
+        2) Preferred downscaling factor (~1.5x ideal)
+        3) Strictly no upscaling (<1.0)
+        4) Fallback to largest available mode if no valid candidate exists
+        """
 
-
-    def _find_best_sensor_mode(self, video_resolution: tuple) -> Dict:
         tw, th = video_resolution
+        target_ratio = tw / th
 
+        def aspect_diff(mode):
+            mw, mh = mode["size"]
+            return abs((mw / mh) - target_ratio)
+
+        def scale_factor(mode):
+            mw, mh = mode["size"]
+            return min(mw / tw, mh / th)
+
+        def area(mode):
+            mw, mh = mode["size"]
+            return mw * mh
+
+        # --- Step 1: filter candidates with ideal downscaling factor (1.2–2.0×) ---#
         candidates = [
-            mode
-            for mode in self.sensor_modes_supported
-            if mode["size"][0] >= tw and mode["size"][1] >= th
+            m for m in self.sensor_modes_supported
+            if 1.2 <= scale_factor(m) <= 2.0
         ]
 
+        # --- Step 2: fallback if no candidates in ideal range -> include candidates with downscaling factor between (1.0-1.2x) ---
         if not candidates:
-            raise ValueError("No suitable sensor mode found")
+            # fallback: all modes >= target (strictly no upscaling)
+            candidates = [
+                m for m in self.sensor_modes_supported
+                if scale_factor(m) >= 1.0
+            ]
+            if not candidates:
+                # ultimate fallback: largest mode available
+                return max(self.sensor_modes_supported, key=area)
 
-        # Prioritize smallest suitable resolution
-        return min(candidates, key=lambda m: m["size"][0] * m["size"][1])
+        # --- Step 3: scoring by aspect ratio and closeness to 1.5× downscale ---
+        def score(mode):
+            ar_diff = aspect_diff(mode)
+            sf = scale_factor(mode)
+            scale_penalty = abs(sf - 1.5)  # prefer ~1.5 sweet spot
+            return (ar_diff * 10.0) + scale_penalty
+
+        best_sensor_mode = min(candidates, key=score)
+
+        logger.info(
+            f"best suitable/available sensor mode for video resolution {video_resolution}: "
+            f"{best_sensor_mode} (scale_factor={scale_factor(best_sensor_mode):.2f})"
+        )
+        return best_sensor_mode
+
 
     def reconfigure_video_pipeline(self) -> bool:
         """Reconfigure video pipeline based on current (camera) configs."""
