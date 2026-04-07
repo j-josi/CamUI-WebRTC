@@ -52,9 +52,10 @@ class CameraRPCServer:
                 self._clients.remove(c)
 
     def _setup_callbacks(self):
-        def on_changed(camera):
+        def on_changed(camera, state_name):
             self._broadcast_event("camera_state_changed", {
                 "camera_num": camera.camera_num,
+                "state_name": state_name,
                 "settings": camera.get_settings(),
             })
         self._manager.on_camera_setting_changed = on_changed
@@ -69,10 +70,11 @@ class CameraRPCServer:
             })
         self._manager.on_media_created = on_media_created
 
-        def on_recording_auto_stopped(camera_num, reason):
+        def on_recording_auto_stopped(camera_num, reason, extra):
             self._broadcast_event("recording_auto_stopped", {
                 "camera_num": camera_num,
                 "reason": reason,
+                **extra,
             })
         self._manager.on_recording_auto_stopped = on_recording_auto_stopped
 

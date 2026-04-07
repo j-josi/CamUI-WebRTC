@@ -117,6 +117,18 @@
           </button>
         </div>
 
+        <!-- Auto-stop banner: overlays the video at the top, visible in both normal and fullscreen -->
+        <div id="autoStopBanner"
+             class="position-absolute start-0 end-0 d-none"
+             style="top:8px; z-index:20; padding:0 8px;">
+          <div class="alert alert-warning alert-dismissible fade mb-0"
+               id="autoStopBannerInner" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span id="autoStopMessage"></span>
+            <button type="button" class="btn-close" id="autoStopBannerClose" aria-label="Close"></button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Autoplay disabled warning: shown once when the browser blocks autoplay -->
@@ -127,6 +139,7 @@
         Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream. <strong>For better experience it is recommended to enable autoplay for this site in the settings of your browser.</strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
+
 
       {% include "animated_logo.html" %}
 
@@ -333,8 +346,11 @@ function applyStateToUI(state) {
             const wasRecording = isRecording;
             isRecording = state.states.is_video_recording;
             updateRecordButton();
-            if (isRecording) startRecOverlay(state.states.recording_elapsed_seconds);
-            else if (wasRecording) stopRecOverlay();
+            if (isRecording) {
+                startRecOverlay(state.states.recording_elapsed_seconds);
+            } else if (wasRecording) {
+                stopRecOverlay();
+            }
 
             const captureBtn = document.getElementById("captureButton");
             if (isRecording) {
@@ -810,17 +826,60 @@ socket.on("storage_error", (data) => {
 });
 
 // -------------------------------------------------------
-// Auto-stop notification
+// Auto-stop banner (outer + fullscreen copy)
 // -------------------------------------------------------
+function _autoStopMsg(data) {
+    if (data.reason === "max_duration") {
+        return `Recording stopped automatically: maximum recording duration (${data.max_duration_min} min) reached.`;
+    } else if (data.reason === "storage_full") {
+        return `Recording stopped automatically: storage full`;
+    }
+    return "Recording stopped automatically.";
+}
+
+let _autoStopActive = false;
+
+function showAutoStopBanner(msg) {
+    _autoStopActive = true;
+    document.getElementById("autoStopMessage").innerHTML = msg;
+    const wrap  = document.getElementById("autoStopBanner");
+    const inner = document.getElementById("autoStopBannerInner");
+    wrap.classList.remove("d-none");
+    requestAnimationFrame(() => inner.classList.add("show"));
+}
+
+function hideAutoStopBanner() {
+    _autoStopActive = false;
+    const wrap  = document.getElementById("autoStopBanner");
+    const inner = document.getElementById("autoStopBannerInner");
+    inner.classList.remove("show");
+    // Guard: only add d-none after the fade-out completes — and only if the banner
+    // wasn't re-shown in the meantime (prevents stale listeners from firing during
+    // a subsequent show-transition and hiding the banner immediately).
+    inner.addEventListener("transitionend", () => {
+        if (!_autoStopActive) wrap.classList.add("d-none");
+    }, { once: true });
+}
+
+document.getElementById("autoStopBannerClose").addEventListener("click", hideAutoStopBanner);
+
 socket.on("recording_auto_stopped", (data) => {
     if (data.camera_num !== cameraNum) return;
-    const messages = {
-        max_duration: "Recording stopped: maximum duration (90 min) reached.",
-        storage_full: "Recording stopped: storage space low (<500 MB).",
-    };
-    const msg = messages[data.reason] ?? "Recording stopped automatically.";
-    showToast(msg, "warning");
+    showAutoStopBanner(_autoStopMsg(data));
 });
+
+socket.on("recording_started", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    hideAutoStopBanner();
+});
+
+// Show banner on page load if a notification is pending from a previous session
+{% if auto_stop_notification %}
+(function () {
+    const data = {{ auto_stop_notification | tojson }};
+    showAutoStopBanner(_autoStopMsg(data));
+})();
+{% endif %}
 
 // -------------------------------------------------------
 // Video recording

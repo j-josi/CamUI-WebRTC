@@ -160,32 +160,7 @@ class Camera:
                 state_changed = True
         
         if state_changed:
-            self._on_setting_changed()
-
-    # def _coerce_control_value(self, name: str, value: Any) -> Any:
-    #     """Convert incoming control values to the type expected by Picamera2."""
-    #     current = self.controls.get(name)
-
-    #     if current is None:
-    #         return value
-
-    #     try:
-    #         if isinstance(current, bool):
-    #             return bool(int(value)) if isinstance(value, str) else bool(value)
-    #         if isinstance(current, int):
-    #             return int(value)
-    #         if isinstance(current, float):
-    #             return float(value)
-    #     except (ValueError, TypeError):
-    #         logger.warning(
-    #             "Failed to coerce control '%s' value '%s' to type %s",
-    #             name,
-    #             value,
-    #             type(current),
-    #         )
-
-    #     return value
-
+            self._on_setting_changed(name)
 
     def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values based on libcamera metadata."""
@@ -525,15 +500,15 @@ class Camera:
         
         return True
 
-    def _on_setting_changed(self) -> None:
+    def _on_setting_changed(self, state_name: str = "") -> None:
         """
         Call callback function, whenever a Camera setting changes.
-        Re-bound in camera_manager.py.
+        state_name is set when a specific boolean state changed (see _set_state),
+        empty string for general config/control updates.
         """
-
-        logger.debug("camera._on_setting_changed() called")
+        logger.debug("camera._on_setting_changed() called for state '%s'", state_name)
         if callable(self._on_setting_changed_callback):
-            self._on_setting_changed_callback(self)
+            self._on_setting_changed_callback(self, state_name)
 
     # ===================================================
     # CONTROLS / SYNC

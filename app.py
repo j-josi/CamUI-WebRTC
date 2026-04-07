@@ -1,3 +1,6 @@
+# run with following command:
+# /home/pi/CamUI-WebRTC/venv/bin/gunicorn   --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker   --workers 1 --bind 0.0.0.0:8080   --chdir /home/pi/CamUI-WebRTC   --env BATTERY_FILE=/run/battery/battery.json   app:app
+
 from gevent import monkey
 # GeventWebSocketWorker (gunicorn) calls monkey.patch_all() before the app is
 # imported; skip the call here to avoid the double-patch warning.
@@ -148,6 +151,12 @@ CLIENT_EPOCH: datetime | None = None
 
 sys_time_synchronized = False
 
+# Pending auto-stop notifications per camera_num.
+# Stored when a recording stops automatically so the banner can be shown
+# on the next page load even if no client was connected at that moment.
+# Cleared when the camera starts a new recording.
+_auto_stop_pending: dict = {}
+
 
 ####################
 # Configuration Helpers
@@ -228,8 +237,18 @@ def _build_camera_state(camera_num: int) -> dict:
     }
     return state
 
-def handle_camera_setting_changed(camera):
-    logger.debug(f"Camera {camera.camera_num} changed settings")
+def handle_camera_setting_changed(camera, state_name):
+    logger.debug(f"Camera {camera.camera_num} changed settings (state: {state_name})")
+    if state_name == "is_video_recording":
+        cam = camera_manager.get_camera(camera.camera_num)
+        if cam and cam.states.get("is_video_recording"):
+            # New recording started — clear pending auto-stop notification and notify clients
+            _auto_stop_pending.pop(camera.camera_num, None)
+            socketio.emit(
+                "recording_started",
+                {"camera_num": camera.camera_num},
+                room=f"camera_{camera.camera_num}",
+            )
     socketio.emit(
         "camera_state",
         {
@@ -239,11 +258,12 @@ def handle_camera_setting_changed(camera):
         room=f"camera_{camera.camera_num}"
     )
 
-def handle_recording_auto_stopped(camera_num: int, reason: str):
+def handle_recording_auto_stopped(camera_num: int, reason: str, extra: dict):
     logger.info("Recording auto-stopped on cam%s: reason=%s", camera_num, reason)
+    _auto_stop_pending[camera_num] = {"reason": reason, **extra}
     socketio.emit(
         "recording_auto_stopped",
-        {"camera_num": camera_num, "reason": reason},
+        {"camera_num": camera_num, "reason": reason, **extra},
         room=f"camera_{camera_num}",
     )
 
@@ -903,6 +923,7 @@ def live_view():
             hostname = _hostname,
             camera_display = cam_display,
             camera_names = camera_names,
+            auto_stop_notification = _auto_stop_pending.get(camera_num),
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")

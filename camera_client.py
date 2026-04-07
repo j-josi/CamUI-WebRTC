@@ -258,9 +258,10 @@ class CameraManagerClient:
             if cam is not None and callable(self.on_camera_setting_changed):
                 # Run callback in a separate thread so it can make RPC calls
                 # without deadlocking the reader loop.
+                state_name = data.get("state_name", "")
                 t = threading.Thread(
                     target=self.on_camera_setting_changed,
-                    args=(cam,),
+                    args=(cam, state_name),
                     daemon=True,
                 )
                 t.start()
@@ -275,9 +276,10 @@ class CameraManagerClient:
                 t.start()
         elif event == "recording_auto_stopped":
             if callable(self.on_recording_auto_stopped):
+                extra = {k: v for k, v in data.items() if k not in ("camera_num", "reason")}
                 t = threading.Thread(
                     target=self.on_recording_auto_stopped,
-                    args=(data["camera_num"], data["reason"]),
+                    args=(data["camera_num"], data["reason"], extra),
                     daemon=True,
                 )
                 t.start()

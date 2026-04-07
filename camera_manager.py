@@ -24,7 +24,7 @@ class CameraManager:
     # Active recordings are automatically stopped when free space drops below this threshold.
     # Also used as the buffer subtracted from reported free space in get_storage_info(),
     # so the UI never shows the reserved space as "available".
-    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
+    STORAGE_MIN_FREE_BYTES = 50470 * 1024 * 1024
 
     # Additional safety margin on top of STORAGE_MIN_FREE_BYTES (10 MB).
     # A new photo capture or video recording is rejected unless free space exceeds
@@ -93,6 +93,8 @@ class CameraManager:
         self.lock = threading.Lock()
         self._gallery = MediaGallery(media_upload_folder)
         self._settings = SystemSettings(system_settings_path)
+        self._recording_timers: Dict[int, threading.Timer] = {}
+        self._recording_timers: Dict[int, threading.Timer] = {}
 
         # create directories, if not already existing
         os.makedirs(self.camera_profile_folder, exist_ok=True)
@@ -260,7 +262,7 @@ class CameraManager:
                     camera.camera_num,
                 )
 
-    def on_camera_setting_changed(self, camera: Camera):
+    def on_camera_setting_changed(self, camera: Camera, state_name: str):
         """
         Hook for reacting to camera setting changes.
         Intended to be overridden / rebound by application layer (app.py).
@@ -275,9 +277,14 @@ class CameraManager:
         """
         pass
 
-    def _handle_camera_setting_changed(self, camera: Camera):
+    def _handle_camera_setting_changed(self, camera: Camera, state_name: str):
+        if state_name == "is_video_recording":
+            if camera.states.get("is_video_recording"):
+                self._schedule_duration_timer(camera.camera_num)
+            else:
+                self._cancel_duration_timer(camera.camera_num)
         if callable(self.on_camera_setting_changed):
-            self.on_camera_setting_changed(camera)
+            self.on_camera_setting_changed(camera, state_name)
 
     def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
         self._gallery.register_media(filename, w, h, has_raw=has_raw)
@@ -290,16 +297,19 @@ class CameraManager:
         if callable(self.on_media_created):
             self.on_media_created(camera_num, filename, w, h, has_raw=has_raw)
 
-    def on_recording_auto_stopped(self, camera_num: int, reason: str):
+    def on_recording_auto_stopped(self, camera_num: int, reason: str, extra: dict):
         """
-        Hook called when a recording is auto-stopped by the watchdog.
+        Hook called when a recording is auto-stopped.
+        extra may contain additional context, e.g.:
+          {'max_duration_min': 90}  — for reason 'max_duration'
+          {'storage_min_mb': 500}   — for reason 'storage_full'
         Intended to be overridden / rebound by application layer.
         """
         pass
 
-    def _handle_recording_auto_stopped(self, camera_num: int, reason: str):
+    def _handle_recording_auto_stopped(self, camera_num: int, reason: str, extra: dict = {}):
         if callable(self.on_recording_auto_stopped):
-            self.on_recording_auto_stopped(camera_num, reason)
+            self.on_recording_auto_stopped(camera_num, reason, extra)
 
     # ------------------------------------------------------------------
     # System settings
@@ -391,51 +401,68 @@ class CameraManager:
         logger.info("Camera %s audio device set to: %s", camera.camera_num, camera.audio_device)
 
     # ------------------------------------------------------------------
-    # Recording watchdog
+    # Recording duration timer (push-based, triggered by state change callback)
+    # ------------------------------------------------------------------
+
+    def _schedule_duration_timer(self, cam_num: int) -> None:
+        """Schedule a one-shot timer that stops the recording when max duration is reached."""
+        self._cancel_duration_timer(cam_num)
+        duration_s = self._settings.max_recording_duration_s
+        timer = threading.Timer(duration_s, self._on_duration_limit_reached, args=(cam_num,))
+        timer.daemon = True
+        timer.name = f"recording-duration-cam{cam_num}"
+        timer.start()
+        self._recording_timers[cam_num] = timer
+        logger.info("Camera %s: recording will auto-stop in %ss", cam_num, duration_s)
+
+    def _cancel_duration_timer(self, cam_num: int) -> None:
+        timer = self._recording_timers.pop(cam_num, None)
+        if timer is not None:
+            timer.cancel()
+
+    def _on_duration_limit_reached(self, cam_num: int) -> None:
+        self._recording_timers.pop(cam_num, None)
+        cam = self.get_camera(cam_num)
+        if cam and cam.states.get("is_video_recording"):
+            max_duration_min = self._settings.max_recording_duration_s // 60
+            logger.warning("Auto-stopping recording on cam%s: max_duration", cam_num)
+            cam.stop_recording()
+            self._handle_recording_auto_stopped(
+                cam_num, "max_duration", {"max_duration_min": max_duration_min}
+            )
+
+    # ------------------------------------------------------------------
+    # Storage watchdog (polling — no reliable push API on Linux for disk space)
     # ------------------------------------------------------------------
 
     def _start_recording_watchdog(self):
         """
-        Background thread that automatically stops any active recording when:
-          1. The recording has run for max_recording_duration_s (configurable)
-          2. Free disk space drops below STORAGE_MIN_FREE_BYTES (500 MB)
-        Polls every 10 seconds.
+        Background thread that stops active recordings when free disk space
+        drops below STORAGE_MIN_FREE_BYTES. Polls every 10 seconds.
+        Max recording duration is handled via threading.Timer in _schedule_duration_timer().
         """
         def _watchdog():
-            recording_started_at: dict = {}
             while True:
                 time.sleep(10)
                 try:
                     disk_free = shutil.disk_usage(self.media_upload_folder).free
-                    storage_full = disk_free < CameraManager.STORAGE_MIN_FREE_BYTES
-
+                    if disk_free >= CameraManager.STORAGE_MIN_FREE_BYTES:
+                        continue
                     for cam_num, camera in list(self.cameras.items()):
-                        if not camera.states.get("is_video_recording"):
-                            recording_started_at.pop(cam_num, None)
-                            continue
-
-                        if cam_num not in recording_started_at:
-                            recording_started_at[cam_num] = time.monotonic()
-
-                        elapsed = time.monotonic() - recording_started_at[cam_num]
-
-                        reason = None
-                        if elapsed >= self._settings.max_recording_duration_s:
-                            reason = "max_duration"
-                        elif storage_full:
-                            reason = "storage_full"
-
-                        if reason:
+                        if camera.states.get("is_video_recording"):
                             logger.warning(
-                                "Auto-stopping recording on cam%s: %s", cam_num, reason
+                                "Auto-stopping recording on cam%s: storage_full", cam_num
                             )
+                            self._cancel_duration_timer(cam_num)
                             camera.stop_recording()
-                            recording_started_at.pop(cam_num, None)
-                            self._handle_recording_auto_stopped(cam_num, reason)
+                            self._handle_recording_auto_stopped(
+                                cam_num, "storage_full",
+                                {"storage_min_mb": CameraManager.STORAGE_MIN_FREE_BYTES // (1024 * 1024)},
+                            )
                 except Exception as exc:
-                    logger.error("Recording watchdog error: %s", exc, exc_info=True)
+                    logger.error("Storage watchdog error: %s", exc, exc_info=True)
 
-        t = threading.Thread(target=_watchdog, daemon=True, name="recording-watchdog")
+        t = threading.Thread(target=_watchdog, daemon=True, name="storage-watchdog")
         t.start()
 
     def get_camera(self, cam_num: int) -> Optional[Camera]:
