@@ -49,47 +49,119 @@ logger = logging.getLogger(__name__)
 
 
 ####################
-# Battery Monitor (optional)
-# Reads battery state from a JSON file written by an external process.
-#
-# Enable by passing the file path via the BATTERY_FILE environment variable,
-# e.g. by adding --env BATTERY_FILE=/run/battery.json to the gunicorn command.
-# If BATTERY_FILE is not set, the battery icon is hidden in the navbar.
-#
-# Expected JSON format:
-#   {"voltage_v": 3.85, "state_of_charge_mah": 2100.0, "state_of_charge_pct": 62.8, "runtime_remaining": 75.4}
-# Only state_of_charge_pct is required. All other fields are optional and may be null or absent.
 ####################
-import gevent as _gevent
-import json as _json
-import os as _os
-
+# Battery Monitor (optional, push-based via watchdog)
+# Watches BATTERY_FILE for changes and pushes updates to clients via WebSocket.
+# Enable by setting BATTERY_FILE env var, e.g. --env BATTERY_FILE=/run/battery/battery.json
+# Expected JSON: {"state_of_charge_pct": 62.8, "runtime_remaining": 75.4, ...}
+####################
 _battery_state: dict = {"percent": None, "runtime_min": None}
-_BATTERY_FILE = _os.environ.get("BATTERY_FILE")
+_BATTERY_FILE = os.environ.get("BATTERY_FILE")
 
 if _BATTERY_FILE:
-    def _battery_file_watcher() -> None:
-        logger.info("Battery monitor: watching %s", _BATTERY_FILE)
-        while True:
-            try:
-                with open(_BATTERY_FILE) as _f:
-                    _data = _json.load(_f)
-                pct = _data.get("state_of_charge_pct")
-                runtime_remaining = _data.get("runtime_remaining")
-                if pct is not None:
-                    pct = round(float(pct))
-                    if pct != _battery_state["percent"] or runtime_remaining != _battery_state["runtime_min"]:
-                        _battery_state["percent"] = pct
-                        _battery_state["runtime_min"] = runtime_remaining
-                        socketio.emit("battery_state", {"percent": pct, "runtime_remaining": runtime_remaining})
-                        logger.debug("Battery monitor: state_of_charge = %d%%", pct)
-            except FileNotFoundError:
-                logger.debug("Battery file not found yet: %s", _BATTERY_FILE)
-            except Exception as _exc:
-                logger.warning("Battery file read error: %s", _exc)
-            _gevent.sleep(30)
+    import json as _json
+    from watchdog.observers import Observer as _Observer
+    from watchdog.events import FileSystemEventHandler as _FileSystemEventHandler
 
-    _gevent.spawn(_battery_file_watcher)
+    _battery_file  = os.path.abspath(_BATTERY_FILE)
+    _battery_dir   = os.path.dirname(_battery_file)
+    _battery_fname = os.path.basename(_battery_file)
+
+    def _battery_read():
+        try:
+            with open(_battery_file) as _f:
+                _d = _json.load(_f)
+            pct = _d.get("state_of_charge_pct")
+            if pct is not None:
+                pct = round(float(pct))
+            return pct, _d.get("runtime_remaining")
+        except FileNotFoundError:
+            return None, None
+        except Exception as _exc:
+            logger.warning("Battery file read error: %s", _exc)
+            return None, None
+
+    # Greenlet that delays emitting a rising battery value (percentage and esitmated runtime) detected in battery logfile to be shown/pushed to frontend by 125 seconds. 
+    # Killed immediately if logged value in logfile are not higher than currently shown values in frontend (navbar). 
+    _rise_pending: list = [None]   # list so inner functions can rebind
+    _RISE_DELAY_S = 125            # 2 minutes 5 seconds
+
+    def _do_emit(pct, runtime):
+        """Unconditionally update state and push to all connected clients."""
+        _battery_state["percent"] = pct
+        _battery_state["runtime_min"] = runtime
+        socketio.emit("battery_state", {"percent": pct, "runtime_remaining": runtime})
+        logger.debug("Battery state updated: %d%%", pct)
+
+    def _battery_notify(pct, runtime):
+        import gevent as _gevent
+        if pct is None:
+            return
+        if pct == _battery_state["percent"] and runtime == _battery_state["runtime_min"]:
+            return
+
+        current_pct     = _battery_state["percent"]
+        current_runtime = _battery_state["runtime_min"]
+
+        # state of charge of battery, logged in file is higher than the currently shown percentage in frontend (navbar)
+        is_rising = (
+            current_pct is not None and pct > current_pct
+        )
+
+        if is_rising and current_pct is not None:
+            if _rise_pending[0] is not None:
+                # Timer already running — just update the stored value, don't reset
+                _rise_pending[0]._rise_value = (pct, runtime)
+                logger.debug("Battery rise updated to %d%% — timer continues", pct)
+            else:
+                # No timer running yet — start one
+                def _emit_after_delay():
+                    _gevent.sleep(_RISE_DELAY_S)
+                    p, r = _rise_pending[0]._rise_value
+                    _rise_pending[0] = None
+                    logger.debug("Battery rise confirmed after %ds — emitting %d%%", _RISE_DELAY_S, p)
+                    _do_emit(p, r)
+
+                g = _gevent.spawn(_emit_after_delay)
+                g._rise_value = (pct, runtime)
+                _rise_pending[0] = g
+                logger.debug("Battery rise detected (%d%% → %d%%) — delaying %ds",
+                             current_pct, pct, _RISE_DELAY_S)
+        else:
+            # Decreasing or first reading — cancel any pending rise and emit now
+            if _rise_pending[0] is not None:
+                _rise_pending[0].kill()
+                _rise_pending[0] = None
+                logger.debug("Battery decrease cancelled pending rise — emitting %d%% immediately", pct)
+            _do_emit(pct, runtime)
+
+    class _BatteryHandler(_FileSystemEventHandler):
+        def on_modified(self, event):
+            if not event.is_directory and os.path.basename(event.src_path) == _battery_fname:
+                _battery_notify(*_battery_read())
+
+        def on_moved(self, event):
+            # Catches atomic writes (tmp file renamed into place)
+            if os.path.basename(event.dest_path) == _battery_fname:
+                _battery_notify(*_battery_read())
+
+        def on_created(self, event):
+            if not event.is_directory and os.path.basename(event.src_path) == _battery_fname:
+                _battery_notify(*_battery_read())
+
+    def _start_battery_monitor():
+        import gevent as _gevent
+        while not os.path.isdir(_battery_dir):
+            logger.debug("Battery monitor: waiting for directory %s", _battery_dir)
+            _gevent.sleep(5)
+        observer = _Observer()
+        observer.schedule(_BatteryHandler(), _battery_dir, recursive=False)
+        observer.start()
+        logger.info("Battery monitor: watching %s via watchdog", _battery_file)
+        _battery_notify(*_battery_read())  # emit current state immediately on startup
+
+    import gevent as _gevent
+    _gevent.spawn(_start_battery_monitor)
 else:
     logger.info("Battery monitor disabled — set BATTERY_FILE to enable.")
 ####################

@@ -94,7 +94,6 @@ class CameraManager:
         self._gallery = MediaGallery(media_upload_folder)
         self._settings = SystemSettings(system_settings_path)
         self._recording_timers: Dict[int, threading.Timer] = {}
-        self._recording_timers: Dict[int, threading.Timer] = {}
 
         # create directories, if not already existing
         os.makedirs(self.camera_profile_folder, exist_ok=True)

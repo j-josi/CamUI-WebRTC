@@ -78,6 +78,7 @@ class CameraRPCServer:
             })
         self._manager.on_recording_auto_stopped = on_recording_auto_stopped
 
+
     # ------------------------------------------------------------------
     # RPC dispatch
     # ------------------------------------------------------------------

@@ -62,12 +62,10 @@
       {# Battery icon — shown next to the toggler on mobile, inside the collapse on desktop #}
       {% if battery_percent is defined and battery_percent is not none %}
       <span class="d-flex d-md-none ms-auto me-2 align-items-center nav-link py-0 battery-display {{ battery_color }}"
-            {% if battery_runtime_min is defined and battery_runtime_min is not none %}
             data-bs-toggle="tooltip"
             data-bs-placement="bottom"
             data-bs-custom-class="tooltip-nowrap"
-            title="Estimated runtime: {{ battery_runtime_str }}"
-            {% endif %}>
+            title="{{ 'Estimated runtime: ' ~ battery_runtime_str if battery_runtime_min is not none else '' }}">
         <span class="position-relative d-inline-block">
           <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
           <span class="battery-pct {{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"
@@ -105,12 +103,10 @@
           {% if battery_percent is defined and battery_percent is not none %}
           <li class="nav-item d-none d-md-flex">
             <span class="nav-link battery-display {{ battery_color }}"
-                  {% if battery_runtime_min is defined and battery_runtime_min is not none %}
                   data-bs-toggle="tooltip"
                   data-bs-placement="bottom"
                   data-bs-custom-class="tooltip-nowrap"
-                  title="Estimated runtime: {{ battery_runtime_str }}"
-                  {% endif %}>
+                  title="{{ 'Estimated runtime: ' ~ battery_runtime_str if battery_runtime_min is not none else '' }}">
               <span class="position-relative d-inline-block">
                 <i class="bi {{ battery_icon }}" style="font-size: 2.8rem; line-height: 1;"></i>
                 <span class="battery-pct {{ battery_text_color }} position-absolute top-50 start-50 translate-middle fw-bold"

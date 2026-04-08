@@ -35,14 +35,33 @@
     (function () {
       var _batterySocket = io();
       _batterySocket.on("battery_state", function (data) {
-        console.log("battery state changed in base.html - percent: ", data.percent)
         var pct = data.percent;
+        var runtime = data.runtime_remaining;
         var isDanger = pct <= 10;
-        var els = document.querySelectorAll(".battery-pct");
-        els.forEach(function (el) {
+
+        document.querySelectorAll(".battery-pct").forEach(function (el) {
           el.textContent = pct + "%";
           el.classList.toggle("text-danger", isDanger);
         });
+
+        document.querySelectorAll(".battery-display").forEach(function (el) {
+          el.classList.toggle("text-danger", isDanger);
+        });
+
+        if (runtime != null) {
+          var h = Math.floor(runtime / 60);
+          var m = Math.round(runtime % 60);
+          var title = "Estimated runtime: " + h + "h " + String(m).padStart(2, "0") + "min";
+          document.querySelectorAll(".battery-display").forEach(function (el) {
+            var tip = bootstrap.Tooltip.getInstance(el);
+            if (tip) {
+              tip.setContent({ '.tooltip-inner': title });
+            } else {
+              el.setAttribute("title", title);
+              new bootstrap.Tooltip(el);
+            }
+          });
+        }
       });
     })();
   </script>
