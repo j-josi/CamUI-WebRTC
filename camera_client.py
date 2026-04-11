@@ -224,6 +224,9 @@ class CameraProxy:
     def reset_camera_to_defaults(self):
         return self._rpc("reset_camera_to_defaults")
 
+    def trigger_autofocus(self) -> bool:
+        return self._rpc("trigger_autofocus")
+
 
 # ---------------------------------------------------------------------------
 # CameraManager proxy
@@ -301,8 +304,8 @@ class CameraManagerClient:
     def list_profiles(self):
         return self._client.call("manager.list_profiles")
 
-    def save_profile(self, camera_num: int, profile_name: str) -> bool:
-        return self._client.call("manager.save_profile", camera_num, profile_name)
+    def save_profile(self, camera_num: int, base_name: str, confirm_overwrite: bool = False) -> dict:
+        return self._client.call("manager.save_profile", camera_num, base_name, confirm_overwrite)
 
     def load_profile(self, camera_num: int, profile_filename: str) -> bool:
         return self._client.call("manager.load_profile", camera_num, profile_filename)

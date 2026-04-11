@@ -29,14 +29,57 @@
                     {% include "settings/" + setting.type + ".html" %}
 
                     {% if setting.childsettings %}
+                    {% set _group_leader_id = setting.id %}
+                    {% set _parent_childsettings = setting.childsettings %}
+
+                    {# Default group: childsettings without a dependency_group #}
                     <div id="{{ setting.id }}_dependencies"
                          class="collapse"
                          data-parent="{{ setting.id }}">
-                        {% for child in setting.childsettings if child.enabled %}
+                        {% for child in _parent_childsettings if child.enabled and not child.get("dependency_group") %}
                             {% set setting = child %}
                             {% include "settings/" + child.type + ".html" %}
+                            {# Grandchildren: render child's own childsettings (depth 2) #}
+                            {% if child.childsettings %}
+                            <div id="{{ child.id }}_dependencies"
+                                 class="collapse"
+                                 data-parent="{{ child.id }}">
+                                {% for gc in child.childsettings if gc.enabled %}
+                                    {% set setting = gc %}
+                                    {% include "settings/" + gc.type + ".html" %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
+
+                    {# Named groups: one collapse div per unique dependency_group value #}
+                    {% set ns_dg = namespace(seen=[]) %}
+                    {% for child in _parent_childsettings if child.enabled and child.get("dependency_group") %}
+                        {% if child.dependency_group not in ns_dg.seen %}
+                        {% set ns_dg.seen = ns_dg.seen + [child.dependency_group] %}
+                        <div id="{{ _group_leader_id }}_{{ child.dependency_group }}_dependencies"
+                             class="collapse"
+                             data-parent="{{ _group_leader_id }}"
+                             data-dependency-group="{{ child.dependency_group }}">
+                            {% for gc in _parent_childsettings if gc.enabled and gc.get("dependency_group") == child.dependency_group %}
+                                {% set setting = gc %}
+                                {% include "settings/" + gc.type + ".html" %}
+                                {# Grandchildren for named-group children (depth 2) #}
+                                {% if gc.childsettings %}
+                                <div id="{{ gc.id }}_dependencies"
+                                     class="collapse"
+                                     data-parent="{{ gc.id }}">
+                                    {% for ggc in gc.childsettings if ggc.enabled %}
+                                        {% set setting = ggc %}
+                                        {% include "settings/" + ggc.type + ".html" %}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
                     {% endif %}
 
                 {% endfor %}
@@ -88,26 +131,34 @@
                     <div class="alert alert-danger d-none" id="configAlert"></div>
 
                     <table class="table" id="configTable">
+                        <colgroup>
+                            <col style="width: 9%">
+                            <col style="width: 42%">
+                            <col style="width: 29%">
+                            <col style="width: 20%">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th>Select</th>
-                                <th>Filename</th>
+                                <th></th>
+                                <th>Profile</th>
                                 <th>Sensor</th>
                                 <th>Active</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for profile in profiles %}
+                            {% set display_name = profile.name or profile.filename %}
                             <tr {% if profile.active %}class="table-success"{% endif %}>
                                 <td>
                                     <input type="radio"
                                         name="selectedConfig"
                                         value="{{ profile.filename }}"
-                                        data-model="{{ profile.model }}"
+                                        data-model="{{ profile.sensor }}"
+                                        data-name="{{ display_name }}"
                                         {% if profile.active %}checked{% endif %}>
                                 </td>
-                                <td>{{ profile.filename }}</td>
-                                <td>{{ profile.model }}</td>
+                                <td class="text-truncate" style="max-width: 0;" title="{{ display_name }}">{{ display_name }}</td>
+                                <td class="text-truncate" style="max-width: 0;" title="{{ profile.sensor }}">{{ profile.sensor }}</td>
                                 <td>
                                     {% if profile.active %}
                                         <span class="badge bg-success">Active</span>
@@ -140,7 +191,7 @@
                            class="form-control mb-2"
                            id="saveConfigFile"
                            placeholder="Enter profile name"
-                           value="{{ active_profile.filename | replace('.json', '') if active_profile else '' }}">
+                           value="{{ active_profile.name if active_profile else '' }}">
                     <button class="btn btn-primary"
                             onclick="saveProfile({{ camera.Num }})">Save</button>
                 </div>
@@ -148,7 +199,50 @@
                 <!-- Reset Profile -->
                 <div id="resetProfile" class="profile-section d-none">
                     <button class="btn btn-warning"
-                            onclick="resetProfile({{ camera.Num }})">Reset to Default</button>
+                            onclick="showResetModal({{ camera.Num }})">Reset active Profile</button>
+                </div>
+
+                <!-- Reset Profile Confirmation Modal -->
+                <div class="modal fade" id="resetProfileModal" tabindex="-1" aria-labelledby="resetProfileModalLabel" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="resetProfileModalLabel">Reset active Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <p>All camera controls for the profile <strong id="resetProfileModalName"></strong> will be reset to their default values.</p>
+                        <p class="mb-0 text-muted" id="resetProfileModalHint"></p>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-warning" id="resetProfileConfirmBtn">Reset</button>
+                        <button type="button" class="btn btn-danger" id="resetProfileSaveBtn">Reset &amp; Save</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Unsaved Changes Warning Modal -->
+                <div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesModalLabel" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="unsavedChangesModalLabel">Load Profile <span class="js-unsaved-load-name"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <p class="mb-2">Active profile <b><span class="js-unsaved-active-name"></span></b> has following <b>unsaved changes</b>:</p>
+                        <ul id="unsavedChangesList" class="mb-0"></ul>
+                        <p class="mt-3 mb-2"><b>Do you want to save the changes in active profile <span class="js-unsaved-active-name"></span> before loading profile <span class="js-unsaved-load-name"></span>?</b></p>
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-warning" id="unsavedChangesLoadBtn">Don't Save</button>
+                        <button type="button" class="btn btn-success" id="unsavedChangesSaveLoadBtn">Save</button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="alert alert-danger d-none mt-2" id="profileAlert"></div>
@@ -158,27 +252,35 @@
                     <div class="alert alert-danger d-none" id="deleteAlert"></div>
 
                     <table class="table" id="deleteConfigTable">
+                        <colgroup>
+                            <col style="width: 9%">
+                            <col style="width: 42%">
+                            <col style="width: 29%">
+                            <col style="width: 20%">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th>Select</th>
-                                <th>Filename</th>
+                                <th></th>
+                                <th>Profile</th>
                                 <th>Sensor</th>
-                                <th>Active</th> <!-- Neue Spalte -->
+                                <th>Active</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             {% for profile in profiles %}
+                            {% set display_name = profile.name or profile.filename %}
                             <tr {% if profile.active %}class="table-success"{% endif %}>
                                 <td>
                                     <input type="radio"
                                         name="selectedDeleteConfig"
                                         value="{{ profile.filename }}"
-                                        data-model="{{ profile.model }}"
+                                        data-model="{{ profile.sensor }}"
+                                        data-name="{{ display_name }}"
                                         {% if profile.active %}disabled{% endif %}>
                                 </td>
-                                <td>{{ profile.filename }}</td>
-                                <td>{{ profile.model }}</td>
+                                <td class="text-truncate" style="max-width: 0;" title="{{ display_name }}">{{ display_name }}</td>
+                                <td class="text-truncate" style="max-width: 0;" title="{{ profile.sensor }}">{{ profile.sensor }}</td>
                                 <td>
                                     {% if profile.active %}
                                         <span class="badge bg-success">Active</span>
@@ -214,7 +316,7 @@
 <div class="modal fade" id="deleteProfileModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-danger">
-            <div class="modal-header bg-danger text-white">
+            <div class="modal-header">
                 <h5 class="modal-title">Confirm Profile Deletion</h5>
                 <button type="button" class="btn-close"
                         data-bs-dismiss="modal"></button>
@@ -251,7 +353,7 @@
 <div class="modal fade" id="overwriteProfileModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-warning">
-            <div class="modal-header bg-warning">
+            <div class="modal-header">
                 <h5 class="modal-title">Overwrite Profile?</h5>
                 <button type="button" class="btn-close"
                         data-bs-dismiss="modal"></button>
@@ -303,23 +405,123 @@ let pendingDeleteFilename = null;
 // -------------------------------------------------------
 
 // Apply param_states received from the server to enable/disable save and reset buttons.
-// param_states: {param_id: {reset_enabled: bool, save_enabled: bool}}
+// param_states: {param_id: {reset_enabled, save_enabled, current_value, saved_value, unit}}
+// save_enabled = live value differs from saved profile → source of truth for _unsavedChanges.
+// Supports grouped settings: followers carry data-group-leader on their input element;
+// the leader's buttons are enabled if ANY group member has the respective condition.
 function applyParamStates(paramStates) {
     if (!paramStates) return;
+
+    // Pass 1: resolve effective leader for each param ID.
+    const leaderOf = {};
+    for (const id of Object.keys(paramStates)) {
+        const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+        leaderOf[id] = el?.dataset.groupLeader || id;
+    }
+
+    // Pass 2: aggregate reset_enabled / save_enabled per leader.
+    const aggStates = {};
     for (const [id, state] of Object.entries(paramStates)) {
-        const resetBtn = document.getElementById(id + "_reset_btn");
-        if (resetBtn) {
-            resetBtn.disabled = !state.reset_enabled;
-            resetBtn.classList.toggle("btn-warning", state.reset_enabled);
-            resetBtn.classList.toggle("btn-outline-secondary", !state.reset_enabled);
+        const lid = leaderOf[id];
+        if (!aggStates[lid]) aggStates[lid] = { reset_enabled: false, save_enabled: false };
+        aggStates[lid].reset_enabled = aggStates[lid].reset_enabled || state.reset_enabled;
+        aggStates[lid].save_enabled  = aggStates[lid].save_enabled  || state.save_enabled;
+    }
+
+    // Pass 3: update per-setting state and leader buttons.
+    const processedLeaders = new Set();
+    for (const [id, state] of Object.entries(paramStates)) {
+        const lid = leaderOf[id];
+
+        // Store saved_value and current_value on the input element.
+        // current_value is the authoritative server-side value (used by saveParam to avoid
+        // saving a browser-snapped slider value instead of the real hardware value).
+        const inputEl = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+        if (inputEl) {
+            if (state.save_enabled) inputEl.dataset.savedValue = JSON.stringify(state.saved_value);
+            else delete inputEl.dataset.savedValue;
+            inputEl.dataset.currentValue = JSON.stringify(state.current_value);
         }
-        const saveBtn = document.getElementById(id + "_save_btn");
+
+        // Update _unsavedChanges: label comes from leader's <strong>, or the input's <label>.
+        if (state.save_enabled) {
+            let label = id;
+            const leaderContainer = document.getElementById(lid + "_save_btn")?.closest("div.mb-3");
+            const strong = leaderContainer?.querySelector("strong");
+            if (strong) {
+                label = strong.textContent.trim();
+            } else {
+                const assocLabel = document.querySelector(`label[for="${id}"]`);
+                if (assocLabel) label = assocLabel.textContent.trim();
+            }
+            _unsavedChanges.set(id, {
+                label,
+                unit:         state.unit || "",
+                savedValue:   state.saved_value,
+                currentValue: state.current_value,
+            });
+        } else {
+            _unsavedChanges.delete(id);
+        }
+
+        // Update leader buttons only once per leader.
+        if (processedLeaders.has(lid)) continue;
+        processedLeaders.add(lid);
+
+        const agg = aggStates[lid];
+        const resetBtn = document.getElementById(lid + "_reset_btn");
+        if (resetBtn) {
+            resetBtn.disabled = !agg.reset_enabled;
+            resetBtn.classList.toggle("btn-warning", agg.reset_enabled);
+            resetBtn.classList.toggle("btn-outline-secondary", !agg.reset_enabled);
+        }
+        const revertBtn = document.getElementById(lid + "_revert_btn");
+        if (revertBtn) {
+            revertBtn.disabled = !agg.save_enabled;
+            revertBtn.classList.toggle("btn-secondary", agg.save_enabled);
+            revertBtn.classList.toggle("btn-outline-secondary", !agg.save_enabled);
+        }
+        const saveBtn = document.getElementById(lid + "_save_btn");
         if (saveBtn && !saveBtn.classList.contains("btn-success")) {
-            saveBtn.disabled = !state.save_enabled;
-            saveBtn.classList.toggle("btn-primary", state.save_enabled);
-            saveBtn.classList.toggle("btn-outline-secondary", !state.save_enabled);
+            saveBtn.disabled = !agg.save_enabled;
+            saveBtn.classList.toggle("btn-primary", agg.save_enabled);
+            saveBtn.classList.toggle("btn-outline-secondary", !agg.save_enabled);
         }
     }
+}
+
+// Save all settings in a group to the active profile.
+function saveGroup(ids, dataType) {
+    ids.forEach(id => saveParam(id, dataType));
+}
+
+// Reset all settings in a group to their defaults.
+// Default is read from each setting's reset button (leader) or input element (follower).
+function resetGroup(ids) {
+    ids.forEach(id => {
+        const resetBtn = document.getElementById(id + "_reset_btn");
+        let def;
+        if (resetBtn && resetBtn.dataset.default !== undefined) {
+            try { def = JSON.parse(resetBtn.dataset.default); } catch { def = resetBtn.dataset.default; }
+        } else {
+            const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+            if (!el || el.dataset.default === undefined) return;
+            try { def = JSON.parse(el.dataset.default); } catch { def = el.dataset.default; }
+        }
+        resetParam(id, def);
+    });
+}
+
+// Revert settings in a group that have unsaved changes back to their saved profile values.
+// Each input element carries data-saved-value when save_enabled (set by applyParamStates).
+function revertGroup(ids) {
+    ids.forEach(id => {
+        const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+        if (!el || el.dataset.savedValue === undefined) return;
+        let val;
+        try { val = JSON.parse(el.dataset.savedValue); } catch { val = el.dataset.savedValue; }
+        resetParam(id, val);
+    });
 }
 
 // Save a single parameter to the active profile on the server.
@@ -334,6 +536,10 @@ function saveParam(settingId, dataType) {
     } else if (el.type === "radio") {
         const checked = document.querySelector(`input[name="${settingId}"]:checked`);
         value = checked ? checked.value : null;
+    } else if (el.type === "range" && el.dataset.currentValue !== undefined) {
+        // Use the server-authoritative value to avoid saving a browser-snapped value
+        // that differs from the actual hardware value (e.g. AnalogueGain min ≈ 1.1248).
+        try { value = JSON.parse(el.dataset.currentValue); } catch { value = el.value; }
     } else {
         value = el.value;
     }
@@ -372,6 +578,7 @@ function resetParam(settingId, defaultValue) {
         if (el.type === "checkbox") {
             el.checked = Boolean(defaultValue);
             updateSettingFromElement(el);
+            toggleChildSettings(settingId, el.checked);
         } else {
             el.value = defaultValue;
             if (el.type === "range") {
@@ -386,8 +593,14 @@ function resetParam(settingId, defaultValue) {
         if (radio) {
             radio.checked = true;
             updateSettingFromElement(radio);
+            updateRadioChildVisibility(settingId);
         }
     }
+}
+
+// Revert a single setting to its saved profile value (delegates to revertGroup).
+function revertToSaved(settingId) {
+    revertGroup([settingId]);
 }
 
 function showProfileSection(sectionId) {
@@ -421,20 +634,69 @@ function loadConfigFile() {
     const profileModel = selectedProfile.getAttribute("data-model");
     const currentModel = "{{ camera.Model }}";
 
-    if (profileModel !== currentModel) {
-        // Show Bootstrap modal if model mismatch
-        const modalElement = new bootstrap.Modal(document.getElementById("modelMismatchModal"));
-        document.getElementById("mismatchProfileName").textContent = profileName;
-        modalElement.show();
+    const proceed = () => {
+        if (profileModel !== currentModel) {
+            const modalElement = new bootstrap.Modal(document.getElementById("modelMismatchModal"));
+            document.getElementById("mismatchProfileName").textContent = profileName;
+            modalElement.show();
+        } else {
+            applyProfile(profileName);
+        }
+    };
+
+    if (_unsavedChanges.size > 0) {
+        const activeProfileName = document.getElementById("saveConfigFile").value.trim();
+        const listEl   = document.getElementById("unsavedChangesList");
+        const activeText = activeProfileName ? `\u201c${activeProfileName}\u201d` : "the current profile";
+        const loadText   = `\u201c${selectedProfile.getAttribute("data-name") || profileName.replace(/\.json$/, "")}\u201d`;
+
+        document.querySelectorAll(".js-unsaved-active-name").forEach(el => el.textContent = activeText);
+        document.querySelectorAll(".js-unsaved-load-name").forEach(el => el.textContent = loadText);
+        if (listEl) {
+            listEl.innerHTML = "";
+            _unsavedChanges.forEach(({ label, unit, savedValue, currentValue }, id) => {
+                const li = document.createElement("li");
+                const unitStr = unit ? " " + unit : "";
+                // For radio/enum settings, look up the human-readable label via the
+                // existing DOM label elements (e.g. label[for="AfRange_1"] → "Macro").
+                const _resolve = v => {
+                    if (v == null) return { text: "—", hasLabel: false };
+                    const optLabel = document.querySelector(`label[for="${id}_${v}"]`);
+                    return optLabel
+                        ? { text: optLabel.textContent.trim(), hasLabel: true }
+                        : { text: String(v), hasLabel: false };
+                };
+                const fmt = ({ text, hasLabel }) => hasLabel ? text : `${text}${unitStr}`;
+                li.textContent = `${label} (${fmt(_resolve(savedValue))} → ${fmt(_resolve(currentValue))})`;
+                listEl.appendChild(li);
+            });
+        }
+
+        const modal = new bootstrap.Modal(document.getElementById("unsavedChangesModal"));
+        document.getElementById("unsavedChangesLoadBtn").onclick = () => { modal.hide(); proceed(); };
+        document.getElementById("unsavedChangesSaveLoadBtn").onclick = () => {
+            modal.hide();
+            const saveFilename = activeProfileName;
+            if (!saveFilename) {
+                proceed();
+                return;
+            }
+            // Save first (skip intermediate updateProfileList), then load.
+            // applyProfile() calls updateProfileList() once the load completes,
+            // so the table reflects the final active profile correctly.
+            doSaveProfile(camera_num, saveFilename, { skipProfileListUpdate: true })
+                .then(() => proceed());
+        };
+        modal.show();
     } else {
-        applyProfile(profileName);
+        proceed();
     }
 }
 
 function applyProfile(profileName) {
     const alertBox = document.getElementById("profileAlert");
 
-    fetch(`/load_profile`, {
+    return fetch(`/load_profile`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -447,18 +709,20 @@ function applyProfile(profileName) {
     .then(response => response.json())
     .then(data => {
         if (data.message) {
-            console.log("Profile loaded successfully.");
             showAlert(alertBox, "success", data.message);
-            updateProfileList(); // Refresh profile list after loading
-            // fetchCameraProfile(); 
+            updateProfileList();
         } else {
-            console.log("Failed to load profile: " + data.error);
+            showAlert(alertBox, "danger", data.error || "Failed to load profile.");
         }
     })
     .catch(error => console.error("Error loading profile:", error));
 }
 
-let _pendingSaveProfile = null;  // { cameraNum, filename }
+let _pendingSaveProfile = null;   // { cameraNum, filename }
+// Maps settingId → human-readable label for controls whose live value differs from the
+// saved profile. Populated and cleared exclusively by applyParamStates() based on the
+// server-provided save_enabled flag — correct across multiple clients.
+const _unsavedChanges = new Map();
 
 function saveProfile(cameraNum) {
     const filename = document.getElementById("saveConfigFile").value;
@@ -469,44 +733,40 @@ function saveProfile(cameraNum) {
         return;
     }
 
-    const existingFilenames = Array.from(
-        document.querySelectorAll('input[name="selectedConfig"]')
-    ).map(r => r.value);
-
-    if (existingFilenames.includes(`${filename}.json`)) {
-        _pendingSaveProfile = { cameraNum, filename };
-        document.getElementById("overwriteProfileName").textContent = filename;
-        new bootstrap.Modal(document.getElementById("overwriteProfileModal")).show();
-        return;
-    }
-
     doSaveProfile(cameraNum, filename);
 }
 
 function confirmOverwriteProfile() {
     bootstrap.Modal.getInstance(document.getElementById("overwriteProfileModal")).hide();
     if (_pendingSaveProfile) {
-        doSaveProfile(_pendingSaveProfile.cameraNum, _pendingSaveProfile.filename);
+        doSaveProfile(_pendingSaveProfile.cameraNum, _pendingSaveProfile.filename,
+            { skipProfileListUpdate: _pendingSaveProfile.skipProfileListUpdate, confirmOverwrite: true });
         _pendingSaveProfile = null;
     }
 }
 
-function doSaveProfile(cameraNum, filename) {
+function doSaveProfile(cameraNum, filename, { skipProfileListUpdate = false, confirmOverwrite = false } = {}) {
     const alertBox = document.getElementById("profileAlert");
 
-    fetch(`/save_profile_${cameraNum}`, {
+    return fetch(`/save_profile_${cameraNum}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: filename })
+        body: JSON.stringify({ filename, confirm_overwrite: confirmOverwrite })
     })
     .then(response => response.json())
     .then(data => {
+        if (data.overwrite_required) {
+            _pendingSaveProfile = { cameraNum, filename, skipProfileListUpdate };
+            document.getElementById("overwriteProfileName").textContent = filename;
+            new bootstrap.Modal(document.getElementById("overwriteProfileModal")).show();
+            return;
+        }
         if (data.message) {
             alertBox.innerHTML = data.message.replace(/(created|updated)/, '<strong>$1</strong>');
             alertBox.className = 'alert alert-success';
             alertBox.classList.remove('d-none');
             setTimeout(() => alertBox.classList.add('d-none'), 5000);
-            updateProfileList();
+            if (!skipProfileListUpdate) updateProfileList();
         } else {
             showAlert(alertBox, "danger", data.error || "Failed to save profile.");
         }
@@ -517,22 +777,77 @@ function doSaveProfile(cameraNum, filename) {
     });
 }
 
+function showResetModal(cameraNum) {
+    const profileName = document.getElementById("saveConfigFile").value.trim();
+    const nameEl = document.getElementById("resetProfileModalName");
+    const hintEl = document.getElementById("resetProfileModalHint");
+    const saveBtn = document.getElementById("resetProfileSaveBtn");
+
+    if (profileName) {
+        nameEl.textContent = "\u201c" + profileName + "\u201d";
+        hintEl.textContent = "\"Reset & Save\" will overwrite the saved profile file with the default values.";
+        saveBtn.classList.remove("d-none");
+    } else {
+        nameEl.textContent = "(no profile active)";
+        hintEl.textContent = "";
+        saveBtn.classList.add("d-none");
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById("resetProfileModal"));
+
+    document.getElementById("resetProfileConfirmBtn").onclick = function () {
+        modal.hide();
+        resetProfile(cameraNum);
+    };
+    document.getElementById("resetProfileSaveBtn").onclick = function () {
+        modal.hide();
+        resetProfileAndSave(cameraNum, profileName);
+    };
+
+    modal.show();
+}
+
 function resetProfile(cameraNum) {
-    fetch(`/reset_profile_${cameraNum}`, { 
+    fetch(`/reset_profile_${cameraNum}`, {
         method: "POST"
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showAlert(document.getElementById("profileAlert"), "success", "Profile reset to default!");
-            updateProfileList(); // Refresh profile list after loading
-            // fetchCameraProfile(); // Fetch updated settings
+            updateProfileList();
         } else {
             showAlert(document.getElementById("profileAlert"), "danger", "Error: " + data.message);
         }
     })
     .catch(error => {
         showAlert(document.getElementById("profileAlert"), "danger", "Request failed: " + error);
+    });
+}
+
+function resetProfileAndSave(cameraNum, profileName) {
+    fetch(`/reset_profile_${cameraNum}`, { method: "POST" })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) throw new Error(data.message);
+        return fetch(`/save_profile_${cameraNum}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: profileName })
+        });
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showAlert(document.getElementById("profileAlert"), "success",
+                      `Profile \u201c${profileName}\u201d reset to default and saved!`);
+            updateProfileList();
+        } else {
+            throw new Error(data.error || "Save failed");
+        }
+    })
+    .catch(error => {
+        showAlert(document.getElementById("profileAlert"), "danger", "Error: " + error);
     });
 }
 
@@ -561,7 +876,7 @@ function requestDeleteProfile() {
     pendingDeleteFilename = selected.value;
 
     document.getElementById("deleteProfileName").textContent =
-        pendingDeleteFilename;
+        selected.getAttribute("data-name") || pendingDeleteFilename.replace(/\.json$/, "");
 
     new bootstrap.Modal(
         document.getElementById("deleteProfileModal")
@@ -797,6 +1112,7 @@ document.addEventListener("DOMContentLoaded", function () {
             updateRadioChildVisibility(settingId);
         });
     });
+
 });
 
 
@@ -813,16 +1129,20 @@ function toggleChildSettings(settingId, isChecked) {
 
 // Function to show/hide child settings based on radio selection
 function updateRadioChildVisibility(settingId) {
-    let selectedRadio = document.querySelector(`input[name="${settingId}"]:checked`);
-    
-    if (selectedRadio) {
-        let showChild = selectedRadio.dataset.showChild === "true";
-        let dependencies = document.getElementById(settingId + "_dependencies");
+    const selectedRadio = document.querySelector(`input[name="${settingId}"]:checked`);
+    // showChild is "true"/"false" (legacy boolean) or a group name string, or undefined
+    const showChild = selectedRadio?.dataset.showChild;
 
-        if (dependencies) {
-            dependencies.style.display = showChild ? "block" : "none";
-        }
+    // Default (unnamed) dependency group — shown when showChild === "true" (backward compat)
+    const defaultDeps = document.getElementById(settingId + "_dependencies");
+    if (defaultDeps) {
+        defaultDeps.style.display = (showChild === "true") ? "block" : "none";
     }
+
+    // Named dependency groups — show the one whose name matches showChild, hide the rest
+    document.querySelectorAll(`[data-dependency-group][id^="${settingId}_"]`).forEach(el => {
+        el.style.display = (el.dataset.dependencyGroup === showChild) ? "block" : "none";
+    });
 }
 
 // function updateSetting(settingId, newValue) {
@@ -1194,6 +1514,7 @@ function updateProfileList() {
                 const rowClass = isActive ? "table-success" : "";
                 const checked  = isActive ? "checked" : "";
                 const disabled = isActive ? "disabled" : "";
+                const displayName = profile.name || profile.filename.replace(/\.json$/, "");
 
                 const activeBadge = isActive
                     ? '<span class="badge bg-success">Active</span>'
@@ -1206,12 +1527,13 @@ function updateProfileList() {
                             <input type="radio"
                                    name="selectedConfig"
                                    value="${profile.filename}"
-                                   data-model="${profile.model}"
+                                   data-model="${profile.sensor}"
+                                   data-name="${displayName}"
                                    data-active="${isActive}"
                                    ${checked}>
                         </td>
-                        <td>${profile.filename}</td>
-                        <td>${profile.model}</td>
+                        <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
+                        <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
                         <td>${activeBadge}</td>
                     </tr>
                 `);
@@ -1223,11 +1545,12 @@ function updateProfileList() {
                             <input type="radio"
                                    name="selectedDeleteConfig"
                                    value="${profile.filename}"
-                                   data-model="${profile.model}"
+                                   data-model="${profile.sensor}"
+                                   data-name="${displayName}"
                                    ${disabled}>
                         </td>
-                        <td>${profile.filename}</td>
-                        <td>${profile.model}</td>
+                        <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
+                        <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
                         <td>${activeBadge}</td>
                     </tr>
                 `);
@@ -1241,6 +1564,13 @@ function updateProfileList() {
                         const isActive = radio.dataset.active === "true";
                     });
                 });
+
+            // Keep the Save text field in sync with the currently active profile name.
+            const activeProfile = data.find(p => p.active);
+            const saveInput = document.getElementById("saveConfigFile");
+            if (saveInput && activeProfile) {
+                saveInput.value = activeProfile.name || activeProfile.filename.replace(/\.json$/, "");
+            }
         })
         .catch(error => console.error("Error fetching profiles:", error));
 }

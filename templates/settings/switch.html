@@ -1,7 +1,14 @@
 {# Switch Setting Template #}
+{# Determine if this setting is a group follower (buttons are on the leader) #}
+{% set is_follower = setting.get("group_leader") %}
+{% if not is_follower %}
+{# Compute group IDs: own ID + group_with siblings #}
+{% set ns = namespace(group_ids=[setting.id]) %}
+{% if setting.get("group_with") %}{% for gid in setting.group_with %}{% set ns.group_ids = ns.group_ids + [gid] %}{% endfor %}{% endif %}
+{% endif %}
 <div>
-    {% if setting.name or setting.info %}
-    <!-- Setting Label & Info -->
+    {% if setting.name or setting.info or not is_follower %}
+    <!-- Setting Label & Info + Buttons -->
     <div class="d-flex w-100 align-items-center justify-content-between mb-2">
         <div class="d-flex align-items-center gap-2">
             {% if setting.name %}
@@ -13,6 +20,7 @@
             </a>
             {% endif %}
         </div>
+        {% if not is_follower %}
         <div class="d-flex align-items-center gap-1">
             {% set dtype = "controls" if setting.source == "controls" else "configs" %}
             {% set default_val = setting.get("default", false) | lower %}
@@ -22,8 +30,19 @@
                     title="Reset to default"
                     disabled
                     data-default="{{ default_val }}"
-                    onclick="resetParam('{{ setting.id }}', {{ default_val }})">
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="resetGroup(JSON.parse(this.dataset.groupIds))">
                 <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <span class="vr align-self-center" style="height:1rem;"></span>
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    id="{{ setting.id }}_revert_btn"
+                    title="Revert to saved value"
+                    disabled
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="revertGroup(JSON.parse(this.dataset.groupIds))">
+                <i class="bi bi-arrow-return-left"></i>
             </button>
             <button type="button"
                     class="btn btn-outline-secondary btn-sm py-0 px-1"
@@ -31,17 +50,19 @@
                     title="Save to profile"
                     disabled
                     data-save-id="{{ setting.id }}"
-                    onclick="saveParam('{{ setting.id }}', '{{ dtype }}')">
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="saveGroup(JSON.parse(this.dataset.groupIds), '{{ dtype }}')">
                 <i class="bi bi-floppy"></i>
             </button>
         </div>
+        {% endif %}
     </div>
-{% endif %}
+    {% endif %}
 
     {% if setting.info %}
     <div class="collapse p-2" id="{{ setting.id }}_info">
         <div class="card card-body">
-            <p class="mb-0">{{ setting.info }}</p>
+            <p class="mb-0">{{ setting.info | safe }}</p>
             {% if setting.warning %}
             <div class="alert alert-warning" role="alert">
                 {{ setting.warning }}
@@ -76,6 +97,8 @@
                 checked
             {% endif %}
 
+            data-default="{{ setting.get('default', false) | lower }}"
+            {% if setting.get("group_leader") %}data-group-leader="{{ setting.group_leader }}"{% endif %}
             data-save-id="{{ setting.id }}"
             onchange="updateSettingFromElement(this)">
 

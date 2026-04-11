@@ -673,6 +673,31 @@ def handle_set_camera_setting(data):
         room=room_name
     )
 
+@socketio.on("trigger_autofocus")
+def handle_trigger_autofocus(data):
+    import gevent as _gevent
+
+    camera_num = data.get("camera_num")
+    room_name = f"camera_{camera_num}"
+
+    if camera_num not in camera_manager.cameras:
+        emit("error", {"message": f"Camera {camera_num} not found"})
+        return
+
+    camera = camera_manager.cameras[camera_num]
+
+    socketio.emit("autofocus_state", {"camera_num": camera_num, "running": True}, room=room_name)
+
+    def _run():
+        success = camera.trigger_autofocus()
+        socketio.emit(
+            "autofocus_state",
+            {"camera_num": camera_num, "running": False, "success": success},
+            room=room_name,
+        )
+
+    _gevent.spawn(_run)
+
 ####################
 # Flask routes - WebUI routes
 ####################
@@ -1068,21 +1093,26 @@ def redirect_to_home():
 @app.route('/save_profile_<int:camera_num>', methods=['POST'])
 def save_profile(camera_num):
     """Create a new camera profile."""
-    data = request.json
-    filename = data.get("filename")
+    data = request.json or {}
+    base_name = data.get("filename", "")
+    confirm_overwrite = bool(data.get("confirm_overwrite", False))
+    result = camera_manager.save_profile(camera_num, base_name, confirm_overwrite)
 
-    if not filename:
-        return jsonify({"error": "Filename is required"}), 400
+    if result.get("overwrite_required"):
+        return jsonify({"overwrite_required": True}), 409
+    if not result["success"]:
+        status = 400 if result["validation_error"] else 500
+        return jsonify({"error": result["error"]}), status
 
-    existing = {p["filename"] for p in (camera_manager.list_profiles() or [])}
-    is_update = f"{filename}.json" in existing
-
-    success = camera_manager.save_profile(camera_num, filename)
-
-    if success:
-        verb = "updated" if is_update else "created"
-        return jsonify({"message": f"Profile '{filename}' {verb} successfully"}), 200
-    return jsonify({"error": "Failed to save profile"}), 500
+    verb = "updated" if result["is_update"] else "created"
+    room_name = f"camera_{camera_num}"
+    socketio.emit(
+        "param_states_changed",
+        {"camera_num": camera_num, "param_states": camera_manager.get_param_states(camera_num)},
+        room=room_name,
+    )
+    socketio.emit("profile_changed", {"camera_num": camera_num}, room=room_name)
+    return jsonify({"message": f"Profile '{base_name}' {verb} successfully"}), 200
 
 @app.route("/reset_profile_<int:camera_num>", methods=["POST"])
 def reset_profile(camera_num):
@@ -1129,6 +1159,7 @@ def load_profile():
         room_name = f"camera_{camera_num}"
         time.sleep(0.5)  # give MediaMTX time to receive the first keyframe
         socketio.emit("stream_reinit", {"camera_num": camera_num}, room=room_name)
+        socketio.emit("profile_changed", {"camera_num": camera_num}, room=room_name)
         return jsonify({"message": f"Profile '{profile_name}' loaded successfully"})
     return jsonify({"error": "Failed to load profile"}), 500
 

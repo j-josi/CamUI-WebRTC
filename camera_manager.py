@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import shutil
 import subprocess
@@ -24,7 +25,7 @@ class CameraManager:
     # Active recordings are automatically stopped when free space drops below this threshold.
     # Also used as the buffer subtracted from reported free space in get_storage_info(),
     # so the UI never shows the reserved space as "available".
-    STORAGE_MIN_FREE_BYTES = 50470 * 1024 * 1024
+    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
 
     # Additional safety margin on top of STORAGE_MIN_FREE_BYTES (10 MB).
     # A new photo capture or video recording is rejected unless free space exceeds
@@ -619,9 +620,11 @@ class CameraManager:
                 with open(path, "r") as pf:
                     data = json.load(pf)
 
+                info = data.get("info", {})
                 profiles.append({
                     "filename": filename,
-                    "model": data.get("info", {}).get("model", "Unknown"),
+                    "sensor": info.get("sensor", "unknown_sensor"),
+                    "name": info.get("name") or None,
                     "active": self._is_profile_active(filename),
                 })
 
@@ -630,23 +633,72 @@ class CameraManager:
 
         return profiles
 
-    def save_profile(self, camera_num: int, profile_name: str) -> bool:
+    @staticmethod
+    def _validate_profile_base_name(name: str) -> str | None:
+        """Return an error message if name is not a valid Linux filename component, else None."""
+        if not name or not name.strip():
+            return "Profile name cannot be empty."
+        if name != name.strip():
+            return "Profile name cannot have leading or trailing whitespace."
+        if '/' in name:
+            return "Profile name cannot contain '/'"
+        if '\0' in name:
+            return "Profile name cannot contain or null bytes ('\0')."
+        if name.startswith('.'):
+            return "Profile name cannot start with '.'."
+        if len(name) > 30:
+            return "Profile name is too long (max 30 characters)."
+        return None
+
+    def save_profile(self, camera_num: int, base_name: str, confirm_overwrite: bool = False) -> dict:
+        """
+        Validate base_name, build the full filename (appending the sensor model),
+        and write the profile to disk.
+
+        Returns a dict with keys:
+          success (bool), is_update (bool), overwrite_required (bool),
+          error (str | None), validation_error (bool)
+        """
+        error = self._validate_profile_base_name(base_name)
+        if error:
+            return {"success": False, "is_update": False, "overwrite_required": False,
+                    "error": error, "validation_error": True}
+
         camera = self.get_camera(camera_num)
         if not camera:
-            return False
+            return {"success": False, "is_update": False, "overwrite_required": False,
+                    "error": "Camera not found.", "validation_error": False}
 
+        sensor = re.sub(r'[^a-zA-Z0-9_-]', '', camera.camera_info.get("Model", ""))
+        filename = f"{base_name}_{sensor}" if sensor else base_name
+
+        if len(f"{filename}.json".encode('utf-8')) > 255:
+            return {"success": False, "is_update": False, "overwrite_required": False,
+                    "error": "Profile name is too long after adding the sensor suffix and extension.",
+                    "validation_error": True}
+
+        existing = {p["filename"] for p in (self.list_profiles() or [])}
+        is_update = f"{filename}.json" in existing
+
+        if is_update and not confirm_overwrite:
+            return {"success": False, "is_update": True, "overwrite_required": True,
+                    "error": None, "validation_error": False}
+
+        raw_info = camera.get_info()
+        info = {"name": base_name} | raw_info
         profile = {
-            "info": camera.get_info(),
+            "info": info,
             "config": camera.get_config(),
             "controls": camera.get_control(),
         }
 
-        path = os.path.join(self.camera_profile_folder, f"{profile_name}.json")
+        path = os.path.join(self.camera_profile_folder, f"{filename}.json")
         with open(path, "w") as f:
             json.dump(profile, f, indent=2)
 
-        self._set_active_profile(camera_num, f"{profile_name}.json")
-        return True
+        self._set_active_profile(camera_num, f"{filename}.json")
+        return {"success": True, "is_update": is_update, "overwrite_required": False,
+                "error": None, "validation_error": False}
 
     def _load_active_profile(self, camera_num: int) -> None:
         """

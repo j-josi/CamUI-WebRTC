@@ -86,8 +86,9 @@ class Camera:
         self._setting_changed_callback = None
         self.filename_recording = None
         self.configs, self.controls = self._defaults_from_ui_settings_db()
+
         self.infos = {
-            "model": self.camera_info.get("Model"),
+            "sensor": self.camera_info.get("Model"),
         }
         # self.states = Camera.DEFAULT_STATES
         self.states = copy.deepcopy(Camera.DEFAULT_STATES)
@@ -132,13 +133,34 @@ class Camera:
             self.ui_settings_db_path,
         )
 
+        # Build data-driven manual-override structures from the DB.
+        # _manual_override_controls: frozenset of control IDs whose user-set values
+        #   must be preserved across auto-algorithm overrides (e.g. ExposureTime).
+        # _auto_controller_map: {child_id: parent_id} — which parent (e.g. AeEnable)
+        #   governs each child; when the parent is truthy (auto mode) the child is
+        #   skipped from hardware writes.
+        # _auto_children_map: {parent_id: frozenset of child IDs} — reverse of above,
+        #   used when a parent switches to manual to inject all children atomically.
+        self._build_manual_override_structure()
+
+        # Stores the user-set values for controls in _manual_override_controls.
+        # Unlike self.controls, this dict is NEVER overwritten by hardware reads so
+        # it always reflects the user's intention even while an auto algorithm runs.
+        self.manual_controls: dict = {
+            k: v for k, v in self.controls.items()
+            if k in self._manual_override_controls
+        }
+
         # Initialize video configuration (stream and recording)
         self.reconfigure_video_pipeline()
 
-        # Sync actual camera values
-        self._sync_controls_from_camera()
-
         # Note: start_streaming() is called by camera_manager after audio_device is fully configured.
+        # Note: _sync_controls_from_camera() is intentionally NOT called here.
+        # It would overwrite self.controls with live auto-algorithm values (AEC/AGC,
+        # AWB) before the active profile has been applied, making startup behaviour
+        # differ from a manual profile load via the UI.  The profile loaded by
+        # _load_active_profile() (called right after Camera construction in
+        # init_cameras()) sets all controls explicitly, so the sync is unnecessary.
 
         # Debug information
         logger.debug("Available Camera Controls: %s", self._get_picam_control_capabilities())
@@ -161,6 +183,68 @@ class Camera:
         
         if state_changed:
             self._on_setting_changed(name)
+
+    def _build_manual_override_structure(self) -> None:
+        """
+        Scan ui_settings for settings that declare 'manual_override_children' and
+        build three instance attributes used throughout the class:
+
+          _manual_override_controls : frozenset[str]
+              All control IDs whose user-set values must be preserved in
+              self.manual_controls (e.g. ExposureTime, AnalogueGain).
+
+          _auto_controller_map : dict[str, str]
+              Maps each child control to the parent that governs it.
+              e.g. {"ExposureTime": "AeEnable", "ColourTemperature": "AwbEnable"}
+              When the parent value is truthy (= auto mode) the child is skipped
+              from hardware writes.
+
+          _auto_children_map : dict[str, frozenset[str]]
+              Reverse of the above.  Used when a parent transitions to manual to
+              inject all its children into the same atomic picamera2 request.
+              e.g. {"AeEnable": frozenset({"ExposureTime", "AnalogueGain"})}
+        """
+        auto_children_map: dict = {}
+        auto_controller_map: dict = {}
+
+        def _scan(setting):
+            parent_id = setting.get("id")
+            children = setting.get("manual_override_children")
+            if parent_id and children:
+                child_set = frozenset(children)
+                auto_children_map[parent_id] = child_set
+                for child_id in child_set:
+                    auto_controller_map[child_id] = parent_id
+
+        for section in self.ui_settings.get("sections", []):
+            for setting in section.get("settings", []):
+                _scan(setting)
+                for child in setting.get("childsettings", []):
+                    _scan(child)
+
+        self._auto_children_map: dict = auto_children_map
+        self._auto_controller_map: dict = auto_controller_map
+        self._manual_override_controls: frozenset = frozenset(auto_controller_map.keys())
+        logger.debug(
+            "manual_override_controls=%s  auto_controller_map=%s",
+            self._manual_override_controls, self._auto_controller_map,
+        )
+
+    def _compute_auto_skip(self, controls_state: dict = None) -> set:
+        """
+        Return the set of controls that are currently governed by an active auto
+        algorithm and must therefore be excluded from hardware writes.
+
+        A control is auto-managed when its parent control (e.g. AeEnable) has a
+        truthy value (= auto mode).  Pass controls_state to evaluate a hypothetical
+        state; defaults to self.controls.
+        """
+        if controls_state is None:
+            controls_state = self.controls
+        return {
+            ctrl for ctrl, parent in self._auto_controller_map.items()
+            if controls_state.get(parent, True)   # True = auto when unknown
+        }
 
     def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values based on libcamera metadata."""
@@ -230,6 +314,18 @@ class Camera:
             # Fallback: if default_val is None, return the original value
             return default_val if default_val is not None else value
 
+    def _controls_with_manual_overrides(self) -> dict:
+        """
+        Return a copy of self.controls where auto-overrideable controls
+        (ExposureTime, AnalogueGain, ColourTemperature) are replaced by the
+        user's manually-set values from self.manual_controls.
+        Used for UI display and profile saving so the user's intention is
+        always reflected, even while an auto algorithm is active.
+        """
+        controls = copy.deepcopy(self.controls)
+        controls.update(self.manual_controls)
+        return controls
+
     def get_settings(self) -> Dict:
         states = copy.deepcopy(self.states)
         states["recording_elapsed_seconds"] = (
@@ -239,16 +335,24 @@ class Camera:
         return {
             "infos": copy.deepcopy(self.infos),
             "configs": copy.deepcopy(self.configs),
-            "controls": copy.deepcopy(self.controls),
+            "controls": self._controls_with_manual_overrides(),
             "states": states,
         }
     
     def get_param_states(self, saved_params: dict) -> dict:
         """
-        Return {param_id: {reset_enabled, save_enabled}} for every UI setting.
+        Return {param_id: {reset_enabled, save_enabled, current_value, ...}} for every UI setting.
 
         reset_enabled  — current value differs from the parameter's default
         save_enabled   — current value differs from what is stored in the active profile
+
+        For controls in _MANUAL_OVERRIDE_CONTROLS (ExposureTime, AnalogueGain,
+        ColourTemperature) the value from self.manual_controls is used as "current"
+        regardless of whether the auto algorithm is active, so that:
+          - The UI always shows the user's intended manual value, not the auto value.
+          - Save/Undo buttons stay inactive while the auto algorithm runs (the manual
+            value is compared against the saved profile value, not the live hardware
+            value that the auto algorithm constantly changes).
         """
         def _vals_equal(a, b, prec=None):
             try:
@@ -267,9 +371,12 @@ class Camera:
             if not sid or not s.get("enabled"):
                 return
             default = s.get("default")
-            # Read live value directly from controls/configs — ui_settings["value"] is a
-            # cache that may not yet be synced after a recent set_control/set_config call.
-            if sid in self.controls:
+
+            # For auto-overrideable controls, always use the user's manually stored
+            # value so the auto algorithm cannot cause false "unsaved change" alerts.
+            if sid in self._manual_override_controls and sid in self.manual_controls:
+                current = self.manual_controls[sid]
+            elif sid in self.controls:
                 current = self.controls[sid]
             elif sid in self.configs:
                 current = self.configs[sid]
@@ -277,6 +384,7 @@ class Camera:
                 current = default
             if current is None:
                 current = default
+
             saved = saved_params.get(sid)
 
             # Use the slider precision for comparisons so that hardware values with more
@@ -285,11 +393,21 @@ class Camera:
             prec = s.get("precision")
 
             reset_enabled = default is not None and not _vals_equal(current, default, prec)
-            save_enabled  = saved is None or not _vals_equal(current, saved, prec)
+
+            # When saved=None (control absent from older profiles), only flag unsaved
+            # if current also differs from default — prevents newly-tracked grandchildren
+            # (e.g. AeFlickerPeriod) from spuriously activating Save/Undo buttons.
+            if saved is None:
+                save_enabled = default is not None and not _vals_equal(current, default, prec)
+            else:
+                save_enabled = not _vals_equal(current, saved, prec)
 
             result[sid] = {
                 "reset_enabled": reset_enabled,
                 "save_enabled":  save_enabled,
+                "current_value": current,
+                "saved_value":   saved,
+                "unit":          s.get("unit") or "",
             }
 
         for section in self.ui_settings.get("sections", []):
@@ -297,6 +415,8 @@ class Camera:
                 _process(setting)
                 for child in setting.get("childsettings", []):
                     _process(child)
+                    for grandchild in child.get("childsettings", []):
+                        _process(grandchild)
 
         return result
 
@@ -311,7 +431,7 @@ class Camera:
         """
 
         # -----------------------------
-        # BULK MODE
+        # BULK MODE  (used by load_profile)
         # -----------------------------
         if isinstance(name, dict):
             updated = False
@@ -327,11 +447,16 @@ class Camera:
                         continue
 
                     coerced = self._coerce_control_value(ctrl_name, raw_value)
-                    current = self.controls.get(ctrl_name)
 
-                    # logger.debug(f"coerced: {coerced}, current: {current}")
+                    # For manual-override controls compare against manual_controls so
+                    # that a profile reload with the same value is still detected as
+                    # "unchanged" when both dicts agree, regardless of what the auto
+                    # algorithm wrote to self.controls.
+                    if ctrl_name in self._manual_override_controls:
+                        current = self.manual_controls.get(ctrl_name, self.controls.get(ctrl_name))
+                    else:
+                        current = self.controls.get(ctrl_name)
 
-                    # Skip if value is unchanged
                     if current == coerced:
                         continue
 
@@ -341,17 +466,59 @@ class Camera:
                     logger.debug("controls_to_apply is empty -> return False")
                     return False
 
+                # Persist ALL values: manual_controls for override controls, self.controls for all.
                 for ctrl, value in controls_to_apply.items():
+                    if ctrl in self._manual_override_controls:
+                        self.manual_controls[ctrl] = value
+                    self.controls[ctrl] = value
+
+                # Determine which controls are auto-managed AFTER this batch.
+                # self.controls is already updated above, so _compute_auto_skip()
+                # reflects the post-batch state (e.g. AeEnable=False no longer skips
+                # ExposureTime even though it was True before this batch ran).
+                auto_skip = self._compute_auto_skip()
+
+                # Build one atomic hardware payload.  Mode controls (AeEnable/AwbEnable/AfMode)
+                # appear first so dependent controls are in the same picamera2 request.
+                # For manual-override controls not in auto_skip, use manual_controls values.
+                MODE_CONTROLS = ("AeEnable", "AwbEnable", "AfMode")
+                hw: dict = {}
+                for ctrl in MODE_CONTROLS:
+                    if ctrl in controls_to_apply and ctrl not in auto_skip:
+                        hw[ctrl] = controls_to_apply[ctrl]
+                for ctrl, value in controls_to_apply.items():
+                    if ctrl in hw or ctrl in auto_skip:
+                        continue
+                    hw[ctrl] = self.manual_controls[ctrl] if ctrl in self._manual_override_controls else value
+
+                # When a parent (e.g. AeEnable) switches to manual in this batch,
+                # ALWAYS inject its children (e.g. ExposureTime, AnalogueGain) into
+                # the same atomic request — even when they weren't in controls_to_apply
+                # (unchanged vs. current manual_controls and therefore skipped).
+                # Without this, picamera2 locks onto its last auto-algorithm value.
+                for parent_ctrl, children in self._auto_children_map.items():
+                    if parent_ctrl in controls_to_apply and not controls_to_apply[parent_ctrl]:
+                        for child in children:
+                            if child in self.manual_controls:
+                                hw[child] = self.manual_controls[child]
+
+                if hw:
                     try:
-                        self.picam2.set_controls({ctrl: value})
-                        self.controls[ctrl] = value
-                        logger.debug("Set control %s=%s", ctrl, value)
+                        self.picam2.set_controls(hw)
+                        logger.debug("Set controls (batch) %s", hw)
                     except Exception as e:
-                        logger.error("Failed control %s=%s -> %s", ctrl, value, e)
+                        logger.error("Failed batch set_controls %s -> %s", hw, e)
                         return False
+                else:
+                    logger.debug("All batch controls are auto-managed, stored only: %s",
+                                 list(controls_to_apply.keys()))
+
                 updated = True
 
             if updated:
+                # Keep ui_settings in sync so the Jinja2-rendered page and any
+                # subsequent RPC call to camera.ui_settings reflect the new values.
+                self.sync_ui_settings()
                 self._on_setting_changed()
 
             return updated
@@ -369,14 +536,49 @@ class Camera:
                 return False
 
             coerced = self._coerce_control_value(name, value)
-            current = self.controls.get(name)
+
+            # Compare against manual_controls for override controls (auto algorithm may
+            # have changed self.controls without the user's involvement).
+            if name in self._manual_override_controls:
+                current = self.manual_controls.get(name, self.controls.get(name))
+            else:
+                current = self.controls.get(name)
 
             if current == coerced:
                 return False
 
+            # Always persist the new value.
+            if name in self._manual_override_controls:
+                self.manual_controls[name] = coerced
+            self.controls[name] = coerced
+
+            # Determine whether this control is currently auto-managed.
+            # If so, store the value (done above) but do NOT send it to hardware —
+            # the auto algorithm is responsible for the hardware value.
+            if name in self._compute_auto_skip():
+                logger.debug("Stored (auto-managed, not applied to hw) %s=%s", name, coerced)
+                self._on_setting_changed()
+                return True
+
             try:
-                self.picam2.set_controls({name: coerced})
-                self.controls[name] = coerced
+                # Build one atomic hardware payload.  When switching a parent to manual
+                # mode, include all its governed children in the SAME set_controls()
+                # call so they arrive at picamera2 atomically (two separate calls risk
+                # a frame boundary between them, causing the dependent value to be
+                # silently ignored while the auto algorithm is still active).
+                hw: dict = {name: coerced}
+
+                if name in self._auto_children_map and not coerced:
+                    for child in self._auto_children_map[name]:
+                        if child in self.manual_controls:
+                            hw[child] = self.manual_controls[child]
+
+                if name == "AfMode" and coerced == 0 and "LensPosition" in self.controls:
+                    hw["LensPosition"] = self.controls["LensPosition"]
+
+                self.picam2.set_controls(hw)
+                logger.debug("Set control(s) %s", hw)
+
                 self._on_setting_changed()
                 return True
             except Exception as exc:
@@ -390,11 +592,52 @@ class Camera:
                 return False
 
     def get_control(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
-        """Get a single live camera control value by name or all controls as dict if name is None."""
+        """Get a single live camera control value by name or all controls as dict if name is None.
+        For auto-overrideable controls (ExposureTime, AnalogueGain, ColourTemperature) the
+        user's manual value is returned instead of the live hardware value."""
         with self.lock:
             if name:
+                if name in self._manual_override_controls:
+                    return copy.deepcopy(self.manual_controls.get(name, self.controls.get(name)))
                 return copy.deepcopy(self.controls.get(name))
-            return copy.deepcopy(self.controls)
+            return self._controls_with_manual_overrides()
+
+    def trigger_autofocus(self) -> bool:
+        """
+        Run a single autofocus cycle and return True on success.
+        Uses picamera2's autofocus_cycle() which sends AfTrigger internally.
+        After the cycle completes (or fails), AfMode is restored to Manual (0).
+        Blocking — run in a greenlet from the socket handler.
+        """
+        try:
+            job = self.picam2.autofocus_cycle(wait=False)
+            success = self.picam2.wait(job)
+            logger.info("Autofocus cycle finished, success=%s", success)
+        except Exception as exc:
+            logger.error("Autofocus cycle error: %s", exc)
+            success = False
+        finally:
+            # Restore manual mode regardless of outcome
+            try:
+                self.picam2.set_controls({"AfMode": 0})
+                with self.lock:
+                    self.controls["AfMode"] = 0
+            except Exception as exc:
+                logger.warning("Failed to restore AfMode=0 after AF cycle: %s", exc)
+
+        # Read the settled lens position from camera metadata and push state update
+        try:
+            metadata = self.picam2.capture_metadata()
+            lens_pos = metadata.get("LensPosition")
+            if lens_pos is not None:
+                with self.lock:
+                    self.controls["LensPosition"] = lens_pos
+                logger.info("LensPosition after AF cycle: %s", lens_pos)
+                self._on_setting_changed()
+        except Exception as exc:
+            logger.warning("Failed to read LensPosition after AF cycle: %s", exc)
+
+        return success
 
     def _coerce_config_value(self, key: str, value):
         """Coerce a config value to match the type of the existing entry in self.configs."""
@@ -839,32 +1082,60 @@ class Camera:
         return cam_ctrl_json
 
     def sync_ui_settings(self) -> None:
-        """Sync ui_settings with current camera controls and camera configs."""
+        """Sync ui_settings with current camera controls and camera configs.
+        For auto-overrideable controls (ExposureTime, AnalogueGain, ColourTemperature)
+        the value from manual_controls is used so the Jinja2-rendered HTML always
+        shows the user's intended value, not a live auto-algorithm value."""
+
+        def _val(sid):
+            """Return the display value for a setting id."""
+            if sid in self._manual_override_controls:
+                return self.manual_controls.get(sid, self.controls.get(sid))
+            if sid in self.controls:
+                return self.controls[sid]
+            if sid in self.configs:
+                return self.configs[sid]
+            return None
+
         for section in self.ui_settings.get("sections", []):
             for setting in section.get("settings", []):
-                setting_id = setting.get("id")
-                if setting_id in self.controls:
-                    setting["value"] = self.controls[setting_id]
-                elif setting_id in self.configs:
-                    setting["value"] = self.configs[setting_id]
-
+                v = _val(setting.get("id"))
+                if v is not None:
+                    setting["value"] = v
                 for child in setting.get("childsettings", []):
-                    child_id = child.get("id")
-                    if child_id in self.controls:
-                        child["value"] = self.controls[child_id]
-                    elif child_id in self.configs:
-                        child["value"] = self.cofigs[child_id]
+                    v = _val(child.get("id"))
+                    if v is not None:
+                        child["value"] = v
+                    for grandchild in child.get("childsettings", []):
+                        v = _val(grandchild.get("id"))
+                        if v is not None:
+                            grandchild["value"] = v
 
         logger.debug("Live controls synced with current controls")
 
     def apply_controls(self) -> bool:
-        """Thread-safe: apply all current controls (self.controls) to the camera hardware.
-        To apply a camera (live) control parameter, no restart of the camera (Picamera2) recording is necessary."""
+        """Thread-safe: apply all current controls to the camera hardware.
+        Auto-managed controls (ExposureTime/AnalogueGain when AeEnable=True,
+        ColourTemperature when AwbEnable=True) are skipped — the auto algorithm
+        owns those.  For manual-mode override controls the user's stored value
+        from self.manual_controls is used (not self.controls, which may hold a
+        stale auto-algorithm value from _sync_controls_from_camera)."""
         with self.lock:
             try:
-                coerced = {k: self._coerce_control_value(k, v) for k, v in self.controls.items()}
+                auto_skip = self._compute_auto_skip()
+
+                coerced: dict = {}
+                for k, v in self.controls.items():
+                    if k in auto_skip:
+                        continue
+                    # For non-auto-managed override controls use manual_controls
+                    # so the user's intended value is applied even if self.controls
+                    # held a stale auto-algorithm value.
+                    src = self.manual_controls.get(k, v) if k in self._manual_override_controls else v
+                    coerced[k] = self._coerce_control_value(k, src)
+
                 self.picam2.set_controls(coerced)
-                logger.debug("Applied controls to hardware: %s", coerced)
+                logger.debug("Applied controls to hardware (skipped %s): %s", auto_skip, coerced)
             except Exception as e:
                 logger.error("Error applying profile controls: %s", e, exc_info=True)
                 return False

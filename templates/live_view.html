@@ -293,6 +293,7 @@ function applyStateToUI(state) {
             if (el) {
                 if (el.type === "checkbox") {
                     el.checked = Boolean(value);
+                    toggleChildSettings(key, el.checked);
                 } else {
                     if (el.type === "range") {
                         // Do NOT set el.value first — adjustSliderSetting snaps and
@@ -307,8 +308,14 @@ function applyStateToUI(state) {
                 if (label) label.textContent = `Value: ${value}`;
             } else {
                 // Fallback for radio groups: inputs use id="${key}_${value}"
-                const radio = document.getElementById(`${key}_${value}`);
-                if (radio && radio.type === "radio") radio.checked = true;
+                // Boolean values (e.g. AeEnable: true/false) must be converted to
+                // their integer representation (1/0) to match the option element id.
+                const radioVal = typeof value === "boolean" ? (value ? 1 : 0) : value;
+                const radio = document.getElementById(`${key}_${radioVal}`);
+                if (radio && radio.type === "radio") {
+                    radio.checked = true;
+                    updateRadioChildVisibility(key);
+                }
             }
         }
     }
@@ -320,6 +327,7 @@ function applyStateToUI(state) {
             if (el) {
                 if (el.type === "checkbox") {
                     el.checked = Boolean(value);
+                    toggleChildSettings(key, el.checked);
                 } else {
                     if (el.type === "range") {
                         // Do NOT set el.value first — adjustSliderSetting snaps and
@@ -334,8 +342,14 @@ function applyStateToUI(state) {
                 if (label) label.textContent = `Value: ${value}`;
             } else {
                 // Fallback for radio groups: inputs use id="${key}_${value}"
-                const radio = document.getElementById(`${key}_${value}`);
-                if (radio && radio.type === "radio") radio.checked = true;
+                // Boolean values (e.g. AeEnable: true/false) must be converted to
+                // their integer representation (1/0) to match the option element id.
+                const radioVal = typeof value === "boolean" ? (value ? 1 : 0) : value;
+                const radio = document.getElementById(`${key}_${radioVal}`);
+                if (radio && radio.type === "radio") {
+                    radio.checked = true;
+                    updateRadioChildVisibility(key);
+                }
             }
         }
     }
@@ -484,6 +498,43 @@ function applyDisplay(display) {
 socket.on("param_states_changed", payload => {
     if (payload.camera_num !== cameraNum) return;
     applyParamStates(payload.param_states);
+});
+
+socket.on("profile_changed", payload => {
+    if (payload.camera_num !== cameraNum) return;
+    if (typeof updateProfileList === "function") updateProfileList();
+});
+
+function triggerAutofocus(settingId, btn) {
+    const spinner = document.getElementById(settingId + "_af_spinner");
+    const icon    = document.getElementById(settingId + "_af_icon");
+    btn.disabled = true;
+    spinner?.classList.remove("d-none");
+    icon?.classList.add("d-none");
+    // Disable the associated slider and number input while AF runs
+    const slider = document.getElementById(settingId);
+    const number = document.getElementById(settingId + "_number");
+    if (slider) slider.disabled = true;
+    if (number) number.disabled = true;
+    socket.emit("trigger_autofocus", { camera_num: cameraNum });
+}
+
+socket.on("autofocus_state", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    if (data.running) return; // button stays disabled while running
+    // Re-enable all AF trigger buttons and their sliders
+    document.querySelectorAll("[id$='_trigger_af_btn']").forEach(btn => {
+        const settingId = btn.id.replace("_trigger_af_btn", "");
+        const spinner = document.getElementById(settingId + "_af_spinner");
+        const icon    = document.getElementById(settingId + "_af_icon");
+        const slider  = document.getElementById(settingId);
+        const number  = document.getElementById(settingId + "_number");
+        btn.disabled = false;
+        spinner?.classList.add("d-none");
+        icon?.classList.remove("d-none");
+        if (slider) slider.disabled = false;
+        if (number) number.disabled = false;
+    });
 });
 
 socket.on("camera_display_changed", payload => {

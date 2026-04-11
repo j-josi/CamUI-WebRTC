@@ -1,5 +1,13 @@
 {# Radio Button Setting Template #}
+{# Determine if this setting is a group follower (buttons are on the leader) #}
+{% set is_follower = setting.get("group_leader") %}
+{% if not is_follower %}
+{# Compute group IDs: own ID + group_with siblings #}
+{% set ns = namespace(group_ids=[setting.id]) %}
+{% if setting.get("group_with") %}{% for gid in setting.group_with %}{% set ns.group_ids = ns.group_ids + [gid] %}{% endfor %}{% endif %}
+{% endif %}
 <div class="mb-3">
+    {% if setting.name or setting.info or not is_follower %}
     <div class="d-flex w-100 align-items-center justify-content-between mb-2">
         <div class="d-flex align-items-center gap-2">
             {% if setting.name %}
@@ -11,6 +19,7 @@
             </a>
             {% endif %}
         </div>
+        {% if not is_follower %}
         <div class="d-flex align-items-center gap-1">
             {% set dtype = "controls" if setting.source == "controls" else "configs" %}
             {% set default_val = setting.get("default", 0) %}
@@ -20,24 +29,38 @@
                     title="Reset to default"
                     disabled
                     data-default="{{ default_val }}"
-                    onclick="resetParam('{{ setting.id }}', {{ default_val }})">
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="resetGroup(JSON.parse(this.dataset.groupIds))">
                 <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <span class="vr align-self-center" style="height:1rem;"></span>
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm py-0 px-1"
+                    id="{{ setting.id }}_revert_btn"
+                    title="Revert to saved value"
+                    disabled
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="revertGroup(JSON.parse(this.dataset.groupIds))">
+                <i class="bi bi-arrow-return-left"></i>
             </button>
             <button type="button"
                     class="btn btn-outline-secondary btn-sm py-0 px-1"
                     id="{{ setting.id }}_save_btn"
                     title="Save to profile"
                     disabled
-                    onclick="saveParam('{{ setting.id }}', '{{ dtype }}')">
+                    data-group-ids='{{ ns.group_ids | tojson }}'
+                    onclick="saveGroup(JSON.parse(this.dataset.groupIds), '{{ dtype }}')">
                 <i class="bi bi-floppy"></i>
             </button>
         </div>
+        {% endif %}
     </div>
-    
+    {% endif %}
+
     {% if setting.info %}
     <div class="collapse p-2" id="{{ setting.id }}_info">
         <div class="card card-body">
-            <p class="mb-0">{{ setting.info }}</p>
+            <p class="mb-0">{{ setting.info | safe }}</p>
             {% if setting.warning %}
             <div class="alert alert-warning" role="alert">
                 {{ setting.warning }}
@@ -46,8 +69,8 @@
         </div>
     </div>
     {% endif %}
-        
-    {% for option in setting.options %}
+
+    {% for option in setting.options if option.enabled %}
     <div class="form-check">
         <input class="form-check-input"
             type="radio"
@@ -79,7 +102,11 @@
                 data-show-child="{{ option.show_child|lower }}"
             {% endif %}
 
-            {% if loop.first %}data-save-id="{{ setting.id }}"{% endif %}
+            {% if loop.first %}
+                data-save-id="{{ setting.id }}"
+                data-default="{{ setting.get('default', 0) }}"
+                {% if setting.get("group_leader") %}data-group-leader="{{ setting.group_leader }}"{% endif %}
+            {% endif %}
             onchange="updateSettingFromElement(this)">
 
         <label class="form-check-label" for="{{ setting.id }}_{{ option.value }}">
