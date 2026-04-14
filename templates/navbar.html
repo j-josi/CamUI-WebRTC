@@ -21,7 +21,7 @@
     background-color: #363c42 !important;
   }
 
-  /* Override nav-pills active colour — replace Bootstrap blue with a subtle white highlight */
+  /* Override nav-pills active color — replace Bootstrap blue with a subtle white highlight */
   .navbar .nav-pills {
     --bs-nav-pills-link-active-bg: rgba(255, 255, 255, 0.22);
   }
@@ -39,7 +39,7 @@
     white-space: nowrap;
     max-width: none;
   }
-  /* Explicit colour for battery display — ensures visibility regardless of nesting */
+  /* Explicit color for battery display — ensures visibility regardless of nesting */
   .navbar .battery-display {
     color: rgba(255, 255, 255, 0.7);
   }
@@ -79,19 +79,19 @@
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav nav-pills me-auto mb-2 mb-md-0">
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'live_view' %}active{% endif %}" href="{{ url_for('live_view') }}">Live View</a>
+            <a class="nav-link {% if request.endpoint == 'live_view' %}active{% endif %}" href="{{ url_for('live_view') }}" data-i18n="navbar.live_view">Live View</a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'media_gallery' %}active{% endif %}" href="{{ url_for('media_gallery') }}">Media Gallery</a>
+            <a class="nav-link {% if request.endpoint == 'media_gallery' %}active{% endif %}" href="{{ url_for('media_gallery') }}" data-i18n="navbar.media_gallery">Media Gallery</a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'info' %}active{% endif %}" href="{{ url_for('info') }}">Info</a>
+            <a class="nav-link {% if request.endpoint == 'info' %}active{% endif %}" href="{{ url_for('info') }}" data-i18n="navbar.info">Info</a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}">About</a>
+            <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}" data-i18n="navbar.about">About</a>
           </li>
           <li class="nav-item">
             <a class="nav-link {% if request.endpoint == 'system_settings' %}active{% endif %}" href="{{ url_for('system_settings') }}"><i class="bi bi-gear"></i>
@@ -115,13 +115,29 @@
             </span>
           </li>
           {% endif %}
+          <!-- Language selector -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-translate"></i>
+              <span id="lang-code" style="font-size:0.8rem; vertical-align:middle;"></span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="setLanguage('en'); return false;">
+                <span data-i18n="navbar.lang_en">English</span>
+              </a></li>
+              <li><a class="dropdown-item" href="#" onclick="setLanguage('de'); return false;">
+                <span data-i18n="navbar.lang_de">Deutsch</span>
+              </a></li>
+            </ul>
+          </li>
+          <!-- Theme selector -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <i id="theme-icon" class="bi bi-brightness-high-fill"></i>
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
-              <li class="dropdown-item" onclick="setTheme('light')"><i class="bi bi-brightness-high-fill"></i> Light Mode</li>
-              <li class="dropdown-item" onclick="setTheme('dark')"><i class="bi bi-moon-stars-fill"></i> Dark Mode</li>
+              <li><a class="dropdown-item" href="#" onclick="setTheme('light'); return false;"><i class="bi bi-brightness-high-fill"></i> <span data-i18n="navbar.theme_light">Light Mode</span></a></li>
+              <li><a class="dropdown-item" href="#" onclick="setTheme('dark'); return false;"><i class="bi bi-moon-stars-fill"></i> <span data-i18n="navbar.theme_dark">Dark Mode</span></a></li>
             </ul>
           </li>
         </ul>

@@ -9,7 +9,7 @@
     <!-- Setting Label & Info -->
     <div class="d-flex w-100 align-items-center justify-content-between mb-3">
         <div class="d-flex align-items-center gap-2">
-            <strong class="mb-1">{{ setting.name }}</strong>
+            <strong class="mb-1" data-i18n="controls.{{ setting.id }}.name">{{ setting.name }}</strong>
             {% if setting.info %}
             <a data-bs-toggle="collapse" href="#{{ setting.id }}_info" role="button">
                 <i class="bi bi-info-circle"></i>
@@ -56,7 +56,7 @@
     {% if setting.info %}
     <div class="collapse p-2" id="{{ setting.id }}_info">
         <div class="card card-body">
-            <p class="mb-0">{{ setting.info | safe }}</p>
+            <p class="mb-0" data-i18n-html="controls.{{ setting.id }}.info">{{ setting.info | safe }}</p>
             {% if setting.warning %}
             <div class="alert alert-warning" role="alert">
                 {{ setting.warning }}
@@ -72,9 +72,9 @@
     <label for="{{ setting.id }}" class="form-label mb-0" id="current{{ setting.id }}">
         {% set raw_value = setting.get("value", setting.get("default")) %}
         {% if setting.conversion.always_on %}
-        Value: {{ (raw_value / setting.conversion.factor) | round(6) }}
+        {{ (raw_value / setting.conversion.factor) | round(6) }}
         {% else %}
-        Value: {{ raw_value }}
+        {{ raw_value }}
         {% endif %}
         <span id="{{ setting.id }}_unit_label">({{ setting.conversion.label }})</span>
     </label>
@@ -212,7 +212,8 @@
             id="{{ setting.id }}_trigger_af_btn"
             onclick="triggerAutofocus('{{ setting.id }}', this)">
         <span class="spinner-border spinner-border-sm d-none" id="{{ setting.id }}_af_spinner" role="status"></span>
-        <i class="bi bi-crosshair" id="{{ setting.id }}_af_icon"></i> Trigger Autofocus
+        <i class="bi bi-crosshair" id="{{ setting.id }}_af_icon"></i>
+        <span data-i18n="general.trigger_autofocus">Trigger Autofocus</span>
     </button>
     {% endif %}
 

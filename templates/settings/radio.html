@@ -11,7 +11,7 @@
     <div class="d-flex w-100 align-items-center justify-content-between mb-2">
         <div class="d-flex align-items-center gap-2">
             {% if setting.name %}
-            <strong class="mb-1">{{ setting.name }}</strong>
+            <strong class="mb-1" data-i18n="controls.{{ setting.id }}.name">{{ setting.name }}</strong>
             {% endif %}
             {% if setting.info %}
             <a data-bs-toggle="collapse" href="#{{ setting.id }}_info" role="button">
@@ -60,7 +60,7 @@
     {% if setting.info %}
     <div class="collapse p-2" id="{{ setting.id }}_info">
         <div class="card card-body">
-            <p class="mb-0">{{ setting.info | safe }}</p>
+            <p class="mb-0" data-i18n-html="controls.{{ setting.id }}.info">{{ setting.info | safe }}</p>
             {% if setting.warning %}
             <div class="alert alert-warning" role="alert">
                 {{ setting.warning }}
@@ -109,7 +109,8 @@
             {% endif %}
             onchange="updateSettingFromElement(this)">
 
-        <label class="form-check-label" for="{{ setting.id }}_{{ option.value }}">
+        <label class="form-check-label" for="{{ setting.id }}_{{ option.value }}"
+            data-i18n="controls.{{ setting.id }}.options.{{ option.label }}">
             {{ option.label }}
         </label>
     </div>

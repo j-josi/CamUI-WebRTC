@@ -136,7 +136,7 @@
            class="alert alert-warning alert-dismissible fade show mt-2 d-none"
            role="alert">
         <i class="bi bi-info-circle-fill me-2"></i>
-        Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream. <strong>For better experience it is recommended to enable autoplay for this site in the settings of your browser.</strong>
+        <span data-i18n="live_view.autoplay_warning">Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream.</span> <strong data-i18n="live_view.autoplay_warning_strong">For better experience it is recommended to enable autoplay for this site in the settings of your browser.</strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
 
@@ -151,7 +151,7 @@
             <div class="col-12 col-md-6">
               <button class="btn btn-lg w-100 btn-success" id="captureButton">
                   <i class="bi bi-camera fs-2"></i>
-                  <span class="fw-bold mt-1 d-block">Take Photo</span>
+                  <span class="fw-bold mt-1 d-block" data-i18n="live_view.take_photo">Take Photo</span>
               </button>
             </div>
 
@@ -159,7 +159,7 @@
             <div class="col-12 col-md-6">
               <button class="btn btn-lg w-100 btn-danger" id="recordVideoButton">
                 <i id="recordVideoIcon" class="bi bi-record-circle fs-2"></i>
-                <span id="recordVideoText" class="fw-bold mt-1 d-block">Record Video</span>
+                <span id="recordVideoText" class="fw-bold mt-1 d-block" data-i18n="live_view.record_video">Record Video</span>
               </button>
             </div>
 
@@ -860,7 +860,7 @@ function showToast(message, type = "warning", delay = 8000) {
     toast.style.zIndex = 9999;
     toast.innerHTML = `
         <div class="d-flex">
-            <div class="toast-body">${message}</div>
+            <div class="toast-body d-flex align-items-start gap-2">${message}</div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
         </div>`;
     document.body.appendChild(toast);
@@ -872,8 +872,22 @@ function showToast(message, type = "warning", delay = 8000) {
 // -------------------------------------------------------
 // Storage error notification
 // -------------------------------------------------------
+const _errorMsgMap = {
+    "storage_full_photo":      "live_view.error_storage_full_photo",
+    "storage_full_recording":  "live_view.error_storage_full_recording",
+    "recording_failed":        "live_view.error_recording_failed",
+};
+
 socket.on("storage_error", (data) => {
-    showToast(`<i class="bi bi-hdd-x me-2"></i>${data.message}`, "danger");
+    const key = data.type ? _errorMsgMap[data.type] : null;
+    const msg = (key && window.t(key)) || data.message;
+    showToast(`<i class="bi bi-hdd-x flex-shrink-0"></i><span>${msg}</span>`, "danger");
+});
+
+socket.on("error", (data) => {
+    const key = data.type ? _errorMsgMap[data.type] : null;
+    const msg = (key && window.t(key)) || data.message;
+    showToast(`<i class="bi bi-exclamation-circle flex-shrink-0"></i><span>${msg}</span>`, "danger");
 });
 
 // -------------------------------------------------------
@@ -881,11 +895,13 @@ socket.on("storage_error", (data) => {
 // -------------------------------------------------------
 function _autoStopMsg(data) {
     if (data.reason === "max_duration") {
-        return `Recording stopped automatically: maximum recording duration (${data.max_duration_min} min) reached.`;
+        return window.t('live_view.auto_stop_max_duration', { max_duration_min: data.max_duration_min })
+            || `Recording stopped automatically: maximum recording duration (${data.max_duration_min} min) reached.`;
     } else if (data.reason === "storage_full") {
-        return `Recording stopped automatically: storage full`;
+        return window.t('live_view.auto_stop_storage_full')
+            || "Recording stopped automatically: storage full.";
     }
-    return "Recording stopped automatically.";
+    return window.t('live_view.auto_stop_generic') || "Recording stopped automatically.";
 }
 
 let _autoStopActive = false;
@@ -989,7 +1005,7 @@ function updateRecordButton() {
         icon.classList.remove("bi-record-circle");
         icon.classList.add("bi-stop-circle");
 
-        text.textContent = "Stop Recording";
+        text.textContent = window.t('live_view.stop_recording') || "Stop Recording";
     } else {
         recordBtn.classList.remove("btn-warning");
         recordBtn.classList.add("btn-danger");
@@ -997,7 +1013,7 @@ function updateRecordButton() {
         icon.classList.remove("bi-stop-circle");
         icon.classList.add("bi-record-circle");
 
-        text.textContent = "Record Video";
+        text.textContent = window.t('live_view.record_video') || "Record Video";
     }
 }
 

@@ -1396,12 +1396,11 @@ class Camera:
         self._set_state("is_video_streaming", False)
         logger.info("Streaming stopped")
 
-    def start_recording(self, filename: str) -> bool:
+    def has_sufficient_storage(self) -> bool:
         free = shutil.disk_usage(self.upload_folder).free
-        if free < self._storage_min_free_bytes:
-            logger.warning("Not enough storage space to start recording (free: %d MB)", free // (1024 * 1024))
-            raise RuntimeError("storage_full")
+        return free >= self._storage_min_free_bytes
 
+    def start_recording(self, filename: str) -> bool:
         with self.lock:
             if self.states["is_video_recording"]:
                 logger.info("Skip starting recording, already active")
@@ -1464,11 +1463,6 @@ class Camera:
     # Camera Capture Functions
     #-----
     def capture_still(self, filename: str, raw: bool = False) -> Optional[str]:
-        free = shutil.disk_usage(self.upload_folder).free
-        if free < self._storage_min_free_bytes:
-            logger.warning("Not enough storage space to capture still (free: %d MB)", free // (1024 * 1024))
-            raise RuntimeError("storage_full")
-
         filepath = os.path.join(self.upload_folder, filename)
         sucess = False
 

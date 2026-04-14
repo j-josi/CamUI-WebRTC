@@ -1,6 +1,7 @@
 {
   "max_recording_duration_min": 1,
   "theme": "light",
+  "default_language": "en",
   "live_view_title": "TrainCam",
   "live_view_hide_title": false,
   "camera_names": {

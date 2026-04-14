@@ -420,7 +420,7 @@ camera_manager.on_recording_auto_stopped = handle_recording_auto_stopped
 # Initialize Media Gallery
 ####################
 media_gallery_manager = MediaGallery(media_upload_folder)
-media_gallery_manager.recover_interrupted_mux()
+# media_gallery_manager.recover_interrupted_mux()  # orphan code for usage of picamera2.outputs.FfmpegOutput and parallel audio recording in own thread and muxing aftertwards
 
 ####################
 # SocketIO Events
@@ -516,6 +516,10 @@ def handle_capture_still(data):
         return
 
     room_name = f"camera_{camera_num}"
+    if not camera.has_sufficient_storage():
+        logger.warning("Not enough storage to capture still")
+        emit("storage_error", {"type": "storage_full_photo", "message": "Failed to take photo - not enough free storage available."}, room=room_name)
+        return
     emit("capture_start", {"camera_num": camera_num}, room=room_name)
     socketio.start_background_task(_do_capture_still, camera_num, room_name)
 
@@ -525,14 +529,7 @@ def _do_capture_still(camera_num, room_name):
         socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
         return
     image_filename = generate_filename(camera_manager, camera_num, ".jpg")
-    try:
-        success = camera.capture_still(image_filename, camera.configs["saveRAW"])
-    except RuntimeError as e:
-        if "storage_full" in str(e):
-            socketio.emit("storage_error", {"message": "Failed to take photo - not enough free storage available."}, room=room_name)
-
-        socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
-        return
+    success = camera.capture_still(image_filename, camera.configs["saveRAW"])
     socketio.emit("capture_done", {
         "camera_num": camera_num,
         "success": success,
@@ -547,17 +544,14 @@ def handle_start_recording(data):
         emit("error", {"message": "Invalid camera"})
         return
 
-    filename = generate_filename(camera_manager, camera_num, ".mp4")
-    try:
-        success = camera.start_recording(filename)
-    except RuntimeError as e:
-        if "storage_full" in str(e):
-            emit("storage_error", {"message": "Failed to start recording - not enough free storage available."})
-        else:
-            emit("error", {"message": "Failed to start recording"})
+    if not camera.has_sufficient_storage():
+        logger.warning("Not enough storage to start recording")
+        emit("storage_error", {"type": "storage_full_recording", "message": "Failed to start recording - not enough free storage available."})
         return
+    filename = generate_filename(camera_manager, camera_num, ".mp4")
+    success = camera.start_recording(filename)
     if not success:
-        emit("error", {"message": "Failed to start recording"})
+        emit("error", {"type": "recording_failed", "message": "Failed to start recording"})
 
 @socketio.on("stop_recording")
 def handle_stop_recording(data):
@@ -704,9 +698,11 @@ def handle_trigger_autofocus(data):
 
 @app.context_processor
 def inject_theme():
-    """Inject server-default theme and version info into all templates."""
-    theme = camera_manager.get_system_settings().get('theme', 'light')
-    return dict(version=version, title=project_title, theme=theme)
+    """Inject server-default theme, language and version info into all templates."""
+    sys_cfg = camera_manager.get_system_settings()
+    theme = sys_cfg.get('theme', 'light')
+    default_lang = sys_cfg.get('default_language', 'en')
+    return dict(version=version, title=project_title, theme=theme, default_lang=default_lang)
 
 @app.context_processor
 def inject_camera_list():

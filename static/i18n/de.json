@@ -1,0 +1,308 @@
+{
+  "navbar": {
+    "live_view": "Live-Ansicht",
+    "media_gallery": "Mediengalerie",
+    "info": "Info",
+    "about": "Über",
+    "theme_light": "Hell",
+    "theme_dark": "Dunkel",
+    "lang_en": "English",
+    "lang_de": "Deutsch",
+    "battery_runtime": "Geschätzte Laufzeit: {h}h {m}min"
+  },
+  "live_view": {
+    "take_photo": "Foto aufnehmen",
+    "record_video": "Video aufnehmen",
+    "stop_recording": "Aufnahme stoppen",
+    "autoplay_warning": "Autoplay ist in diesem Browser deaktiviert. Daher ist ein manueller Klick auf den Play-Button notwendig, um den Live-Stream zu sehen.",
+    "autoplay_warning_strong": "Für ein besseres Erlebnis empfehlen wir, Autoplay für diese Seite in den Browsereinstellungen zu aktivieren.",
+    "auto_stop_max_duration": "Aufnahme automatisch gestoppt: maximale Aufnahmedauer ({max_duration_min} Min.) erreicht.",
+    "auto_stop_storage_full": "Aufnahme automatisch gestoppt: Speicher voll.",
+    "auto_stop_generic": "Aufnahme automatisch gestoppt.",
+    "error_storage_full_photo": "Foto konnte nicht aufgenommen werden — nicht genügend freier Speicherplatz.",
+    "error_storage_full_recording": "Aufnahme konnte nicht gestartet werden — nicht genügend freier Speicherplatz.",
+    "error_recording_failed": "Aufnahme konnte nicht gestartet werden."
+  },
+  "camera_controls": {
+    "title": "Kamerasteuerung",
+    "profiles_title": "Kameraprofile",
+    "profiles_load": "Laden",
+    "profiles_save": "Speichern",
+    "profiles_reset": "Zurücksetzen",
+    "profiles_delete": "Löschen",
+    "profiles_col_profile": "Profil",
+    "profiles_col_sensor": "Sensor",
+    "profiles_col_active": "Aktiv",
+    "profiles_load_btn": "Gewähltes Profil laden",
+    "profiles_no_found": "Keine Profile gefunden",
+    "profiles_none_to_delete": "Keine Profile zum Löschen vorhanden",
+    "profiles_name_label": "Profilname",
+    "profiles_name_placeholder": "Profilname eingeben",
+    "profiles_save_btn": "Speichern",
+    "profiles_active_badge": "Aktiv",
+    "profiles_inactive": "Inaktiv",
+    "profiles_reset_active": "Aktives Profil zurücksetzen",
+    "profiles_delete_selected": "Gewähltes Profil löschen",
+    "reset_modal_title": "Aktives Profil zurücksetzen",
+    "reset_modal_cancel": "Abbrechen",
+    "reset_modal_reset": "Zurücksetzen",
+    "reset_modal_reset_save": "Zurücksetzen & Speichern",
+    "unsaved_modal_cancel": "Abbrechen",
+    "unsaved_modal_dont_save": "Nicht speichern",
+    "unsaved_modal_save": "Speichern",
+    "delete_modal_title": "Profil löschen bestätigen",
+    "delete_modal_body_prefix": "Das Profil",
+    "delete_modal_body_suffix": "Dieser Vorgang kann nicht rückgängig gemacht werden.",
+    "delete_modal_cancel": "Abbrechen",
+    "delete_modal_delete": "Profil löschen",
+    "overwrite_modal_title": "Profil überschreiben?",
+    "overwrite_modal_body_prefix": "Ein Profil mit dem Namen",
+    "overwrite_modal_body_suffix": "existiert bereits. Möchten Sie es überschreiben?",
+    "overwrite_modal_cancel": "Abbrechen",
+    "overwrite_modal_overwrite": "Überschreiben",
+    "mismatch_modal_title": "Sensor-Konflikt",
+    "mismatch_modal_body_suffix": "wurde für einen anderen Kamerasensor gespeichert. Trotzdem laden?",
+    "mismatch_modal_cancel": "Abbrechen",
+    "mismatch_modal_load": "Trotzdem laden",
+    "delete_modal_body_name_suffix": " wird dauerhaft gelöscht.",
+    "reset_modal_body_prefix": "Alle Kamerasteuerungen für das Profil",
+    "reset_modal_body_name_suffix": "werden auf ihre Standardwerte zurückgesetzt.",
+    "unsaved_modal_title_prefix": "Profil laden",
+    "unsaved_modal_active_prefix": "Aktives Profil",
+    "unsaved_modal_active_suffix": "hat folgende <strong>nicht gespeicherte Änderungen</strong>:",
+    "unsaved_modal_question_prefix": "Möchten Sie die Änderungen im aktiven Profil",
+    "unsaved_modal_question_mid": "speichern, bevor Sie Profil",
+    "unsaved_modal_question_suffix": " laden?",
+    "profiles_select_to_load": "Bitte wählen Sie ein Profil zum Laden aus.",
+    "profiles_please_enter_filename": "Bitte geben Sie einen Dateinamen ein.",
+    "profiles_no_active": "(kein Profil aktiv)",
+    "profiles_reset_hint": "\"Zurücksetzen & Speichern\" überschreibt die gespeicherte Profildatei mit den Standardwerten.",
+    "profiles_reset_success": "Profil auf Standard zurückgesetzt!",
+    "profiles_reset_save_success": "Profil \"{name}\" auf Standard zurückgesetzt und gespeichert!",
+    "profiles_select_to_delete": "Bitte wählen Sie ein Profil zum Löschen aus.",
+    "profiles_active_cannot_delete": "Das aktive Profil kann nicht gelöscht werden.",
+    "profiles_delete_success": "Profil erfolgreich gelöscht."
+  },
+  "no_files": {
+    "heading": "Keine Bilder gefunden",
+    "body": "Die Galerie enthält keine Bilder.",
+    "go_home": "Zur Startseite"
+  },
+  "error": {
+    "heading": "Oops! Etwas ist schiefgelaufen.",
+    "back_gallery": "zurück zur Galerie",
+    "back_home": "Startseite"
+  },
+  "media_gallery": {
+    "tab_all": "Alle",
+    "tab_photos": "Fotos",
+    "tab_videos": "Videos",
+    "select_all": "Alle auswählen",
+    "deselect_all": "Auswahl aufheben",
+    "btn_download": "Herunterladen",
+    "btn_delete": "Löschen",
+    "storage_used": "belegt",
+    "storage_free": "frei",
+    "delete_modal_title": "Löschen bestätigen",
+    "delete_modal_single": "{filename} löschen?",
+    "delete_modal_bulk": "{count} ausgewählte Dateien löschen?",
+    "delete_modal_cancel": "Abbrechen",
+    "delete_modal_confirm": "Löschen",
+    "download_modal_title": "Download bestätigen",
+    "download_modal_body_single": "{filename} herunterladen?",
+    "download_modal_body_bulk": "{count} ausgewählte Dateien als ZIP-Archiv herunterladen?",
+    "download_modal_cancel": "Abbrechen",
+    "download_modal_confirm": "Herunterladen"
+  },
+  "general": {
+    "reset_to_default": "Auf Standard zurücksetzen",
+    "revert_to_saved": "Gespeicherten Wert wiederherstellen",
+    "save_to_profile": "In Profil speichern",
+    "trigger_autofocus": "Autofokus auslösen",
+    "cancel": "Abbrechen",
+    "save": "Speichern"
+  },
+  "settings": {
+    "theme_title": "Design",
+    "theme_desc": "Legt das Standard-Design für neue oder unbekannte Geräte fest. Jedes Gerät kann dies über den Navbar-Schalter überschreiben.",
+    "theme_light": "Hell",
+    "theme_dark": "Dunkel",
+    "theme_save": "Als Standard speichern",
+    "lang_title": "Sprache",
+    "lang_desc": "Legt die Standardsprache für neue oder unbekannte Geräte fest. Jedes Gerät kann dies über die Sprachauswahl in der Navbar überschreiben.",
+    "lang_en": "English",
+    "lang_de": "Deutsch",
+    "lang_save": "Als Standard speichern",
+    "recording_title": "Aufnahmeeinstellungen",
+    "recording_max_label": "Max. Aufnahmedauer (Minuten)",
+    "recording_max_desc": "Die Videoaufnahme (.mp4-Datei) wird automatisch gestoppt, wenn diese Dauer erreicht wird.",
+    "recording_save": "Speichern",
+    "mic_title": "Mikrofon-Zuweisung",
+    "mic_desc": "Weisen Sie jeder Kamera ein Mikrofon für Live-Stream und Videoaufnahme zu. Änderungen werden nach dem Neustart des Streams wirksam.",
+    "mic_no_audio": "— Kein Audio —",
+    "liveview_title": "Live-Ansicht",
+    "system_title": "Systemsteuerung"
+  },
+  "controls": {
+    "sections": {
+      "Orientation": "Ausrichtung",
+      "Auto Focus": "Autofokus",
+      "Gain & Exposure": "Belichtung & analoge Verstärkung",
+      "White Balance": "Weißabgleich",
+      "Color & Detail": "Farbe & Details",
+      "Photo Resolution": "Fotoauflösung",
+      "Video Resolution": "Videoauflösung"
+    },
+    "hflip": {
+      "name": "Kamera spiegeln",
+      "info": "Spiegelt das Kamerabild <strong>horizontal (links ↔ rechts)</strong> oder <strong>vertikal (oben ↔ unten)</strong>.",
+      "label": "Horizontal"
+    },
+    "vflip": {
+      "label": "Vertikal"
+    },
+    "AfMode": {
+      "name": "Autofokus-Modus",
+      "info": "Steuert das Autofokus-Verhalten. <strong>Manuell</strong>: Der Fokus ist auf die unten eingestellte Linsenposition fixiert. <strong>Automatisch</strong>: Die Kamera stellt den Fokus kontinuierlich automatisch nach.",
+      "options": {
+        "Manual": "Manuell",
+        "Auto": "Automatisch"
+      }
+    },
+    "LensPosition": {
+      "name": "Linsenposition",
+      "info": "Setzt den Fokussierungsabstand der Linse in Dioptrien (1 / Abstand in Metern). <strong>0.0</strong> fokussiert auf Unendlich; <strong>10.0</strong> fokussiert auf 10 cm. Höhere Werte fokussieren auf nähere Objekte."
+    },
+    "AfRange": {
+      "name": "Autofokus-Bereich",
+      "info": "Begrenzt den durchsuchten Entfernungsbereich beim Autofokus. <strong>Normal</strong>: Der Standardbereich (sehr nahe Objekte können übersprungen werden). <strong>Makro</strong>: Nur die kürzesten Entfernungen. <strong>Vollständig</strong>: Der gesamte Fokusbereich.",
+      "options": {
+        "Normal": "Normal",
+        "Macro": "Makro",
+        "Full": "Vollständig"
+      }
+    },
+    "AfSpeed": {
+      "name": "Autofokus-Geschwindigkeit",
+      "info": "Steuert, wie schnell der Autofokus-Algorithmus die Linse bewegt. <strong>Schnell</strong> erreicht den Fokus früher, kann aber etwas weniger präzise sein als <strong>Normal</strong>.",
+      "options": {
+        "Normal": "Normal",
+        "Fast": "Schnell"
+      }
+    },
+    "AeEnable": {
+      "name": "Belichtungs- & Verstärkungssteuerung",
+      "info": "<strong>Auto</strong>: Automatische &amp; kontinuierliche Belichtungs- und Verstärkungssteuerung (AEC/AGC — Auto Exposure Control / Auto Gain Control). <strong>Manuell</strong>: Statische und frei definierbare Werte für Belichtungszeit und Analogverstärkung.",
+      "options": {
+        "Manual": "Manuell",
+        "Auto": "Automatisch"
+      }
+    },
+    "ExposureTime": {
+      "name": "Belichtungszeit",
+      "info": "Belichtungszeit des Sensors, gemessen in Mikrosekunden."
+    },
+    "AnalogueGain": {
+      "name": "Analogverstärkung",
+      "info": "Verstärkung des Lichtsignals direkt am Bildsensor, vor der Digitalisierung. Vergleichbar mit <strong>ISO</strong> bei einer DSLR-Kamera: höhere Werte hellen das Bild auf, erhöhen aber das Rauschen. Ein Wert von <strong>1</strong> bedeutet keine Verstärkung. Hinweis: Der kleinste unterstützte Vergrößerungsfaktor wird automatisch ermittelt und hängt vom Sensor der verwendeten Kamera ab. Dieser Wert kann größer als 1 sein."
+    },
+    "ExposureValue": {
+      "name": "Belichtungskorrektur",
+      "info": "Belichtungskorrektur in EV-Schritten (jeder Schritt verdoppelt oder halbiert die Helligkeit). <strong>Positive</strong> Werte hellen das Bild auf, <strong>negative</strong> Werte verdunkeln es. <strong>0.0</strong> entspricht der Standardbelichtung."
+    },
+    "AeConstraintMode": {
+      "name": "Belichtungs-Beschränkungsmodus",
+      "info": "Begrenzt, wie der automatische Belichtungs- und Verstärkungsalgorithmus (AEC/AGC) verschiedene Helligkeitsbereiche behandelt. <strong>Normal</strong>: Keine besondere Einschränkung. <strong>Highlight</strong>: Schützt helle Bereiche vor Überbelichtung, was zu einem insgesamt dunkleren Bild führen kann.",
+      "options": {
+        "Normal": "Normal",
+        "Highlight": "Highlight",
+        "Shadows": "Schatten",
+        "Custom": "Benutzerdefiniert"
+      }
+    },
+    "AeExposureMode": {
+      "name": "Belichtungsmodus",
+      "info": "Bestimmt den Bereich der Belichtungszeiten, den der automatische Belichtungs- und Verstärkungsalgorithmus (AEC/AGC) wählen kann. <strong>Normal</strong>: Ausgewogener Bereich. <strong>Kurz</strong>: Bevorzugt kurze Belichtungszeiten (weniger Bewegungsunschärfe, aber mehr Rauschen). <strong>Lang</strong>: Ermöglicht längere Belichtungszeiten (besser bei wenig Licht, mehr Bewegungsunschärfe).",
+      "options": {
+        "Normal": "Normal",
+        "Short": "Kurz",
+        "Long": "Lang",
+        "Custom": "Benutzerdefiniert"
+      }
+    },
+    "AeMeteringMode": {
+      "name": "Belichtungsmessung",
+      "info": "Steuert, welchen Teil des Bildes der automatische Belichtungs- und Verstärkungsalgorithmus (AEC/AGC) zur Messung verwendet. <strong>Mittenbetont</strong>: Stärkere Gewichtung der Bildmitte. <strong>Spot</strong>: Ausschliesslich Bildmitte wird berücksichtigt. <strong>Matrix</strong>: Das gesamte Bild wird gleichmäßig bewertet.",
+      "options": {
+        "Centre Weighted": "Mittenbetont",
+        "Spot": "Spot",
+        "Matrix": "Matrix",
+        "Custom": "Benutzerdefiniert"
+      }
+    },
+    "AeFlickerMode": {
+      "name": "Flimmer-Unterdrückung",
+      "info": "Wenn aktiviert, vermeidet der automatische Belichtungs- und Verstärkungsalgorithmus (AEC/AGC) Verschlusszeiten, die unter Kunstlicht zu Streifenbildung führen. Stellen Sie die Flimmer-Periode passend zur Netzfrequenz ein: <strong>10000 µs</strong> für 50-Hz-Netze (100-Hz-Flimmern), <strong>8333 µs</strong> für 60-Hz-Netze (120-Hz-Flimmern)."
+    },
+    "AeFlickerPeriod": {
+      "name": "Flimmer-Periode",
+      "info": "Die Periode des Beleuchtungszyklus in Mikrosekunden. Beispiel: Bei 50-Hz-Netzfrequenz flimmert das Licht mit 100 Hz, daher beträgt die Periode <strong>10000 Mikrosekunden</strong>."
+    },
+    "AwbEnable": {
+      "name": "Weißabgleich-Modus",
+      "info": "<strong>Auto</strong>: Die Farbverstärkungen werden kontinuierlich vom automatischen Weißabgleich-Algorithmus (AWB) angepasst. <strong>Manuell</strong>: Der Weißabgleich wird manuell über die Farbtemperatur eingestellt.",
+      "options": {
+        "Manual": "Manuell",
+        "Auto": "Automatisch"
+      }
+    },
+    "AwbMode": {
+      "name": "Weißabgleich-Voreinstellung",
+      "options": {
+        "Auto": "Automatisch",
+        "Tungsten": "Wolfram",
+        "Fluorescent": "Fluoreszierend",
+        "Indoor": "Innenraum",
+        "Daylight": "Tageslicht",
+        "Cloudy": "Bewölkt",
+        "Custom": "Benutzerdefiniert"
+      }
+    },
+    "ColourTemperature": {
+      "name": "Farbtemperatur",
+      "info": "Setzt die Farbtemperatur der Lichtquelle in Kelvin für den manuellen Weißabgleich. <strong>Niedrigere</strong> Werte (z. B. 2700 K) erzeugen warme, bernsteinfarbene Töne; <strong>höhere</strong> Werte (z. B. 6500 K) erzeugen kühle, bläuliche Töne."
+    },
+    "Brightness": {
+      "name": "Helligkeit",
+      "info": "Passt die Bildhelligkeit an: <strong>-1.0</strong> ist sehr dunkel, <strong>1.0</strong> ist sehr hell, <strong>0.0</strong> entspricht der normalen Standardhelligkeit."
+    },
+    "Contrast": {
+      "name": "Kontrast",
+      "info": "Setzt den Bildkontrast: <strong>0</strong> bedeutet kein Kontrast, <strong>1.0</strong> entspricht dem normalen Standardkontrast, größere Werte erhöhen den Kontrast proportional."
+    },
+    "Saturation": {
+      "name": "Sättigung",
+      "info": "Farbsättigung des Bildes: <strong>0</strong> erzeugt Graustufenbilder, <strong>1.0</strong> entspricht der normalen Standardsättigung, höhere Werte erzeugen kräftigere Farben."
+    },
+    "Sharpness": {
+      "name": "Schärfe",
+      "info": "Bildschärfe: <strong>0</strong> bedeutet keine zusätzliche Schärfung, <strong>1.0</strong> entspricht dem normalen Standardschärfeniveau, größere Werte erhöhen die Schärfung proportional."
+    },
+    "still_capture_resolution": {
+      "name": "Fotoauflösung",
+      "info": "Setzt die Auflösung für die Aufnahme von Fotos, unabhängig vom Sensormodus."
+    },
+    "saveRAW": {
+      "name": "RAW speichern",
+      "info": "Wenn aktiviert, speichert die Kamera zusätzlich zu jedem JPG ein unkomprimiertes <strong>RAW-Bild</strong>. Diese RAW-Datei wird im <strong>DNG-Format</strong> gespeichert und enthält alle originalen Sensordaten, was mehr Spielraum bei der Bildbearbeitung bietet. Beim Herunterladen eines Fotos aus der Mediengalerie, für welches zusätzlich eine RAW-Datei gesichert wurde, wird sowohl das JPG als auch die DNG-Datei heruntergeladen."
+    },
+    "recording_resolution": {
+      "name": "Aufnahmeauflösung",
+      "info": "Auflösung für die Videoaufnahme."
+    },
+    "streaming_resolution": {
+      "name": "Livestream-Auflösung",
+      "info": "Auflösung für den Live-Stream. Kann von der Aufnahmeauflösung abweichen."
+    }
+  }
+}

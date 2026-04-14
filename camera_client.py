@@ -199,6 +199,9 @@ class CameraProxy:
         result = self._rpc("get_recording_resolution")
         return tuple(result) if isinstance(result, list) else result
 
+    def has_sufficient_storage(self) -> bool:
+        return self._rpc("has_sufficient_storage")
+
     def capture_still(self, filename: str, raw: bool = False):
         return self._rpc("capture_still", filename, raw)
 

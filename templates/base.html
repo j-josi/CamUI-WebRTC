@@ -12,6 +12,9 @@
         document.documentElement.setAttribute('data-bs-theme', resolved);
     })();
     </script>
+    <!-- i18n: set server default lang, then load translation file synchronously -->
+    <script>window._i18nDefaultLang = {{ default_lang | tojson }};</script>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
@@ -51,7 +54,8 @@
         if (runtime != null) {
           var h = Math.floor(runtime / 60);
           var m = Math.round(runtime % 60);
-          var title = "Estimated runtime: " + h + "h " + String(m).padStart(2, "0") + "min";
+          var fmt = (window.t && window.t('navbar.battery_runtime')) || 'Estimated runtime: {h}h {m}min';
+          var title = fmt.replace('{h}', h).replace('{m}', String(m).padStart(2, '0'));
           document.querySelectorAll(".battery-display").forEach(function (el) {
             var tip = bootstrap.Tooltip.getInstance(el);
             if (tip) {
@@ -86,6 +90,12 @@ document.addEventListener("DOMContentLoaded", function () {
         document.documentElement.setAttribute('data-bs-theme', newTheme);
         updateThemeIcon(newTheme);
     };
+
+    // Show current language code next to the translate icon
+    const langCodeEl = document.getElementById("lang-code");
+    if (langCodeEl && window._i18nLang) {
+        langCodeEl.textContent = window._i18nLang.toUpperCase();
+    }
 });
   </script>
 </body>

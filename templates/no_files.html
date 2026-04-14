@@ -3,10 +3,10 @@
 {% block content %}
 <div class="container mt-5">
     <div class="alert alert-warning text-center" role="alert">
-        <h4 class="alert-heading">No Images Found</h4>
-        <p>There are no images in the gallery.</p>
+        <h4 class="alert-heading" data-i18n="no_files.heading">No Images Found</h4>
+        <p data-i18n="no_files.body">There are no images in the gallery.</p>
         <hr>
-        <p class="mb-0"><a href="{{ url_for('home') }}">Go back home</a></p>
+        <p class="mb-0"><a href="{{ url_for('home') }}" data-i18n="no_files.go_home">Go back home</a></p>
     </div>
 </div>
 {% endblock %}

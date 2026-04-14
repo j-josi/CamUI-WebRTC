@@ -124,91 +124,100 @@ class MediaGallery:
         except OSError as e:
             logger.warning(f"Could not write resolution cache: {e}")
 
-    def recover_interrupted_mux(self) -> None:
-        """Complete any audio muxing interrupted by a crash or power loss.
+    # def recover_interrupted_mux(self) -> None:
+    #     """Complete any audio muxing interrupted by a crash or power loss.
 
-        Called once at startup. Removes stale .mux.tmp files left by a
-        previously interrupted mux, then re-runs the mux for any orphaned
-        *_audio.wav files that still have a matching video on disk.
+    #     Called once at startup. Removes stale .mux.tmp files left by a
+    #     previously interrupted mux, then re-runs the mux for any orphaned
+    #     *_audio.wav files that still have a matching video on disk.
+    #     """
+    #     folder = self.upload_folder
+
+    #     # Remove incomplete .mux.tmp files from a previous interrupted run
+    #     for f in os.listdir(folder):
+    #         if f.endswith(".mux.tmp"):
+    #             try:
+    #                 os.remove(os.path.join(folder, f))
+    #                 logger.info("Removed stale mux temp file: %s", f)
+    #             except OSError as e:
+    #                 logger.warning("Could not remove stale mux temp %s: %s", f, e)
+
+    #     # Re-attempt mux for any orphaned audio WAV files
+    #     for f in os.listdir(folder):
+    #         if not f.endswith("_audio.wav"):
+    #             continue
+    #         base = f[: -len("_audio.wav")]
+    #         video_filename = base + ".mp4"
+    #         video_path = os.path.join(folder, video_filename)
+    #         audio_path = os.path.join(folder, f)
+
+    #         if not os.path.exists(video_path):
+    #             logger.warning("Orphaned audio file with no matching video, removing: %s", f)
+    #             try:
+    #                 os.remove(audio_path)
+    #             except OSError:
+    #                 pass
+    #             continue
+
+    #         logger.info("Recovering interrupted mux: %s + %s", video_filename, f)
+    #         tmp_path = video_path + ".mux.tmp"
+    #         try:
+    #             subprocess.run(
+    #                 [
+    #                     "ffmpeg", "-y",
+    #                     "-i", video_path,
+    #                     "-i", audio_path,
+    #                     "-c:v", "copy",
+    #                     "-c:a", "aac",
+    #                     "-shortest",
+    #                     "-f", "mp4",
+    #                     tmp_path,
+    #                 ],
+    #                 check=True,
+    #                 stdout=subprocess.DEVNULL,
+    #                 stderr=subprocess.PIPE,
+    #                 text=True,
+    #             )
+    #             os.replace(tmp_path, video_path)
+    #             os.remove(audio_path)
+    #             logger.info("Mux recovery complete: %s", video_filename)
+    #         except subprocess.CalledProcessError as e:
+    #             logger.error("Mux recovery failed for %s: %s", video_filename, e.stderr)
+    #             if os.path.exists(tmp_path):
+    #                 os.remove(tmp_path)
+    #             try:
+    #                 os.remove(audio_path)
+    #             except OSError:
+    #                 pass
+    #         except Exception as e:
+    #             logger.error("Mux recovery error for %s: %s", video_filename, e)
+    #             if os.path.exists(tmp_path):
+    #                 try:
+    #                     os.remove(tmp_path)
+    #                 except OSError:
+    #                     pass
+
+    def register_media(self, filename: str, width: int, height: int, has_raw: bool = False) -> None:
+        """Populate media item dictionaries with resolution and related metadata.
+
+        For each item, attempts to read width and height (and duration for videos,
+        has_raw for images) from the persistent cache. If no cache entry exists,
+        extracts the required metadata from the file, updates the item, and stores
+        the result in the cache.
+
+        If register_media() was called when the file was created, the metadata is
+        typically already present in the cache.
+
+        This function mutates the provided list in-place and may update the cache.
         """
-        folder = self.upload_folder
 
-        # Remove incomplete .mux.tmp files from a previous interrupted run
-        for f in os.listdir(folder):
-            if f.endswith(".mux.tmp"):
-                try:
-                    os.remove(os.path.join(folder, f))
-                    logger.info("Removed stale mux temp file: %s", f)
-                except OSError as e:
-                    logger.warning("Could not remove stale mux temp %s: %s", f, e)
-
-        # Re-attempt mux for any orphaned audio WAV files
-        for f in os.listdir(folder):
-            if not f.endswith("_audio.wav"):
-                continue
-            base = f[: -len("_audio.wav")]
-            video_filename = base + ".mp4"
-            video_path = os.path.join(folder, video_filename)
-            audio_path = os.path.join(folder, f)
-
-            if not os.path.exists(video_path):
-                logger.warning("Orphaned audio file with no matching video, removing: %s", f)
-                try:
-                    os.remove(audio_path)
-                except OSError:
-                    pass
-                continue
-
-            logger.info("Recovering interrupted mux: %s + %s", video_filename, f)
-            tmp_path = video_path + ".mux.tmp"
-            try:
-                subprocess.run(
-                    [
-                        "ffmpeg", "-y",
-                        "-i", video_path,
-                        "-i", audio_path,
-                        "-c:v", "copy",
-                        "-c:a", "aac",
-                        "-shortest",
-                        "-f", "mp4",
-                        tmp_path,
-                    ],
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                os.replace(tmp_path, video_path)
-                os.remove(audio_path)
-                logger.info("Mux recovery complete: %s", video_filename)
-            except subprocess.CalledProcessError as e:
-                logger.error("Mux recovery failed for %s: %s", video_filename, e.stderr)
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-                try:
-                    os.remove(audio_path)
-                except OSError:
-                    pass
-            except Exception as e:
-                logger.error("Mux recovery error for %s: %s", video_filename, e)
-                if os.path.exists(tmp_path):
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        pass
-
-    def register_media(self, filename: str, width: Optional[int], height: Optional[int], has_raw: bool = False) -> None:
-        """Register a newly created media file's resolution in the cache.
-
-        For video files, also probes duration via ffprobe.
-        For image files, stores has_raw if a DNG was captured simultaneously.
-        Call this immediately after saving a photo or stopping a video recording.
-        """
         entry: Dict[str, Any] = {"width": width, "height": height}
+        # video (.mp4)
         if filename.lower().endswith(".mp4"):
             path = os.path.join(self.upload_folder, filename)
             meta = self.get_video_metadata(path)
             entry["duration"] = meta.get("duration")
+        # image
         else:
             entry["has_raw"] = has_raw
         cache = self._load_cache()
@@ -262,11 +271,16 @@ class MediaGallery:
                 self.generate_video_thumbnail(f)
 
     def _enrich_with_resolutions(self, items: List[Dict[str, Any]]) -> None:
-        """Add width/height to a list of media items using the persistent cache.
+        """Populate media item dictionaries with resolution and related metadata.
 
-        Falls back to probing the file for items not yet in the cache (e.g.
-        files created before register_media() was introduced).
+        For each item, attempts to read metadata from the persistent cache. If no cache
+        entry exists, extracts width and height (plus duration for videos or has_raw
+        for images) from the file, writes these fields into the item, and persists them
+        in the cache.
+
+        This function mutates the provided list in-place and may update the cache.
         """
+
         cache = self._load_cache()
         cache_updated = False
 
@@ -377,7 +391,7 @@ class MediaGallery:
                 os.remove(media_path)
                 logger.info(f"Deleted media: {filename}")
 
-                dng_file = os.path.splitext(filename)[0] + '.dng'
+                dng_file = os.path.splitext(filename)[0] + '_raw.dng'
                 if os.path.exists(os.path.join(self.upload_folder, dng_file)):
                     os.remove(os.path.join(self.upload_folder, dng_file))
                     logger.info(f"Deleted corresponding DNG file: {dng_file}")

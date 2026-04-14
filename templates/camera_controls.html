@@ -1,5 +1,5 @@
 {# camera control settings #}
-<h2 class="pb-2 mb-4 border-bottom">Camera Settings</h2>
+<h2 class="pb-2 mb-4 border-bottom" data-i18n="camera_controls.title">Camera Settings</h2>
 
 <!-- ===================================== -->
 <!-- Generic settings accordion -->
@@ -14,7 +14,7 @@
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#section{{ loop.index }}">
-                {{ section.name }}
+                <span data-i18n="controls.sections.{{ section.name }}">{{ section.name }}</span>
             </button>
         </h2>
 
@@ -104,7 +104,7 @@
                     type="button"
                     data-bs-toggle="collapse"
                     data-bs-target="#collapseProfile">
-                Camera Profiles
+                <span data-i18n="camera_controls.profiles_title">Camera Profiles</span>
             </button>
         </h2>
 
@@ -116,13 +116,13 @@
 
                 <div class="btn-group mb-3" role="group">
                     <button type="button" class="btn btn-primary active"
-                            onclick="showProfileSection('loadProfile')">Load</button>
+                            onclick="showProfileSection('loadProfile')" data-i18n="camera_controls.profiles_load">Load</button>
                     <button type="button" class="btn btn-primary"
-                            onclick="showProfileSection('saveProfile')">Save</button>
+                            onclick="showProfileSection('saveProfile')" data-i18n="camera_controls.profiles_save">Save</button>
                     <button type="button" class="btn btn-warning"
-                            onclick="showProfileSection('resetProfile')">Reset</button>
+                            onclick="showProfileSection('resetProfile')" data-i18n="camera_controls.profiles_reset">Reset</button>
                     <button type="button" class="btn btn-danger"
-                            onclick="showProfileSection('deleteProfile')">Delete</button>
+                            onclick="showProfileSection('deleteProfile')" data-i18n="camera_controls.profiles_delete">Delete</button>
 
                 </div>
 
@@ -140,9 +140,9 @@
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>Profile</th>
-                                <th>Sensor</th>
-                                <th>Active</th>
+                                <th data-i18n="camera_controls.profiles_col_profile">Profile</th>
+                                <th data-i18n="camera_controls.profiles_col_sensor">Sensor</th>
+                                <th data-i18n="camera_controls.profiles_col_active">Active</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -161,15 +161,15 @@
                                 <td class="text-truncate" style="max-width: 0;" title="{{ profile.sensor }}">{{ profile.sensor }}</td>
                                 <td>
                                     {% if profile.active %}
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="badge bg-success" data-i18n="camera_controls.profiles_active_badge">Active</span>
                                     {% else %}
-                                        <span class="text-muted">Inactive</span>
+                                        <span class="text-muted" data-i18n="camera_controls.profiles_inactive">Inactive</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4">No profiles found</td>
+                                <td colspan="4" data-i18n="camera_controls.profiles_no_found">No profiles found</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -177,7 +177,8 @@
 
                     <button class="btn btn-primary"
                             id="loadProfileBtn"
-                            onclick="loadConfigFile()">
+                            onclick="loadConfigFile()"
+                            data-i18n="camera_controls.profiles_load_btn">
                         Load Selected Profile
                     </button>
 
@@ -186,20 +187,23 @@
                 <!-- Save Profile -->
                 <div id="saveProfile" class="profile-section d-none">
                     {% set active_profile = profiles | selectattr('active') | first | default(None) %}
-                    <label for="saveConfigFile" class="form-label">Profile name</label>
+                    <label for="saveConfigFile" class="form-label" data-i18n="camera_controls.profiles_name_label">Profile name</label>
                     <input type="text"
                            class="form-control mb-2"
                            id="saveConfigFile"
                            placeholder="Enter profile name"
+                           data-i18n-placeholder="camera_controls.profiles_name_placeholder"
                            value="{{ active_profile.name if active_profile else '' }}">
                     <button class="btn btn-primary"
-                            onclick="saveProfile({{ camera.Num }})">Save</button>
+                            onclick="saveProfile({{ camera.Num }})"
+                            data-i18n="camera_controls.profiles_save_btn">Save</button>
                 </div>
 
                 <!-- Reset Profile -->
                 <div id="resetProfile" class="profile-section d-none">
                     <button class="btn btn-warning"
-                            onclick="showResetModal({{ camera.Num }})">Reset active Profile</button>
+                            onclick="showResetModal({{ camera.Num }})"
+                            data-i18n="camera_controls.profiles_reset_active">Reset active Profile</button>
                 </div>
 
                 <!-- Reset Profile Confirmation Modal -->
@@ -207,17 +211,17 @@
                   <div class="modal-dialog">
                     <div class="modal-content">
                       <div class="modal-header">
-                        <h5 class="modal-title" id="resetProfileModalLabel">Reset active Profile</h5>
+                        <h5 class="modal-title" id="resetProfileModalLabel" data-i18n="camera_controls.reset_modal_title">Reset active Profile</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
                       <div class="modal-body">
-                        <p>All camera controls for the profile <strong id="resetProfileModalName"></strong> will be reset to their default values.</p>
+                        <p><span data-i18n="camera_controls.reset_modal_body_prefix">All camera controls for the profile</span> <strong id="resetProfileModalName"></strong> <span data-i18n="camera_controls.reset_modal_body_name_suffix">will be reset to their default values.</span></p>
                         <p class="mb-0 text-muted" id="resetProfileModalHint"></p>
                       </div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-warning" id="resetProfileConfirmBtn">Reset</button>
-                        <button type="button" class="btn btn-danger" id="resetProfileSaveBtn">Reset &amp; Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="camera_controls.reset_modal_cancel">Cancel</button>
+                        <button type="button" class="btn btn-warning" id="resetProfileConfirmBtn" data-i18n="camera_controls.reset_modal_reset">Reset</button>
+                        <button type="button" class="btn btn-danger" id="resetProfileSaveBtn" data-i18n="camera_controls.reset_modal_reset_save">Reset &amp; Save</button>
                       </div>
                     </div>
                   </div>
@@ -228,18 +232,18 @@
                   <div class="modal-dialog">
                     <div class="modal-content">
                       <div class="modal-header">
-                        <h5 class="modal-title" id="unsavedChangesModalLabel">Load Profile <span class="js-unsaved-load-name"></span></h5>
+                        <h5 class="modal-title" id="unsavedChangesModalLabel"><span data-i18n="camera_controls.unsaved_modal_title_prefix">Load Profile</span> <span class="js-unsaved-load-name"></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
                       <div class="modal-body">
-                        <p class="mb-2">Active profile <b><span class="js-unsaved-active-name"></span></b> has following <b>unsaved changes</b>:</p>
+                        <p class="mb-2"><span data-i18n="camera_controls.unsaved_modal_active_prefix">Active profile</span> <b><span class="js-unsaved-active-name"></span></b> <span data-i18n-html="camera_controls.unsaved_modal_active_suffix">has following <strong>unsaved changes</strong>:</span></p>
                         <ul id="unsavedChangesList" class="mb-0"></ul>
-                        <p class="mt-3 mb-2"><b>Do you want to save the changes in active profile <span class="js-unsaved-active-name"></span> before loading profile <span class="js-unsaved-load-name"></span>?</b></p>
+                        <p class="mt-3 mb-2"><b><span data-i18n="camera_controls.unsaved_modal_question_prefix">Do you want to save the changes in active profile</span> <span class="js-unsaved-active-name"></span> <span data-i18n="camera_controls.unsaved_modal_question_mid">before loading profile</span> <span class="js-unsaved-load-name"></span><span data-i18n="camera_controls.unsaved_modal_question_suffix">?</span></b></p>
                       </div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-warning" id="unsavedChangesLoadBtn">Don't Save</button>
-                        <button type="button" class="btn btn-success" id="unsavedChangesSaveLoadBtn">Save</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="camera_controls.unsaved_modal_cancel">Cancel</button>
+                        <button type="button" class="btn btn-warning" id="unsavedChangesLoadBtn" data-i18n="camera_controls.unsaved_modal_dont_save">Don't Save</button>
+                        <button type="button" class="btn btn-success" id="unsavedChangesSaveLoadBtn" data-i18n="camera_controls.unsaved_modal_save">Save</button>
                       </div>
                     </div>
                   </div>
@@ -261,9 +265,9 @@
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>Profile</th>
-                                <th>Sensor</th>
-                                <th>Active</th>
+                                <th data-i18n="camera_controls.profiles_col_profile">Profile</th>
+                                <th data-i18n="camera_controls.profiles_col_sensor">Sensor</th>
+                                <th data-i18n="camera_controls.profiles_col_active">Active</th>
                             </tr>
                         </thead>
 
@@ -283,15 +287,15 @@
                                 <td class="text-truncate" style="max-width: 0;" title="{{ profile.sensor }}">{{ profile.sensor }}</td>
                                 <td>
                                     {% if profile.active %}
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="badge bg-success" data-i18n="camera_controls.profiles_active_badge">Active</span>
                                     {% else %}
-                                        <span class="text-muted">Inactive</span>
+                                        <span class="text-muted" data-i18n="camera_controls.profiles_inactive">Inactive</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="4">No profiles available to delete</td>
+                                <td colspan="4" data-i18n="camera_controls.profiles_none_to_delete">No profiles available to delete</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -299,7 +303,8 @@
                     </table>
 
                     <button class="btn btn-danger"
-                            onclick="requestDeleteProfile()">
+                            onclick="requestDeleteProfile()"
+                            data-i18n="camera_controls.profiles_delete_selected">
                         Delete Selected Profile
                     </button>
 
@@ -317,28 +322,30 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-danger">
             <div class="modal-header">
-                <h5 class="modal-title">Confirm Profile Deletion</h5>
+                <h5 class="modal-title" data-i18n="camera_controls.delete_modal_title">Confirm Profile Deletion</h5>
                 <button type="button" class="btn-close"
                         data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
                 <p>
-                    You are about to permanently delete the profile
-                    <strong id="deleteProfileName"></strong>.
+                    <span data-i18n="camera_controls.delete_modal_body_prefix">You are about to permanently delete the profile</span>
+                    <strong id="deleteProfileName"></strong><span data-i18n="camera_controls.delete_modal_body_name_suffix">.</span>
                 </p>
-                <p class="text-danger mb-0">
+                <p class="text-danger mb-0" data-i18n="camera_controls.delete_modal_body_suffix">
                     This action cannot be undone.
                 </p>
             </div>
 
             <div class="modal-footer">
                 <button class="btn btn-secondary"
-                        data-bs-dismiss="modal">
+                        data-bs-dismiss="modal"
+                        data-i18n="camera_controls.delete_modal_cancel">
                     Cancel
                 </button>
                 <button class="btn btn-danger"
-                        onclick="confirmDeleteProfile()">
+                        onclick="confirmDeleteProfile()"
+                        data-i18n="camera_controls.delete_modal_delete">
                     Delete Profile
                 </button>
             </div>
@@ -354,19 +361,22 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-warning">
             <div class="modal-header">
-                <h5 class="modal-title">Overwrite Profile?</h5>
+                <h5 class="modal-title" data-i18n="camera_controls.overwrite_modal_title">Overwrite Profile?</h5>
                 <button type="button" class="btn-close"
                         data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                A profile named <strong id="overwriteProfileName"></strong> already exists.
-                Do you want to overwrite it?
+                <span data-i18n="camera_controls.overwrite_modal_body_prefix">A profile named</span>
+                <strong id="overwriteProfileName"></strong>
+                <span data-i18n="camera_controls.overwrite_modal_body_suffix">already exists. Do you want to overwrite it?</span>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary"
-                        data-bs-dismiss="modal">Cancel</button>
+                        data-bs-dismiss="modal"
+                        data-i18n="camera_controls.overwrite_modal_cancel">Cancel</button>
                 <button class="btn btn-warning"
-                        onclick="confirmOverwriteProfile()">Overwrite</button>
+                        onclick="confirmOverwriteProfile()"
+                        data-i18n="camera_controls.overwrite_modal_overwrite">Overwrite</button>
             </div>
         </div>
     </div>
@@ -380,16 +390,16 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Profile Sensor Mismatch</h5>
+                <h5 class="modal-title" data-i18n="camera_controls.mismatch_modal_title">Profile Sensor Mismatch</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                Profile "<span id="mismatchProfileName"></span>" was saved/configured for a different
-                camera sensor/model. Continue?
+                Profile "<span id="mismatchProfileName"></span>"
+                <span data-i18n="camera_controls.mismatch_modal_body_suffix">was saved/configured for a different camera sensor/model. Continue?</span>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-danger" id="confirmLoadProfile">Load Anyway</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="camera_controls.mismatch_modal_cancel">Cancel</button>
+                <button class="btn btn-danger" id="confirmLoadProfile" data-i18n="camera_controls.mismatch_modal_load">Load Anyway</button>
             </div>
         </div>
     </div>
@@ -626,7 +636,7 @@ function showProfileSection(sectionId) {
 function loadConfigFile() {
     const selectedProfile = document.querySelector('input[name="selectedConfig"]:checked');
     if (!selectedProfile) {
-        alert("Please select a profile to load.");
+        alert(window.t('camera_controls.profiles_select_to_load') || "Please select a profile to load.");
         return;
     }
 
@@ -729,7 +739,7 @@ function saveProfile(cameraNum) {
     const alertBox = document.getElementById("profileAlert");
 
     if (!filename) {
-        showAlert(alertBox, "danger", "Please enter a filename.");
+        showAlert(alertBox, "danger", window.t('camera_controls.profiles_please_enter_filename') || "Please enter a filename.");
         return;
     }
 
@@ -785,10 +795,10 @@ function showResetModal(cameraNum) {
 
     if (profileName) {
         nameEl.textContent = "\u201c" + profileName + "\u201d";
-        hintEl.textContent = "\"Reset & Save\" will overwrite the saved profile file with the default values.";
+        hintEl.textContent = window.t('camera_controls.profiles_reset_hint') || "\"Reset & Save\" will overwrite the saved profile file with the default values.";
         saveBtn.classList.remove("d-none");
     } else {
-        nameEl.textContent = "(no profile active)";
+        nameEl.textContent = window.t('camera_controls.profiles_no_active') || "(no profile active)";
         hintEl.textContent = "";
         saveBtn.classList.add("d-none");
     }
@@ -814,7 +824,7 @@ function resetProfile(cameraNum) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showAlert(document.getElementById("profileAlert"), "success", "Profile reset to default!");
+            showAlert(document.getElementById("profileAlert"), "success", window.t('camera_controls.profiles_reset_success') || "Profile reset to default!");
             updateProfileList();
         } else {
             showAlert(document.getElementById("profileAlert"), "danger", "Error: " + data.message);
@@ -833,14 +843,14 @@ function resetProfileAndSave(cameraNum, profileName) {
         return fetch(`/save_profile_${cameraNum}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filename: profileName })
+            body: JSON.stringify({ filename: profileName , confirm_overwrite: true })
         });
     })
     .then(response => response.json())
     .then(data => {
         if (data.message) {
             showAlert(document.getElementById("profileAlert"), "success",
-                      `Profile \u201c${profileName}\u201d reset to default and saved!`);
+                      (window.t('camera_controls.profiles_reset_save_success', { name: profileName }) || `Profile \u201c${profileName}\u201d reset to default and saved!`));
             updateProfileList();
         } else {
             throw new Error(data.error || "Save failed");
@@ -859,7 +869,7 @@ function requestDeleteProfile() {
         showAlert(
             document.getElementById("deleteAlert"),
             "danger",
-            "Please select a profile to delete."
+            window.t('camera_controls.profiles_select_to_delete') || "Please select a profile to delete."
         );
         return;
     }
@@ -868,7 +878,7 @@ function requestDeleteProfile() {
         showAlert(
             document.getElementById("deleteAlert"),
             "danger",
-            "The active profile cannot be deleted."
+            window.t('camera_controls.profiles_active_cannot_delete') || "The active profile cannot be deleted."
         );
         return;
     }
@@ -895,7 +905,7 @@ function deleteProfile(filename) {
             showAlert(
                 document.getElementById("deleteAlert"),
                 "success",
-                "Profile deleted successfully."
+                window.t('camera_controls.profiles_delete_success') || "Profile deleted successfully."
             );
             updateProfileList();
             // fetchCameraProfile();
@@ -1283,7 +1293,7 @@ function adjustSliderSetting(settingId, value) {
     }
 
     if (valueLabel) {
-        valueLabel.textContent = `Value: ${displayValue}`;
+        valueLabel.textContent = displayValue;
         if (unitLabel) {
             unitLabel.style.display = 'inline';
         }
@@ -1496,9 +1506,9 @@ function updateProfileList() {
 
             if (!data || data.length === 0) {
                 loadTableBody.innerHTML =
-                    `<tr><td colspan="4">No profiles found</td></tr>`;
+                    `<tr><td colspan="4">${window.t('camera_controls.profiles_no_found') || 'No profiles found'}</td></tr>`;
                 deleteTableBody.innerHTML =
-                    `<tr><td colspan="4">No profiles found to delete</td></tr>`;
+                    `<tr><td colspan="4">${window.t('camera_controls.profiles_none_to_delete') || 'No profiles found to delete'}</td></tr>`;
                 return;
             }
 
@@ -1517,8 +1527,8 @@ function updateProfileList() {
                 const displayName = profile.name || profile.filename.replace(/\.json$/, "");
 
                 const activeBadge = isActive
-                    ? '<span class="badge bg-success">Active</span>'
-                    : '<span class="text-muted">Inactive</span>';
+                    ? `<span class="badge bg-success">${window.t('camera_controls.profiles_active_badge') || 'Active'}</span>`
+                    : `<span class="text-muted">${window.t('camera_controls.profiles_inactive') || 'Inactive'}</span>`;
 
                 /* ---------------- Load table row ---------------- */
                 loadTableBody.insertAdjacentHTML("beforeend", `

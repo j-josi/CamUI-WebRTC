@@ -5,37 +5,59 @@
 
   <!-- 1. Theme Section -->
   <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom">Theme</h2>
-    <p class="text-muted small">Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.</p>
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.theme_title">Theme</h2>
+    <p class="text-muted small" data-i18n="settings.theme_desc">Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.</p>
     <div class="d-flex gap-3 mb-2">
       <div class="form-check">
         <input class="form-check-input" type="radio" name="defaultTheme" id="themeLight" value="light">
         <label class="form-check-label" for="themeLight">
-          <i class="bi bi-brightness-high-fill me-1"></i> Light
+          <i class="bi bi-brightness-high-fill me-1"></i> <span data-i18n="settings.theme_light">Light</span>
         </label>
       </div>
       <div class="form-check">
         <input class="form-check-input" type="radio" name="defaultTheme" id="themeDark" value="dark">
         <label class="form-check-label" for="themeDark">
-          <i class="bi bi-moon-stars-fill me-1"></i> Dark
+          <i class="bi bi-moon-stars-fill me-1"></i> <span data-i18n="settings.theme_dark">Dark</span>
         </label>
       </div>
     </div>
-    <button class="btn btn-primary btn-sm" onclick="saveDefaultTheme()">Save as default</button>
+    <button class="btn btn-primary btn-sm" onclick="saveDefaultTheme()" data-i18n="settings.theme_save">Save as default</button>
     <div id="themeMsg" class="mt-2 small d-none"></div>
+  </div>
+
+  <!-- 1b. Language Section -->
+  <div class="mb-5">
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.lang_title">Language</h2>
+    <p class="text-muted small" data-i18n="settings.lang_desc">Sets the default language for new or unrecognised devices. Each device can override this via the navbar selector.</p>
+    <div class="d-flex gap-3 mb-2">
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="defaultLang" id="langEn" value="en">
+        <label class="form-check-label" for="langEn">
+          🇬🇧 <span data-i18n="settings.lang_en">English</span>
+        </label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="defaultLang" id="langDe" value="de">
+        <label class="form-check-label" for="langDe">
+          🇩🇪 <span data-i18n="settings.lang_de">Deutsch</span>
+        </label>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveDefaultLanguage()" data-i18n="settings.lang_save">Save as default</button>
+    <div id="langMsg" class="mt-2 small d-none"></div>
   </div>
 
   <!-- 2. Recording Settings Section -->
   <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom">Recording Settings</h2>
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.recording_title">Recording Settings</h2>
     <div class="row g-3 align-items-end" style="max-width: 480px;">
       <div class="col">
-        <label for="maxRecordingDuration" class="form-label">Max. recording duration (minutes)</label>
+        <label for="maxRecordingDuration" class="form-label" data-i18n="settings.recording_max_label">Max. recording duration (minutes)</label>
         <input type="number" class="form-control" id="maxRecordingDuration" min="1" max="600" step="1" value="90">
-        <div class="form-text">Video recording (.mp4 file) stops automatically when this duration is reached.</div>
+        <div class="form-text" data-i18n="settings.recording_max_desc">Video recording (.mp4 file) stops automatically when this duration is reached.</div>
       </div>
       <div class="col-auto">
-        <button class="btn btn-primary" onclick="saveRecordingSettings()">Save</button>
+        <button class="btn btn-primary" onclick="saveRecordingSettings()" data-i18n="settings.recording_save">Save</button>
       </div>
     </div>
     <div id="recordingSettingsMsg" class="mt-2 small d-none"></div>
@@ -43,8 +65,8 @@
 
   <!-- 2. Microphone Assignment Section -->
   <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom">Microphone Assignment</h2>
-    <p class="text-muted small">
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.mic_title">Microphone Assignment</h2>
+    <p class="text-muted small" data-i18n="settings.mic_desc">
       Assign a microphone to each camera for live stream and video recording.
       Changes take effect after restarting the stream.
     </p>
@@ -58,7 +80,7 @@
         <select class="form-select mic-select"
                 id="micSelect_{{ cam_info.Num }}"
                 data-cam-num="{{ cam_info.Num }}">
-          <option value="">— No audio —</option>
+          <option value="" data-i18n="settings.mic_no_audio">— No audio —</option>
           {% for src in audio_sources %}
           <option value="{{ src.name }}">
             Mic{{ loop.index0 }}: {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
@@ -86,7 +108,7 @@
 
   <!-- 3. Live View Section -->
   <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom">Live View</h2>
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.liveview_title">Live View</h2>
 
     <!-- 2a. Page title -->
     <div class="row g-3 align-items-end mb-4" style="max-width: 480px;">
@@ -131,7 +153,7 @@
 
   <!-- 3. System Control Section -->
   <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom">System Controls</h2>
+    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.system_title">System Controls</h2>
     <div class="d-flex gap-3">
      <!-- Shutdown Button -->
 <form action="{{ url_for('shutdown') }}" method="POST">
@@ -249,6 +271,31 @@
     });
   }
 
+  function saveDefaultLanguage() {
+    const selected = document.querySelector('input[name="defaultLang"]:checked');
+    if (!selected) return;
+    const language = selected.value;
+    fetch('/api/system_settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ default_language: language })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(() => {
+      const el = document.getElementById('langMsg');
+      el.textContent = `Default language set to "${language}".`;
+      el.className = 'mt-2 small text-success';
+      el.classList.remove('d-none');
+      setTimeout(() => el.classList.add('d-none'), 3000);
+    })
+    .catch(() => {
+      const el = document.getElementById('langMsg');
+      el.textContent = 'Failed to save default language.';
+      el.className = 'mt-2 small text-danger';
+      el.classList.remove('d-none');
+    });
+  }
+
   // Load current settings on page load
   fetch('/api/system_settings')
     .then(r => r.json())
@@ -257,6 +304,11 @@
       const currentTheme = data.theme || 'light';
       const radio = document.querySelector(`input[name="defaultTheme"][value="${currentTheme}"]`);
       if (radio) radio.checked = true;
+
+      // Language
+      const currentLang = data.default_language || 'en';
+      const langRadio = document.querySelector(`input[name="defaultLang"][value="${currentLang}"]`);
+      if (langRadio) langRadio.checked = true;
 
       if (data.max_recording_duration_min !== undefined) {
         document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;

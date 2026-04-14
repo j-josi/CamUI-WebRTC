@@ -1,10 +1,10 @@
 {
   "units": {
     "dpt": "Dioptres (1 / distance in metres)",
-    "µs":  "Microseconds",
-    "ms":  "Milliseconds",
-    "s":   "Seconds",
-    "K":   "Kelvin"
+    "µs": "Microseconds",
+    "ms": "Milliseconds",
+    "s": "Seconds",
+    "K": "Kelvin"
   },
   "sections": [
     {
@@ -14,10 +14,12 @@
         {
           "name": "Flip Camera Feed",
           "id": "hflip",
-          "group_with": ["vflip"],
+          "group_with": [
+            "vflip"
+          ],
           "info": "Flip the camera feed/image <strong>horizontally (left ↔ right)</strong> or <strong>vertically (top ↔ bottom)</strong>.",
           "type": "switch",
-          "label": "Horizontal Flip",
+          "label": "Horizontal",
           "enabled": true,
           "source": "configs",
           "default": false
@@ -26,7 +28,7 @@
           "id": "vflip",
           "group_leader": "hflip",
           "type": "switch",
-          "label": "Vertical Flip",
+          "label": "Vertical",
           "enabled": true,
           "source": "configs",
           "default": false
@@ -47,9 +49,22 @@
           "default": 0,
           "hr": true,
           "options": [
-            { "value": 0, "label": "Manual", "enabled": true, "show_child": "manual" },
-            { "value": 1, "enabled": false },
-            { "value": 2, "label": "Auto", "enabled": true, "show_child": "auto" }
+            {
+              "value": 0,
+              "label": "Manual",
+              "enabled": true,
+              "show_child": "manual"
+            },
+            {
+              "value": 1,
+              "enabled": false
+            },
+            {
+              "value": 2,
+              "label": "Auto",
+              "enabled": true,
+              "show_child": "auto"
+            }
           ],
           "childsettings": [
             {
@@ -81,9 +96,21 @@
               "default": 0,
               "hr": true,
               "options": [
-                { "value": 0, "label": "Normal", "enabled": true },
-                { "value": 1, "label": "Macro", "enabled": true },
-                { "value": 2, "label": "Full", "enabled": true }
+                {
+                  "value": 0,
+                  "label": "Normal",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Macro",
+                  "enabled": true
+                },
+                {
+                  "value": 2,
+                  "label": "Full",
+                  "enabled": true
+                }
               ]
             },
             {
@@ -97,8 +124,16 @@
               "default": 0,
               "hr": false,
               "options": [
-                { "value": 0, "label": "Normal", "enabled": true },
-                { "value": 1, "label": "Fast", "enabled": true }
+                {
+                  "value": 0,
+                  "label": "Normal",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Fast",
+                  "enabled": true
+                }
               ]
             }
           ]
@@ -119,10 +154,23 @@
           "default": 1,
           "value": 1,
           "hr": true,
-          "manual_override_children": ["ExposureTime", "AnalogueGain"],
+          "manual_override_children": [
+            "ExposureTime",
+            "AnalogueGain"
+          ],
           "options": [
-            { "value": 0, "label": "Manual", "enabled": true, "show_child": "manual" },
-            { "value": 1, "label": "Auto",   "enabled": true, "show_child": "auto"   }
+            {
+              "value": 0,
+              "label": "Manual",
+              "enabled": true,
+              "show_child": "manual"
+            },
+            {
+              "value": 1,
+              "label": "Auto",
+              "enabled": true,
+              "show_child": "auto"
+            }
           ],
           "childsettings": [
             {
@@ -193,10 +241,26 @@
               "default": 0,
               "hr": true,
               "options": [
-                { "value": 0, "label": "Normal",    "enabled": true  },
-                { "value": 1, "label": "Highlight", "enabled": true  },
-                { "value": 2, "label": "Shadows",   "enabled": false },
-                { "value": 3, "label": "Custom",    "enabled": false }
+                {
+                  "value": 0,
+                  "label": "Normal",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Highlight",
+                  "enabled": true
+                },
+                {
+                  "value": 2,
+                  "label": "Shadows",
+                  "enabled": false
+                },
+                {
+                  "value": 3,
+                  "label": "Custom",
+                  "enabled": false
+                }
               ]
             },
             {
@@ -211,10 +275,26 @@
               "default": 0,
               "hr": true,
               "options": [
-                { "value": 0, "label": "Normal", "enabled": true  },
-                { "value": 1, "label": "Short",  "enabled": true  },
-                { "value": 2, "label": "Long",   "enabled": true  },
-                { "value": 3, "label": "Custom", "enabled": false }
+                {
+                  "value": 0,
+                  "label": "Normal",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Short",
+                  "enabled": true
+                },
+                {
+                  "value": 2,
+                  "label": "Long",
+                  "enabled": true
+                },
+                {
+                  "value": 3,
+                  "label": "Custom",
+                  "enabled": false
+                }
               ]
             },
             {
@@ -229,10 +309,26 @@
               "default": 0,
               "hr": true,
               "options": [
-                { "value": 0, "label": "Centre Weighted", "enabled": true  },
-                { "value": 1, "label": "Spot",            "enabled": true  },
-                { "value": 2, "label": "Matrix",          "enabled": true  },
-                { "value": 3, "label": "Custom",          "enabled": false }
+                {
+                  "value": 0,
+                  "label": "Centre Weighted",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Spot",
+                  "enabled": true
+                },
+                {
+                  "value": 2,
+                  "label": "Matrix",
+                  "enabled": true
+                },
+                {
+                  "value": 3,
+                  "label": "Custom",
+                  "enabled": false
+                }
               ]
             },
             {
@@ -241,7 +337,6 @@
               "id": "AeFlickerMode",
               "info": "When enabled, the auto exposure and gain algorithm (AEC/AGC) avoids shutter speeds that cause banding under artificial lighting. Set the Flicker Period to match your mains frequency: <strong>10000 µs</strong> for 50 Hz power grids (100 Hz flicker), <strong>8333 µs</strong> for 60 Hz power grids (120 Hz flicker).",
               "type": "switch",
-              "label": "Off/Manual",
               "enabled": true,
               "source": "controls",
               "default": false,
@@ -283,10 +378,22 @@
           "default": 1,
           "value": 1,
           "hr": true,
-          "manual_override_children": ["ColourTemperature"],
+          "manual_override_children": [
+            "ColourTemperature"
+          ],
           "options": [
-            { "value": 0, "label": "Manual", "enabled": true, "show_child": "manual" },
-            { "value": 1, "label": "Auto",   "enabled": true, "show_child": "auto"   }
+            {
+              "value": 0,
+              "label": "Manual",
+              "enabled": true,
+              "show_child": "manual"
+            },
+            {
+              "value": 1,
+              "label": "Auto",
+              "enabled": true,
+              "show_child": "auto"
+            }
           ],
           "childsettings": [
             {
@@ -299,13 +406,41 @@
               "default": 0,
               "hr": true,
               "options": [
-                { "value": 0, "label": "Auto",        "enabled": true  },
-                { "value": 1, "label": "Tungsten",    "enabled": true  },
-                { "value": 2, "label": "Fluorescent", "enabled": true  },
-                { "value": 3, "label": "Indoor",      "enabled": true  },
-                { "value": 4, "label": "Daylight",    "enabled": true  },
-                { "value": 5, "label": "Cloudy",      "enabled": true  },
-                { "value": 6, "label": "Custom",      "enabled": false }
+                {
+                  "value": 0,
+                  "label": "Auto",
+                  "enabled": true
+                },
+                {
+                  "value": 1,
+                  "label": "Tungsten",
+                  "enabled": true
+                },
+                {
+                  "value": 2,
+                  "label": "Fluorescent",
+                  "enabled": true
+                },
+                {
+                  "value": 3,
+                  "label": "Indoor",
+                  "enabled": true
+                },
+                {
+                  "value": 4,
+                  "label": "Daylight",
+                  "enabled": true
+                },
+                {
+                  "value": 5,
+                  "label": "Cloudy",
+                  "enabled": true
+                },
+                {
+                  "value": 6,
+                  "label": "Custom",
+                  "enabled": false
+                }
               ]
             },
             {
@@ -407,9 +542,13 @@
           "enabled": true,
           "source": "configs_no_picamera_restart",
           "default": 0,
-          "hr":true,
+          "hr": true,
           "options": [
-            { "value": 0, "label": "This needs to be where the resolutions go", "enabled": true }
+            {
+              "value": 0,
+              "label": "This needs to be where the resolutions go",
+              "enabled": true
+            }
           ]
         },
         {
@@ -417,7 +556,6 @@
           "id": "saveRAW",
           "info": "When enabled the camera will save both a JPG and a <strong>RAW</strong> file from the same buffer. A download link for the <strong>DNG</strong> file will be added to the media gallery.",
           "type": "switch",
-          "label": "Disabled/Enabled",
           "enabled": true,
           "source": "configs_no_picamera_restart",
           "default": false
@@ -425,30 +563,30 @@
       ]
     },
     {
-    "name": "Video Resolution",
-    "enabled": true,
-    "settings": [
+      "name": "Video Resolution",
+      "enabled": true,
+      "settings": [
         {
-        "name": "Recording Resolution",
-        "id": "recording_resolution",
-        "type": "radio",
-        "enabled": true,
-        "action": "set_recording_resolution",
-        "default": 0,
-        "source": "configs",
-        "info": "Resolution used for video recording.",
-        "hr": true
+          "name": "Recording Resolution",
+          "id": "recording_resolution",
+          "type": "radio",
+          "enabled": true,
+          "action": "set_recording_resolution",
+          "default": 0,
+          "source": "configs",
+          "info": "Resolution used for video recording.",
+          "hr": true
         },
         {
-        "name": "Live Stream Resolution",
-        "id": "streaming_resolution",
-        "type": "radio",
-        "enabled": true,
-        "action": "set_streaming_resolution",
-        "default": 0,
-        "source": "configs",
-        "info": "Resolution used for the live stream. Can differ from recording resolution.",
-        "hr": false
+          "name": "Live Stream Resolution",
+          "id": "streaming_resolution",
+          "type": "radio",
+          "enabled": true,
+          "action": "set_streaming_resolution",
+          "default": 0,
+          "source": "configs",
+          "info": "Resolution used for the live stream. Can differ from recording resolution.",
+          "hr": false
         }
       ]
     }

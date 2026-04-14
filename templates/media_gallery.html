@@ -6,6 +6,7 @@
     <!-- Sticky Filter + Bulk Actions -->
     <div class="sticky-top bg-body shadow-sm pt-2" style="top:66px; z-index:1020;">
         {% set tab_labels = {"all": "All", "image": "Photos", "video": "Videos"} %}
+        {% set tab_i18n  = {"all": "media_gallery.tab_all", "image": "media_gallery.tab_photos", "video": "media_gallery.tab_videos"} %}
 
         <!-- Tabs row + Storage info desktop (right-aligned, same row) -->
         <div class="d-flex align-items-end mb-2 border-bottom">
@@ -13,7 +14,8 @@
                 {% for t in ["all", "image", "video"] %}
                 <li class="nav-item">
                     <a class="nav-link {% if media_type == t %}active{% endif %}"
-                    href="?type={{ t }}">
+                       href="?type={{ t }}"
+                       data-i18n="{{ tab_i18n[t] }}">
                         {{ tab_labels[t] }}
                     </a>
                 </li>
@@ -27,20 +29,20 @@
         <!-- Bulk Actions -->
         <div id="bulk-actions" class="mb-2 d-flex align-items-center flex-wrap gap-2 px-2 py-1">
             <input type="checkbox" class="btn-check" id="selectAll">
-            <label class="btn btn-outline-primary btn-sm" for="selectAll" id="selectAllLabel">Select all</label>
+            <label class="btn btn-outline-primary btn-sm" for="selectAll" id="selectAllLabel" data-i18n="media_gallery.select_all">Select all</label>
 
             <button id="bulk-download"
                     class="btn btn-secondary btn-sm"
                     onclick="bulkDownload()"
                     disabled>
-                <i class="bi bi-download"></i> <span id="bulk-download-label">Download</span>
+                <i class="bi bi-download"></i> <span id="bulk-download-label" data-i18n="media_gallery.btn_download">Download</span>
             </button>
 
             <button id="bulk-delete"
                     class="btn btn-danger btn-sm"
                     onclick="openBulkDeleteModal()"
                     disabled>
-                <i class="bi bi-trash"></i> <span id="bulk-delete-label">Delete</span>
+                <i class="bi bi-trash"></i> <span id="bulk-delete-label" data-i18n="media_gallery.btn_delete">Delete</span>
             </button>
 
             <!-- Storage info mobile: full-width below buttons -->
@@ -55,15 +57,15 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirm Delete</h5>
+                    <h5 class="modal-title" data-i18n="media_gallery.delete_modal_title">Confirm Delete</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="deleteModalBody">
                     Are you sure you want to delete the selected files?
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button class="btn btn-danger" id="confirmDeleteButton">Delete</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="media_gallery.delete_modal_cancel">Cancel</button>
+                    <button class="btn btn-danger" id="confirmDeleteButton" data-i18n="media_gallery.delete_modal_confirm">Delete</button>
                 </div>
             </div>
         </div>
@@ -74,14 +76,14 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Confirm Download</h5>
+                    <h5 class="modal-title" data-i18n="media_gallery.download_modal_title">Confirm Download</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="downloadModalBody"></div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="media_gallery.download_modal_cancel">Cancel</button>
                     <button class="btn btn-primary" id="confirmDownloadButton">
-                        <i class="bi bi-download"></i> Download
+                        <i class="bi bi-download"></i> <span data-i18n="media_gallery.download_modal_confirm">Download</span>
                     </button>
                 </div>
             </div>
@@ -127,8 +129,8 @@ fetch('/get_storage_info')
                 <div class="progress-bar ${barColor}" style="width:${displayPct}%"></div>
              </div>
              <div class="d-flex justify-content-between small">
-                 <span class="text-body"><i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} used</span>
-                 <span class="${lowFree ? 'text-danger fw-semibold' : 'text-body'}">${fmtBytes(data.disk_free_bytes)} free</span>
+                 <span class="text-body"><i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} ${window.t('media_gallery.storage_used') || 'used'}</span>
+                 <span class="${lowFree ? 'text-danger fw-semibold' : 'text-body'}">${fmtBytes(data.disk_free_bytes)} ${window.t('media_gallery.storage_free') || 'free'}</span>
              </div>`;
         document.getElementById("storageInfo").innerHTML = html;
         document.getElementById("storageInfoMobile").innerHTML = html;
@@ -270,8 +272,10 @@ function updateBulkActions() {
     const count = allSelectedFilenames.size;
     document.getElementById("bulk-delete").disabled = count === 0;
     document.getElementById("bulk-download").disabled = count === 0;
-    document.getElementById("bulk-download-label").textContent = count ? `Download (${count})` : "Download";
-    document.getElementById("bulk-delete-label").textContent = count ? `Delete (${count})` : "Delete";
+    const dlLabel = window.t('media_gallery.btn_download') || "Download";
+    const delLabel = window.t('media_gallery.btn_delete') || "Delete";
+    document.getElementById("bulk-download-label").textContent = count ? `${dlLabel} (${count})` : dlLabel;
+    document.getElementById("bulk-delete-label").textContent = count ? `${delLabel} (${count})` : delLabel;
 }
 
 function getSelectedFiles() {
@@ -284,7 +288,7 @@ document.getElementById("selectAll").addEventListener("change", e => {
     if (!checked) {
         allSelectedFilenames.clear();
         document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = false);
-        label.textContent = "Select all";
+        label.textContent = window.t('media_gallery.select_all') || "Select all";
         updateBulkActions();
         return;
     }
@@ -294,7 +298,7 @@ document.getElementById("selectAll").addEventListener("change", e => {
         .then(filenames => {
             filenames.forEach(f => allSelectedFilenames.add(f));
             document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = true);
-            label.textContent = "Deselect all";
+            label.textContent = window.t('media_gallery.deselect_all') || "Deselect all";
             updateBulkActions();
         });
 });
@@ -305,9 +309,13 @@ let deleteTarget = null;
 function _showDeleteModal(files) {
     const body = document.getElementById("deleteModalBody");
     if (files.length === 1) {
-        body.innerHTML = `Delete <strong>${files[0]}</strong>?`;
+        const msg = window.t('media_gallery.delete_modal_single', { filename: files[0] })
+            || `Delete ${files[0]}?`;
+        body.innerHTML = msg.replace(files[0], `<strong>${files[0]}</strong>`);
     } else {
-        body.innerHTML = `Delete <strong>${files.length} selected files</strong>?`;
+        const msg = window.t('media_gallery.delete_modal_bulk', { count: files.length })
+            || `Delete ${files.length} selected files?`;
+        body.innerHTML = msg.replace(String(files.length), `<strong>${files.length}</strong>`);
     }
     new bootstrap.Modal(document.getElementById("deleteConfirmationModal")).show();
 }
@@ -348,8 +356,11 @@ function bulkDownload() {
     if (!selectedFiles.length) return;
 
     const count = selectedFiles.length;
+    const dlMsg = count === 1
+        ? (window.t('media_gallery.download_modal_body_single', { filename: selectedFiles[0] }) || `Download ${selectedFiles[0]}?`)
+        : (window.t('media_gallery.download_modal_body_bulk', { count }) || `Download ${count} selected files as a ZIP archive?`);
     document.getElementById("downloadModalBody").innerHTML =
-        `Download <strong>${count} selected file${count > 1 ? "s" : ""}</strong> as a ZIP archive?`;
+        dlMsg.replace(String(count), `<strong>${count}</strong>`);
 
     new bootstrap.Modal(document.getElementById("downloadConfirmationModal")).show();
 }

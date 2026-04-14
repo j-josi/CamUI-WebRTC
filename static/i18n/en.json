@@ -1,0 +1,308 @@
+{
+  "navbar": {
+    "live_view": "Live View",
+    "media_gallery": "Media Gallery",
+    "info": "Info",
+    "about": "About",
+    "theme_light": "Light Mode",
+    "theme_dark": "Dark Mode",
+    "lang_en": "English",
+    "lang_de": "Deutsch",
+    "battery_runtime": "Estimated runtime: {h}h {m}min"
+  },
+  "live_view": {
+    "take_photo": "Take Photo",
+    "record_video": "Record Video",
+    "stop_recording": "Stop Recording",
+    "autoplay_warning": "Autoplay is disabled on this browser. Therefore, a manual click on Play-Button is necessary to see the camera livestream.",
+    "autoplay_warning_strong": "For better experience it is recommended to enable autoplay for this site in the settings of your browser.",
+    "auto_stop_max_duration": "Recording stopped automatically: maximum recording duration ({max_duration_min} min) reached.",
+    "auto_stop_storage_full": "Recording stopped automatically: storage full.",
+    "auto_stop_generic": "Recording stopped automatically.",
+    "error_storage_full_photo": "Failed to take photo — not enough free storage available.",
+    "error_storage_full_recording": "Failed to start recording — not enough free storage available.",
+    "error_recording_failed": "Failed to start recording."
+  },
+  "camera_controls": {
+    "title": "Camera Settings",
+    "profiles_title": "Camera Profiles",
+    "profiles_load": "Load",
+    "profiles_save": "Save",
+    "profiles_reset": "Reset",
+    "profiles_delete": "Delete",
+    "profiles_col_profile": "Profile",
+    "profiles_col_sensor": "Sensor",
+    "profiles_col_active": "Active",
+    "profiles_load_btn": "Load Selected Profile",
+    "profiles_no_found": "No profiles found",
+    "profiles_none_to_delete": "No profiles available to delete",
+    "profiles_name_label": "Profile name",
+    "profiles_name_placeholder": "Enter profile name",
+    "profiles_save_btn": "Save",
+    "profiles_active_badge": "Active",
+    "profiles_inactive": "Inactive",
+    "profiles_reset_active": "Reset active Profile",
+    "profiles_delete_selected": "Delete Selected Profile",
+    "reset_modal_title": "Reset active Profile",
+    "reset_modal_cancel": "Cancel",
+    "reset_modal_reset": "Reset",
+    "reset_modal_reset_save": "Reset & Save",
+    "unsaved_modal_cancel": "Cancel",
+    "unsaved_modal_dont_save": "Don't Save",
+    "unsaved_modal_save": "Save",
+    "delete_modal_title": "Confirm Profile Deletion",
+    "delete_modal_body_prefix": "You are about to permanently delete the profile",
+    "delete_modal_body_suffix": "This action cannot be undone.",
+    "delete_modal_cancel": "Cancel",
+    "delete_modal_delete": "Delete Profile",
+    "overwrite_modal_title": "Overwrite Profile?",
+    "overwrite_modal_body_prefix": "A profile named",
+    "overwrite_modal_body_suffix": "already exists. Do you want to overwrite it?",
+    "overwrite_modal_cancel": "Cancel",
+    "overwrite_modal_overwrite": "Overwrite",
+    "mismatch_modal_title": "Profile Sensor Mismatch",
+    "mismatch_modal_body_suffix": "was saved/configured for a different camera sensor/model. Continue?",
+    "mismatch_modal_cancel": "Cancel",
+    "mismatch_modal_load": "Load Anyway",
+    "delete_modal_body_name_suffix": ".",
+    "reset_modal_body_prefix": "All camera controls for the profile",
+    "reset_modal_body_name_suffix": "will be reset to their default values.",
+    "unsaved_modal_title_prefix": "Load Profile",
+    "unsaved_modal_active_prefix": "Active profile",
+    "unsaved_modal_active_suffix": "has following <strong>unsaved changes</strong>:",
+    "unsaved_modal_question_prefix": "Do you want to save the changes in active profile",
+    "unsaved_modal_question_mid": "before loading profile",
+    "unsaved_modal_question_suffix": "?",
+    "profiles_select_to_load": "Please select a profile to load.",
+    "profiles_please_enter_filename": "Please enter a filename.",
+    "profiles_no_active": "(no profile active)",
+    "profiles_reset_hint": "\"Reset & Save\" will overwrite the saved profile file with the default values.",
+    "profiles_reset_success": "Profile reset to default!",
+    "profiles_reset_save_success": "Profile \"{name}\" reset to default and saved!",
+    "profiles_select_to_delete": "Please select a profile to delete.",
+    "profiles_active_cannot_delete": "The active profile cannot be deleted.",
+    "profiles_delete_success": "Profile deleted successfully."
+  },
+  "no_files": {
+    "heading": "No Images Found",
+    "body": "There are no images in the gallery.",
+    "go_home": "Go back home"
+  },
+  "error": {
+    "heading": "Oops! Something went wrong.",
+    "back_gallery": "back to the gallery",
+    "back_home": "home"
+  },
+  "media_gallery": {
+    "tab_all": "All",
+    "tab_photos": "Photos",
+    "tab_videos": "Videos",
+    "select_all": "Select all",
+    "deselect_all": "Deselect all",
+    "btn_download": "Download",
+    "btn_delete": "Delete",
+    "storage_used": "used",
+    "storage_free": "free",
+    "delete_modal_title": "Confirm Delete",
+    "delete_modal_single": "Delete {filename}?",
+    "delete_modal_bulk": "Delete {count} selected files?",
+    "delete_modal_cancel": "Cancel",
+    "delete_modal_confirm": "Delete",
+    "download_modal_title": "Confirm Download",
+    "download_modal_body_single": "Download {filename}?",
+    "download_modal_body_bulk": "Download {count} selected files as a ZIP archive?",
+    "download_modal_cancel": "Cancel",
+    "download_modal_confirm": "Download"
+  },
+  "general": {
+    "reset_to_default": "Reset to default",
+    "revert_to_saved": "Revert to saved value",
+    "save_to_profile": "Save to profile",
+    "trigger_autofocus": "Trigger Autofocus",
+    "cancel": "Cancel",
+    "save": "Save"
+  },
+  "settings": {
+    "theme_title": "Theme",
+    "theme_desc": "Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "theme_save": "Save as default",
+    "lang_title": "Language",
+    "lang_desc": "Sets the default language for new or unrecognised devices. Each device can override this via the navbar selector.",
+    "lang_en": "English",
+    "lang_de": "Deutsch",
+    "lang_save": "Save as default",
+    "recording_title": "Recording Settings",
+    "recording_max_label": "Max. recording duration (minutes)",
+    "recording_max_desc": "Video recording (.mp4 file) stops automatically when this duration is reached.",
+    "recording_save": "Save",
+    "mic_title": "Microphone Assignment",
+    "mic_desc": "Assign a microphone to each camera for live stream and video recording. Changes take effect after restarting the stream.",
+    "mic_no_audio": "— No audio —",
+    "liveview_title": "Live View",
+    "system_title": "System Controls"
+  },
+  "controls": {
+    "sections": {
+      "Orientation": "Orientation",
+      "Auto Focus": "Auto Focus",
+      "Gain & Exposure": "Exposure & Analogue Gain",
+      "White Balance": "White Balance",
+      "Color & Detail": "Color & Detail",
+      "Photo Resolution": "Photo Resolution",
+      "Video Resolution": "Video Resolution"
+    },
+    "hflip": {
+      "name": "Flip Camera Feed",
+      "info": "Flip the camera feed/image <strong>horizontally (left ↔ right)</strong> or <strong>vertically (top ↔ bottom)</strong>.",
+      "label": "Horizontal"
+    },
+    "vflip": {
+      "label": "Vertical"
+    },
+    "AfMode": {
+      "name": "Auto Focus Mode",
+      "info": "Controls autofocus behaviour. <strong>Manual</strong>: focus is fixed at the Lens Position set below. <strong>Continuous</strong>: the camera continuously adjusts focus automatically without user interaction.",
+      "options": {
+        "Manual": "Manual",
+        "Auto": "Auto"
+      }
+    },
+    "LensPosition": {
+      "name": "Lens Position",
+      "info": "Sets the lens focus distance in dioptres (1 / distance in metres). <strong>0.0</strong> focuses at infinity; <strong>10.0</strong> focuses at 10 cm. Higher values focus on closer subjects."
+    },
+    "AfRange": {
+      "name": "Auto Focus Range",
+      "info": "Limits the distance range searched during autofocus. <strong>Normal</strong>: the standard range (may skip very close subjects). <strong>Macro</strong>: only the closest distances. <strong>Full</strong>: the entire focus range.",
+      "options": {
+        "Normal": "Normal",
+        "Macro": "Macro",
+        "Full": "Full"
+      }
+    },
+    "AfSpeed": {
+      "name": "Auto Focus Speed",
+      "info": "Controls how quickly the autofocus algorithm moves the lens. <strong>Fast</strong> reaches focus sooner but may be slightly less precise than <strong>Normal</strong>.",
+      "options": {
+        "Normal": "Normal",
+        "Fast": "Fast"
+      }
+    },
+    "AeEnable": {
+      "name": "Exposure- & Gain Compensation",
+      "info": "<strong>Auto</strong>: Automatic &amp; continuous exposure and gain control (AEC/AGC — Auto Exposure Control / Auto Gain Control). <strong>Manual</strong>: Static and manually definable values for exposure time and analogue gain.",
+      "options": {
+        "Manual": "Manual",
+        "Auto": "Auto"
+      }
+    },
+    "ExposureTime": {
+      "name": "Exposure Time",
+      "info": "Exposure time for the sensor to use, measured in microseconds."
+    },
+    "AnalogueGain": {
+      "name": "Analogue Gain",
+      "info": "Amplification of the light signal directly at the image sensor, before digitisation. Similar to <strong>ISO</strong> on a DSLR camera: higher values brighten the image but increase noise. A value of <strong>1</strong> means no amplification. Note: The smallest supported magnification factor is determined automatically and depends on the used camera (sensor). This value may be greater than 1."
+    },
+    "ExposureValue": {
+      "name": "Exposure Compensation",
+      "info": "Exposure compensation in EV steps (each step doubles or halves the brightness). <strong>Positive</strong> values make the image brighter, <strong>negative</strong> values darker. <strong>0.0</strong> is the default exposure."
+    },
+    "AeConstraintMode": {
+      "name": "AE Constraint Mode",
+      "info": "Constrains how the auto exposure and gain algorithm (AEC/AGC) handles different brightness regions. <strong>Normal</strong>: no special constraint. <strong>Highlight</strong>: protects bright highlights from clipping, which may result in a darker overall image.",
+      "options": {
+        "Normal": "Normal",
+        "Highlight": "Highlight",
+        "Shadows": "Shadows",
+        "Custom": "Custom"
+      }
+    },
+    "AeExposureMode": {
+      "name": "AE Exposure Mode",
+      "info": "Determines the range of exposure times the auto exposure and gain algorithm (AEC/AGC) may choose from. <strong>Normal</strong>: balanced range. <strong>Short</strong>: favours short exposures (reduces motion blur, may increase gain/noise). <strong>Long</strong>: allows longer exposures (better in low light, increased motion blur risk).",
+      "options": {
+        "Normal": "Normal",
+        "Short": "Short",
+        "Long": "Long",
+        "Custom": "Custom"
+      }
+    },
+    "AeMeteringMode": {
+      "name": "AE Metering Mode",
+      "info": "Controls which part of the frame the auto exposure and gain algorithm (AEC/AGC) evaluates to set exposure. <strong>Centre Weighted</strong>: more emphasis on the centre. <strong>Spot</strong>: only the very centre. <strong>Matrix</strong>: the whole frame is measured equally.",
+      "options": {
+        "Centre Weighted": "Centre Weighted",
+        "Spot": "Spot",
+        "Matrix": "Matrix",
+        "Custom": "Custom"
+      }
+    },
+    "AeFlickerMode": {
+      "name": "AE Flicker Mode",
+      "info": "When enabled, the auto exposure and gain algorithm (AEC/AGC) avoids shutter speeds that cause banding under artificial lighting. Set the Flicker Period to match your mains frequency: <strong>10000 µs</strong> for 50 Hz power grids (100 Hz flicker), <strong>8333 µs</strong> for 60 Hz power grids (120 Hz flicker)."
+    },
+    "AeFlickerPeriod": {
+      "name": "AE Flicker Period",
+      "info": "The period of the lighting cycle in microseconds. For example, for 50 Hz mains lighting the flicker occurs at 100 Hz, so the period would be <strong>10000 microseconds</strong>."
+    },
+    "AwbEnable": {
+      "name": "White Balance Mode",
+      "info": "<strong>Auto</strong>: Colour gains are continuously adjusted by the auto white balance algorithm (AWB). <strong>Manual</strong>: White balance is set manually via Colour Temperature.",
+      "options": {
+        "Manual": "Manual",
+        "Auto": "Auto"
+      }
+    },
+    "AwbMode": {
+      "name": "AWB Preset",
+      "options": {
+        "Auto": "Auto",
+        "Tungsten": "Tungsten",
+        "Fluorescent": "Fluorescent",
+        "Indoor": "Indoor",
+        "Daylight": "Daylight",
+        "Cloudy": "Cloudy",
+        "Custom": "Custom"
+      }
+    },
+    "ColourTemperature": {
+      "name": "Colour Temperature",
+      "info": "Sets the colour temperature of the light source in Kelvin for manual white balance. <strong>Lower</strong> values (e.g. 2700 K) produce warm, amber tones; <strong>higher</strong> values (e.g. 6500 K) produce cool, bluish tones."
+    },
+    "Brightness": {
+      "name": "Brightness",
+      "info": "Adjusts the image brightness where <strong>-1.0</strong> is very dark, <strong>1.0</strong> is very bright, and <strong>0.0</strong> is the default 'normal' brightness."
+    },
+    "Contrast": {
+      "name": "Contrast",
+      "info": "Sets the contrast of the image, where <strong>0</strong> means no contrast, <strong>1.0</strong> is the default 'normal' contrast, and larger values increase the contrast proportionately."
+    },
+    "Saturation": {
+      "name": "Saturation",
+      "info": "Amount of colour saturation, where <strong>0</strong> produces greyscale images, <strong>1.0</strong> represents default 'normal' saturation, and higher values produce more saturated colours."
+    },
+    "Sharpness": {
+      "name": "Sharpness",
+      "info": "Sets the image sharpness, where <strong>0</strong> implies no additional sharpening, <strong>1.0</strong> is the default 'normal' level of sharpening, and larger values apply proportionately stronger sharpening."
+    },
+    "still_capture_resolution": {
+      "name": "Photo Resolution",
+      "info": "Sets the resolution used when capturing a still image, independent of the sensor mode."
+    },
+    "saveRAW": {
+      "name": "Save RAW",
+      "info": "When enabled, the camera saves an uncompressed <strong>RAW image</strong> alongside each JPG. This RAW file is stored in <strong>DNG format</strong> and preserves all original sensor data, giving more flexibility when editing photos. When downloading a photo from the media gallery, for which a RAW-File was saved, both the JPG and the DNG file will be downloaded together."
+    },
+    "recording_resolution": {
+      "name": "Recording Resolution",
+      "info": "Resolution used for video recording."
+    },
+    "streaming_resolution": {
+      "name": "Live Stream Resolution",
+      "info": "Resolution used for the live stream. Can differ from recording resolution."
+    }
+  }
+}

@@ -25,7 +25,8 @@ class CameraManager:
     # Active recordings are automatically stopped when free space drops below this threshold.
     # Also used as the buffer subtracted from reported free space in get_storage_info(),
     # so the UI never shows the reserved space as "available".
-    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
+    # STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
+    STORAGE_MIN_FREE_BYTES = 51400 * 1024 * 1024
 
     # Additional safety margin on top of STORAGE_MIN_FREE_BYTES (10 MB).
     # A new photo capture or video recording is rejected unless free space exceeds
