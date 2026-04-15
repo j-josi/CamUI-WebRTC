@@ -4,7 +4,7 @@ venv
 *.bak*
 __pycache__/*
 static/camera_profiles/*
-camera-active-profile.json
+camera_active_profile.json
 
 # ---> macOS
 # General

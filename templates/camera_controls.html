@@ -130,6 +130,16 @@
                 <div id="loadProfile" class="profile-section">
                     <div class="alert alert-danger d-none" id="configAlert"></div>
 
+                    <div id="loadProfileFilter" class="d-none mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showAllSensorsLoadCb">
+                            <label class="form-check-label small text-muted" for="showAllSensorsLoadCb"
+                                   data-i18n="camera_controls.profiles_show_other_sensors">
+                                Also show profiles for other sensors
+                            </label>
+                        </div>
+                    </div>
+
                     <table class="table" id="configTable">
                         <colgroup>
                             <col style="width: 9%">
@@ -146,9 +156,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for profile in profiles %}
+                            {% set current_sensor = camera.Model %}
+                            {% set visible_profiles = profiles | selectattr('active') | list
+                                + (profiles | rejectattr('active') | selectattr('sensor', 'equalto', current_sensor) | list) %}
+                            {% for profile in visible_profiles %}
                             {% set display_name = profile.name or profile.filename %}
-                            <tr {% if profile.active %}class="table-success"{% endif %}>
+                            {% set is_other_sensor = not profile.active and profile.sensor != current_sensor %}
+                            <tr {% if profile.active %}class="table-success"{% endif %}{% if is_other_sensor %} style="opacity:0.55"{% endif %}>
                                 <td>
                                     <input type="radio"
                                         name="selectedConfig"
@@ -163,7 +177,7 @@
                                     {% if profile.active %}
                                         <span class="badge bg-success" data-i18n="camera_controls.profiles_active_badge">Active</span>
                                     {% else %}
-                                        <span class="text-muted" data-i18n="camera_controls.profiles_inactive">Inactive</span>
+                                        <span class="badge bg-secondary" data-i18n="camera_controls.profiles_inactive">Inactive</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -255,6 +269,16 @@
                 <div id="deleteProfile" class="profile-section d-none">
                     <div class="alert alert-danger d-none" id="deleteAlert"></div>
 
+                    <div id="deleteProfileFilter" class="d-none mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="showAllSensorsDeleteCb">
+                            <label class="form-check-label small text-muted" for="showAllSensorsDeleteCb"
+                                   data-i18n="camera_controls.profiles_show_other_sensors">
+                                Also show profiles for other sensors
+                            </label>
+                        </div>
+                    </div>
+
                     <table class="table" id="deleteConfigTable">
                         <colgroup>
                             <col style="width: 9%">
@@ -272,9 +296,13 @@
                         </thead>
 
                         <tbody>
-                            {% for profile in profiles %}
+                            {% set current_sensor = camera.Model %}
+                            {% set visible_profiles_del = profiles | selectattr('active') | list
+                                + (profiles | rejectattr('active') | selectattr('sensor', 'equalto', current_sensor) | list) %}
+                            {% for profile in visible_profiles_del %}
                             {% set display_name = profile.name or profile.filename %}
-                            <tr {% if profile.active %}class="table-success"{% endif %}>
+                            {% set is_other_sensor = not profile.active and profile.sensor != current_sensor %}
+                            <tr {% if profile.active %}class="table-success"{% endif %}{% if is_other_sensor %} style="opacity:0.55"{% endif %}>
                                 <td>
                                     <input type="radio"
                                         name="selectedDeleteConfig"
@@ -289,7 +317,7 @@
                                     {% if profile.active %}
                                         <span class="badge bg-success" data-i18n="camera_controls.profiles_active_badge">Active</span>
                                     {% else %}
-                                        <span class="text-muted" data-i18n="camera_controls.profiles_inactive">Inactive</span>
+                                        <span class="badge bg-secondary" data-i18n="camera_controls.profiles_inactive">Inactive</span>
                                     {% endif %}
                                 </td>
                             </tr>
@@ -383,6 +411,35 @@
 </div>
 
 <!-- ===================================== -->
+<!-- No active profile modal -->
+<!-- ===================================== -->
+
+<div class="modal fade" id="noProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" data-i18n="camera_controls.no_profile_modal_title">Create a Profile First</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p data-i18n="camera_controls.no_profile_modal_body">To save camera settings, you need to create a profile first. Enter a name below:</p>
+                <label for="noProfileModalInput" class="form-label" data-i18n="camera_controls.profiles_name_label">Profile name</label>
+                <input type="text"
+                       class="form-control"
+                       id="noProfileModalInput"
+                       placeholder="Enter profile name"
+                       data-i18n-placeholder="camera_controls.profiles_name_placeholder">
+                <div id="noProfileModalAlert" class="alert d-none mt-2"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="camera_controls.reset_modal_cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="noProfileModalSaveBtn" data-i18n="camera_controls.no_profile_modal_save_btn">Create &amp; Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===================================== -->
 <!-- Model mismatch modal -->
 <!-- ===================================== -->
 
@@ -410,13 +467,19 @@
 let camera_num = {{ camera.Num }};
 let pendingDeleteFilename = null;
 
+// Sensor model of the currently connected camera — used to filter the profile list.
+const currentCameraModel = "{{ camera.Model }}";
+// When true, profiles for other sensors are also shown in the Load/Delete lists.
+let _showAllSensorProfiles = false;
+
 // -------------------------------------------------------
 // Per-parameter save / reset buttons
 // -------------------------------------------------------
 
 // Apply param_states received from the server to enable/disable save and reset buttons.
-// param_states: {param_id: {reset_enabled, save_enabled, current_value, saved_value, unit}}
-// save_enabled = live value differs from saved profile → source of truth for _unsavedChanges.
+// param_states: {param_id: {reset_enabled, save_enabled, revert_enabled, current_value, saved_value, unit}}
+// save_enabled = live value differs from saved profile (or from default when no profile exists).
+// revert_enabled = there IS a saved profile value AND it differs from the live value.
 // Supports grouped settings: followers carry data-group-leader on their input element;
 // the leader's buttons are enabled if ANY group member has the respective condition.
 function applyParamStates(paramStates) {
@@ -429,13 +492,14 @@ function applyParamStates(paramStates) {
         leaderOf[id] = el?.dataset.groupLeader || id;
     }
 
-    // Pass 2: aggregate reset_enabled / save_enabled per leader.
+    // Pass 2: aggregate reset_enabled / save_enabled / revert_enabled per leader.
     const aggStates = {};
     for (const [id, state] of Object.entries(paramStates)) {
         const lid = leaderOf[id];
-        if (!aggStates[lid]) aggStates[lid] = { reset_enabled: false, save_enabled: false };
-        aggStates[lid].reset_enabled = aggStates[lid].reset_enabled || state.reset_enabled;
-        aggStates[lid].save_enabled  = aggStates[lid].save_enabled  || state.save_enabled;
+        if (!aggStates[lid]) aggStates[lid] = { reset_enabled: false, save_enabled: false, revert_enabled: false };
+        aggStates[lid].reset_enabled  = aggStates[lid].reset_enabled  || state.reset_enabled;
+        aggStates[lid].save_enabled   = aggStates[lid].save_enabled   || state.save_enabled;
+        aggStates[lid].revert_enabled = aggStates[lid].revert_enabled || (state.revert_enabled ?? false);
     }
 
     // Pass 3: update per-setting state and leader buttons.
@@ -446,9 +510,11 @@ function applyParamStates(paramStates) {
         // Store saved_value and current_value on the input element.
         // current_value is the authoritative server-side value (used by saveParam to avoid
         // saving a browser-snapped slider value instead of the real hardware value).
+        // data-saved-value is only stored when revert_enabled (i.e. there is an actual
+        // profile value to revert to) — avoids storing null when no profile exists.
         const inputEl = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
         if (inputEl) {
-            if (state.save_enabled) inputEl.dataset.savedValue = JSON.stringify(state.saved_value);
+            if (state.revert_enabled ?? state.save_enabled) inputEl.dataset.savedValue = JSON.stringify(state.saved_value);
             else delete inputEl.dataset.savedValue;
             inputEl.dataset.currentValue = JSON.stringify(state.current_value);
         }
@@ -487,9 +553,9 @@ function applyParamStates(paramStates) {
         }
         const revertBtn = document.getElementById(lid + "_revert_btn");
         if (revertBtn) {
-            revertBtn.disabled = !agg.save_enabled;
-            revertBtn.classList.toggle("btn-secondary", agg.save_enabled);
-            revertBtn.classList.toggle("btn-outline-secondary", !agg.save_enabled);
+            revertBtn.disabled = !agg.revert_enabled;
+            revertBtn.classList.toggle("btn-secondary", agg.revert_enabled);
+            revertBtn.classList.toggle("btn-outline-secondary", !agg.revert_enabled);
         }
         const saveBtn = document.getElementById(lid + "_save_btn");
         if (saveBtn && !saveBtn.classList.contains("btn-success")) {
@@ -501,7 +567,15 @@ function applyParamStates(paramStates) {
 }
 
 // Save all settings in a group to the active profile.
+// If no profile is active, show the create-profile modal instead.
 function saveGroup(ids, dataType) {
+    if (!document.getElementById("saveConfigFile")?.value.trim()) {
+        const modal = new bootstrap.Modal(document.getElementById("noProfileModal"));
+        document.getElementById("noProfileModalInput").value = "";
+        document.getElementById("noProfileModalAlert").className = "alert d-none mt-2";
+        modal.show();
+        return;
+    }
     ids.forEach(id => saveParam(id, dataType));
 }
 
@@ -1498,6 +1572,10 @@ function updateProfileList() {
         .then(data => {
             const loadTableBody   = document.querySelector("#configTable tbody");
             const deleteTableBody = document.querySelector("#deleteConfigTable tbody");
+            const loadFilter      = document.getElementById("loadProfileFilter");
+            const deleteFilter    = document.getElementById("deleteProfileFilter");
+            const loadCb          = document.getElementById("showAllSensorsLoadCb");
+            const deleteCb        = document.getElementById("showAllSensorsDeleteCb");
 
             if (!loadTableBody || !deleteTableBody) return;
 
@@ -1509,62 +1587,84 @@ function updateProfileList() {
                     `<tr><td colspan="4">${window.t('camera_controls.profiles_no_found') || 'No profiles found'}</td></tr>`;
                 deleteTableBody.innerHTML =
                     `<tr><td colspan="4">${window.t('camera_controls.profiles_none_to_delete') || 'No profiles found to delete'}</td></tr>`;
+                loadFilter?.classList.add("d-none");
+                deleteFilter?.classList.add("d-none");
                 return;
             }
 
-            // Active profile always first
+            // Show the filter checkbox only when profiles for other sensors exist.
+            const hasOtherSensors = data.some(p => p.sensor !== currentCameraModel);
+            loadFilter?.classList.toggle("d-none", !hasOtherSensors);
+            deleteFilter?.classList.toggle("d-none", !hasOtherSensors);
+
+            // Sync checkboxes to the shared flag (in case updateProfileList is called externally).
+            if (loadCb)   loadCb.checked   = _showAllSensorProfiles;
+            if (deleteCb) deleteCb.checked = _showAllSensorProfiles;
+
+            // Active profile always first; filter by sensor unless override is set.
+            const visibleProfiles = data.filter(p =>
+                _showAllSensorProfiles || p.sensor === currentCameraModel || p.active
+            );
             const sortedProfiles = [
-                ...data.filter(p => p.active),
-                ...data.filter(p => !p.active)
+                ...visibleProfiles.filter(p => p.active),
+                ...visibleProfiles.filter(p => !p.active)
             ];
 
-            sortedProfiles.forEach(profile => {
-                const isActive = profile.active === true;
+            if (sortedProfiles.length === 0) {
+                const hint = window.t('camera_controls.profiles_no_found_this_sensor') || 'No profiles found for this camera.';
+                loadTableBody.innerHTML   = `<tr><td colspan="4">${hint}</td></tr>`;
+                deleteTableBody.innerHTML = `<tr><td colspan="4">${hint}</td></tr>`;
+            } else {
+                sortedProfiles.forEach(profile => {
+                    const isActive      = profile.active === true;
+                    const isOtherSensor = !isActive && profile.sensor !== currentCameraModel;
 
-                const rowClass = isActive ? "table-success" : "";
-                const checked  = isActive ? "checked" : "";
-                const disabled = isActive ? "disabled" : "";
-                const displayName = profile.name || profile.filename.replace(/\.json$/, "");
+                    const rowClass    = isActive ? "table-success" : "";
+                    const rowStyle    = isOtherSensor ? ' style="opacity:0.55"' : "";
+                    const checked     = isActive ? "checked" : "";
+                    const disabled    = isActive ? "disabled" : "";
+                    const displayName = profile.name || profile.filename.replace(/\.json$/, "");
 
-                const activeBadge = isActive
-                    ? `<span class="badge bg-success">${window.t('camera_controls.profiles_active_badge') || 'Active'}</span>`
-                    : `<span class="text-muted">${window.t('camera_controls.profiles_inactive') || 'Inactive'}</span>`;
+                    const activeBadge = isActive
+                        ? `<span class="badge bg-success">${window.t('camera_controls.profiles_active_badge') || 'Active'}</span>`
+                        : `<span class="badge bg-secondary">${window.t('camera_controls.profiles_inactive') || 'Inactive'}</span>`;
 
-                /* ---------------- Load table row ---------------- */
-                loadTableBody.insertAdjacentHTML("beforeend", `
-                    <tr class="${rowClass}">
-                        <td>
-                            <input type="radio"
-                                   name="selectedConfig"
-                                   value="${profile.filename}"
-                                   data-model="${profile.sensor}"
-                                   data-name="${displayName}"
-                                   data-active="${isActive}"
-                                   ${checked}>
-                        </td>
-                        <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
-                        <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
-                        <td>${activeBadge}</td>
-                    </tr>
-                `);
+                    /* ---------------- Load table row ---------------- */
+                    loadTableBody.insertAdjacentHTML("beforeend", `
+                        <tr class="${rowClass}"${rowStyle}>
+                            <td>
+                                <input type="radio"
+                                       name="selectedConfig"
+                                       value="${profile.filename}"
+                                       data-model="${profile.sensor}"
+                                       data-name="${displayName}"
+                                       data-active="${isActive}"
+                                       ${checked}>
+                            </td>
+                            <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
+                            <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
+                            <td>${activeBadge}</td>
+                        </tr>
+                    `);
 
-                /* ---------------- Delete table row ---------------- */
-                deleteTableBody.insertAdjacentHTML("beforeend", `
-                    <tr class="${rowClass}">
-                        <td>
-                            <input type="radio"
-                                   name="selectedDeleteConfig"
-                                   value="${profile.filename}"
-                                   data-model="${profile.sensor}"
-                                   data-name="${displayName}"
-                                   ${disabled}>
-                        </td>
-                        <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
-                        <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
-                        <td>${activeBadge}</td>
-                    </tr>
-                `);
-            });
+                    /* ---------------- Delete table row ---------------- */
+                    deleteTableBody.insertAdjacentHTML("beforeend", `
+                        <tr class="${rowClass}"${rowStyle}>
+                            <td>
+                                <input type="radio"
+                                       name="selectedDeleteConfig"
+                                       value="${profile.filename}"
+                                       data-model="${profile.sensor}"
+                                       data-name="${displayName}"
+                                       ${disabled}>
+                            </td>
+                            <td class="text-truncate" style="max-width: 0;" title="${displayName}">${displayName}</td>
+                            <td class="text-truncate" style="max-width: 0;" title="${profile.sensor}">${profile.sensor}</td>
+                            <td>${activeBadge}</td>
+                        </tr>
+                    `);
+                });
+            }
 
             /* --- Load selection handling --- */
             document
@@ -1576,10 +1676,13 @@ function updateProfileList() {
                 });
 
             // Keep the Save text field in sync with the currently active profile name.
+            // Clear it when no profile is active so saveGroup() can detect the no-profile state.
             const activeProfile = data.find(p => p.active);
             const saveInput = document.getElementById("saveConfigFile");
-            if (saveInput && activeProfile) {
-                saveInput.value = activeProfile.name || activeProfile.filename.replace(/\.json$/, "");
+            if (saveInput) {
+                saveInput.value = activeProfile
+                    ? (activeProfile.name || activeProfile.filename.replace(/\.json$/, ""))
+                    : "";
             }
         })
         .catch(error => console.error("Error fetching profiles:", error));
@@ -1593,6 +1696,55 @@ document.addEventListener("DOMContentLoaded", function () {
         const profileName = document.getElementById("mismatchProfileName").textContent;
         applyProfile(profileName);
         bootstrap.Modal.getInstance(document.getElementById("modelMismatchModal")).hide();
+    });
+
+    // Sensor filter checkboxes — shared state, both trigger a list refresh.
+    ["showAllSensorsLoadCb", "showAllSensorsDeleteCb"].forEach(id => {
+        document.getElementById(id)?.addEventListener("change", function () {
+            _showAllSensorProfiles = this.checked;
+            updateProfileList();
+        });
+    });
+
+    // Handle "Create & Save" in the no-profile modal.
+    document.getElementById("noProfileModalSaveBtn").addEventListener("click", function () {
+        const input    = document.getElementById("noProfileModalInput");
+        const alertEl  = document.getElementById("noProfileModalAlert");
+        const filename = input.value.trim();
+
+        alertEl.className = "alert d-none mt-2";
+
+        if (!filename) {
+            alertEl.textContent = window.t("camera_controls.profiles_please_enter_filename") || "Please enter a filename.";
+            alertEl.className = "alert alert-danger mt-2";
+            return;
+        }
+
+        fetch(`/save_profile_${camera_num}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename, confirm_overwrite: false })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.overwrite_required) {
+                alertEl.textContent = window.t("camera_controls.profiles_overwrite_exists") || "A profile with this name already exists. Please choose a different name.";
+                alertEl.className = "alert alert-warning mt-2";
+                return;
+            }
+            if (data.error) {
+                alertEl.textContent = data.error;
+                alertEl.className = "alert alert-danger mt-2";
+                return;
+            }
+            // Success: server returns {message: "..."}
+            bootstrap.Modal.getInstance(document.getElementById("noProfileModal")).hide();
+            updateProfileList();
+        })
+        .catch(() => {
+            alertEl.textContent = "Failed to save profile.";
+            alertEl.className = "alert alert-danger mt-2";
+        });
     });
 });
 

@@ -6,13 +6,13 @@
     <div class="container" id="custom-cards">
 
       <h2 class="pb-2 mb-4 border-bottom">
-        <i class="bi bi-cpu me-2"></i>Detected Hardware
+        <i class="bi bi-cpu me-2"></i><span data-i18n="info.heading">Detected Hardware</span>
       </h2>
 
       <!-- Cameras -->
       <div class="mb-5">
         <h3 class="pb-2 mb-3 border-bottom">
-          <i class="bi bi-camera-video me-2"></i>Cameras
+          <i class="bi bi-camera-video me-2"></i><span data-i18n="info.cameras_title">Cameras</span>
         </h3>
 
       {% if camera_list|length >= 1 %}
@@ -42,32 +42,32 @@
             <div class="row row-cols-1 g-4 m-0">
                 <ul id="myTab" class="nav nav-tabs mt-0">
                     <li class="nav-item">
-                        <a href="#tech_info" class="nav-link active" data-bs-toggle="tab">Camera Specs</a>
+                        <a href="#tech_info" class="nav-link active" data-bs-toggle="tab" data-i18n="info.tab_specs">Camera Specs</a>
                     </li>
                     <li class="nav-item">
-                        <a href="#url" class="nav-link" data-bs-toggle="tab">Camera Links</a>
+                        <a href="#url" class="nav-link" data-bs-toggle="tab" data-i18n="info.tab_links">Camera Links</a>
                     </li>
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane fade show active table-responsive" id="tech_info">
                       <table class="table">
                         <tbody>
-                            <tr><th scope="row">Sensor</th><td>{{ camera_data.manufacturer }} {{ camera_data.sensor_model }}</td></tr>
-                            <tr><th scope="row">Megapixels</th><td>{{ camera_data.megapixels }}</td></tr>
-                            <tr><th scope="row">Sensor Resolution</th><td>{{ camera_data.sensor_resolution }}</td></tr>
-                            <tr><th scope="row">Video Modes</th><td>{{ camera_data.video_modes }}</td></tr>
-                            <tr><th scope="row">Sensor Image Area</th><td>{{ camera_data.sensor_image_area }}</td></tr>
-                            <tr><th scope="row">Pixel Size</th><td>{{ camera_data.pixel_size }}</td></tr>
-                            <tr><th scope="row">Optical Size</th><td>{{ camera_data.optical_size }}</td></tr>
-                            <tr><th scope="row">Focus</th><td>{{ camera_data.focus }}</td></tr>
-                            <tr><th scope="row">Depth of field</th><td>{{ camera_data.dof }}</td></tr>
-                            <tr><th scope="row">Focal Length</th><td>{{ camera_data.focal_length }}</td></tr>
-                            <tr><th scope="row">Horizontal Field of View (FoV)</th><td>{{ camera_data.horizontal_fov }}</td></tr>
-                            <tr><th scope="row">Vertical Field of View (FoV)</th><td>{{ camera_data.vertical_fov }}</td></tr>
-                            <tr><th scope="row">Focal ratio (F-Stop)</th><td>{{ camera_data.f_stop }}</td></tr>
-                            <tr><th scope="row">Maximum exposure times (seconds)</th><td>{{ camera_data.max_exposure_time }}</td></tr>
-                            <tr><th scope="row">Lens Mount</th><td>{{ camera_data.lens_mount }}</td></tr>
-                            <tr><th scope="row">NoIR version available?</th><td>{{ camera_data.got_noir }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_sensor">Sensor</th><td>{{ camera_data.manufacturer }} {{ camera_data.sensor_model }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_megapixels">Megapixels</th><td>{{ camera_data.megapixels }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_resolution">Sensor Resolution</th><td>{{ camera_data.sensor_resolution }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_video_modes">Video Modes</th><td>{{ camera_data.video_modes }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_image_area">Sensor Image Area</th><td>{{ camera_data.sensor_image_area }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_pixel_size">Pixel Size</th><td>{{ camera_data.pixel_size }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_optical_size">Optical Size</th><td>{{ camera_data.optical_size }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_focus">Focus</th><td>{{ camera_data.focus }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_dof">Depth of field</th><td>{{ camera_data.dof }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_focal_length">Focal Length</th><td>{{ camera_data.focal_length }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_h_fov">Horizontal Field of View (FoV)</th><td>{{ camera_data.horizontal_fov }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_v_fov">Vertical Field of View (FoV)</th><td>{{ camera_data.vertical_fov }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_f_stop">Focal ratio (F-Stop)</th><td>{{ camera_data.f_stop }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_max_exposure">Maximum exposure time</th><td>{{ camera_data.max_exposure_time }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_lens_mount">Lens Mount</th><td>{{ camera_data.lens_mount }}</td></tr>
+                            <tr><th scope="row" data-i18n="info.spec_infrared_sensitive">Infrared-sensitive</th><td data-i18n="general.{{ camera_data.infrared_sensitive | lower }}">{{ camera_data.infrared_sensitive }}</td></tr>
                         </tbody>
                     </table>
                     </div>
@@ -75,12 +75,12 @@
                       <table class="table">
                         <tbody>
                             <tr>
-                                <th scope="row">Video Feed</th>
+                                <th scope="row" data-i18n="info.link_video_feed">Video Feed</th>
                                 <td><a href="{{ url_for('video_feed', camera_num=camera_num) }}" class="user-select-all text-break" id="video_feed_link">{{ full_url }}{{ url_for('video_feed', camera_num=camera_num) }}</a></td>
               <td><button type="button" class="btn btn-primary" data-bs-toggle="tooltip" data-bs-title="Copy to clipboard" onclick="copyToClipboard('video_feed_link')"><i class="bi bi-clipboard"></i></button></td>
                             </tr>
                             <tr>
-                              <th scope="row">Snapshot Link</th>
+                              <th scope="row" data-i18n="info.link_snapshot">Snapshot Link</th>
                               <td><a href="{{ url_for('snapshot', camera_num=camera_num) }}" class="user-select-all text-break" id="snapshot_link">{{ full_url }}{{ url_for('snapshot', camera_num=camera_num) }}</a></td>
                               <td><button type="button" class="btn btn-primary" data-bs-toggle="tooltip" data-bs-title="Copy to clipboard" onclick="copyToClipboard('snapshot_link')"><i class="bi bi-clipboard"></i></button></td>
     </tr>
@@ -90,7 +90,7 @@
                     <div class="alert alert-info d-flex align-items-center" role="alert">
                       <i class="bi bi-info-circle mr-2 ml-2"></i>
                       <div>
-                        &nbsp;These links work in VLC Player, OBS and Octoprint. If the hostname URL does not work it is recommended to use the IP address instead
+                        &nbsp;<span data-i18n="info.link_alert">These links work in VLC Player, OBS and Octoprint. If the hostname URL does not work it is recommended to use the IP address instead.</span>
                       </div>
                   </div>
                     </div>
@@ -102,7 +102,7 @@
       {% else %}
         <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
           <i class="bi bi-camera-video-off-fill"></i>
-          No camera detected.
+          <span data-i18n="info.no_camera">No camera detected.</span>
         </div>
       {% endif %}
 
@@ -111,7 +111,7 @@
       <!-- Microphones -->
       <div class="mb-5">
         <h3 class="pb-2 mb-3 border-bottom">
-          <i class="bi bi-mic me-2"></i>Microphones
+          <i class="bi bi-mic me-2"></i><span data-i18n="info.microphones_title">Microphones</span>
         </h3>
 
         {% if audio_sources %}
@@ -127,28 +127,28 @@
                 <table class="table table-sm mb-0">
                   <tbody>
                     {% if src.description and src.description != src.name %}
-                    <tr><th scope="row" style="width:40%">Description</th><td>{{ src.description }}</td></tr>
+                    <tr><th scope="row" style="width:40%" data-i18n="info.mic_description">Description</th><td>{{ src.description }}</td></tr>
                     {% endif %}
-                    <tr><th scope="row" style="width:40%">Name</th><td class="text-break font-monospace" style="font-size:0.8rem">{{ src.name }}</td></tr>
+                    <tr><th scope="row" style="width:40%" data-i18n="info.mic_name">Name</th><td class="text-break font-monospace" style="font-size:0.8rem">{{ src.name }}</td></tr>
                     {% if src.sample_spec %}
-                    <tr><th scope="row">Sample Format</th><td>{{ src.sample_spec }}</td></tr>
+                    <tr><th scope="row" data-i18n="info.mic_sample_format">Sample Format</th><td>{{ src.sample_spec }}</td></tr>
                     {% endif %}
                     <tr>
-                      <th scope="row">State</th>
+                      <th scope="row" data-i18n="info.mic_state">State</th>
                       <td>
                         {% if src.state == "RUNNING" %}
-                          <span class="badge bg-success">Running</span>
+                          <span class="badge bg-success" data-i18n="info.mic_state_running">Running</span>
                         {% elif src.state == "SUSPENDED" %}
-                          <span class="badge bg-secondary">Suspended</span>
+                          <span class="badge bg-secondary" data-i18n="info.mic_state_suspended">Suspended</span>
                         {% elif src.state == "IDLE" %}
-                          <span class="badge bg-warning text-dark">Idle</span>
+                          <span class="badge bg-warning text-dark" data-i18n="info.mic_state_idle">Idle</span>
                         {% else %}
                           <span class="badge bg-light text-dark">{{ src.state }}</span>
                         {% endif %}
                       </td>
                     </tr>
                     <tr>
-                      <th scope="row">Assigned to</th>
+                      <th scope="row" data-i18n="info.mic_assigned_to">Assigned to</th>
                       <td>
                         {% set used_by = [] %}
                         {% for cam_num, dev in cameras_audio.items() %}
@@ -173,7 +173,7 @@
         {% else %}
         <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
           <i class="bi bi-mic-mute-fill"></i>
-          No microphones detected.
+          <span data-i18n="info.no_mic">No microphones detected.</span>
         </div>
         {% endif %}
 

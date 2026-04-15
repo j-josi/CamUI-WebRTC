@@ -402,12 +402,17 @@ class Camera:
             else:
                 save_enabled = not _vals_equal(current, saved, prec)
 
+            # revert_enabled only when there is an actual saved profile value to revert to.
+            # Unlike save_enabled, this is never true when saved=None (no active profile).
+            revert_enabled = saved is not None and not _vals_equal(current, saved, prec)
+
             result[sid] = {
-                "reset_enabled": reset_enabled,
-                "save_enabled":  save_enabled,
-                "current_value": current,
-                "saved_value":   saved,
-                "unit":          s.get("unit") or "",
+                "reset_enabled":  reset_enabled,
+                "save_enabled":   save_enabled,
+                "revert_enabled": revert_enabled,
+                "current_value":  current,
+                "saved_value":    saved,
+                "unit":           s.get("unit") or "",
             }
 
         for section in self.ui_settings.get("sections", []):
@@ -950,27 +955,30 @@ class Camera:
                         setting["min"] = min_val
                         setting["max"] = max_val
 
-                        if default_val is not None:
-                            # Clamp hardware default to its own min/max — picamera2 can
-                            # report a default that lies outside the valid range (e.g.
-                            # AnalogueGain: min=1.1228, default=1.0).
+                        db_default = setting.get("default")
+                        if db_default is not None:
+                            # DB default takes priority over picamera2 hardware default.
+                            # Only clamp it to the hardware-reported min/max.
+                            if isinstance(db_default, (int, float)):
+                                if min_val is not None and db_default < min_val:
+                                    setting["default"] = min_val
+                                    logger.info("Clamped DB default for %s: %s -> %s (below hw min)", setting_id, db_default, min_val)
+                                elif max_val is not None and db_default > max_val:
+                                    setting["default"] = max_val
+                                    logger.info("Clamped DB default for %s: %s -> %s (above hw max)", setting_id, db_default, max_val)
+                        elif default_val is not None:
+                            # No DB default — fall back to picamera2 hardware default.
+                            # Clamp it to its own min/max (picamera2 can report a default
+                            # outside the valid range, e.g. AnalogueGain: min=1.1228, default=1.0).
                             eff_default = default_val
                             if isinstance(eff_default, (int, float)):
                                 if min_val is not None and eff_default < min_val:
                                     eff_default = min_val
-                                    logger.info("Clamped default for %s: %s -> %s (below min)", setting_id, default_val, eff_default)
+                                    logger.info("Clamped hw default for %s: %s -> %s (below hw min)", setting_id, default_val, eff_default)
                                 elif max_val is not None and eff_default > max_val:
                                     eff_default = max_val
-                                    logger.info("Clamped default for %s: %s -> %s (above max)", setting_id, default_val, eff_default)
+                                    logger.info("Clamped hw default for %s: %s -> %s (above hw max)", setting_id, default_val, eff_default)
                             setting["default"] = eff_default
-                        else:
-                            # No hardware default: clamp DB default to hardware min/max.
-                            db_default = setting.get("default")
-                            if db_default is not None and isinstance(db_default, (int, float)):
-                                if min_val is not None and db_default < min_val:
-                                    setting["default"] = min_val
-                                elif max_val is not None and db_default > max_val:
-                                    setting["default"] = max_val
 
                         setting["enabled"] = original_enabled
 
@@ -998,7 +1006,16 @@ class Camera:
                                 child["min"] = min_val
                                 child["max"] = max_val
 
-                                if default_val is not None:
+                                db_default = child.get("default")
+                                if db_default is not None:
+                                    # DB default takes priority — clamp to hardware bounds.
+                                    if isinstance(db_default, (int, float)):
+                                        if min_val is not None and db_default < min_val:
+                                            child["default"] = min_val
+                                        elif max_val is not None and db_default > max_val:
+                                            child["default"] = max_val
+                                elif default_val is not None:
+                                    # No DB default — fall back to picamera2 hardware default.
                                     eff_default = default_val
                                     if isinstance(eff_default, (int, float)):
                                         if min_val is not None and eff_default < min_val:
@@ -1006,13 +1023,6 @@ class Camera:
                                         elif max_val is not None and eff_default > max_val:
                                             eff_default = max_val
                                     child["default"] = eff_default
-                                else:
-                                    db_default = child.get("default")
-                                    if db_default is not None and isinstance(db_default, (int, float)):
-                                        if min_val is not None and db_default < min_val:
-                                            child["default"] = min_val
-                                        elif max_val is not None and db_default > max_val:
-                                            child["default"] = max_val
 
                                 child["enabled"] = child.get("enabled", False)
 

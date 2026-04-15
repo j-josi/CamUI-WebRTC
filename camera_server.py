@@ -241,8 +241,8 @@ def main():
     from camera_manager import CameraManager
 
     manager = CameraManager(
-        camera_module_info_path=os.path.join(base_dir, 'camera-module-info.json'),
-        camera_active_profile_path=os.path.join(base_dir, 'camera-active-profile.json'),
+        camera_module_info_path=os.path.join(base_dir, 'camera_module_info.json'),
+        camera_active_profile_path=os.path.join(base_dir, 'camera_active_profile.json'),
         media_upload_folder=os.path.join(base_dir, 'static/gallery'),
         camera_ui_settings_db_path=os.path.join(base_dir, 'camera_controls_db.json'),
         camera_profile_folder=os.path.join(base_dir, 'static/camera_profiles'),

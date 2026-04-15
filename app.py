@@ -199,8 +199,8 @@ mediamtx_webrtc_port = 8889
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-camera_active_profile_path = os.path.join(current_dir, 'camera-active-profile.json')
-camera_module_info_path = os.path.join(current_dir, 'camera-module-info.json')
+camera_active_profile_path = os.path.join(current_dir, 'camera_active_profile.json')
+camera_module_info_path = os.path.join(current_dir, 'camera_module_info.json')
 camera_ui_settings_db_path = os.path.join(current_dir, 'camera_controls_db.json')
 camera_profile_folder = os.path.join(current_dir, 'static/camera_profiles')
 

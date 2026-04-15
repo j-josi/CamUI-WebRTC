@@ -22,75 +22,75 @@
     }
 </style>
 <div class="container">
-    <div class="container" id="custom-cards">        
+    <div class="container" id="custom-cards">
             <div class="row row-cols-1 row-cols-md-2 align-items-md-center g-5 py-5">
-              
+
               <div class="col d-flex flex-column align-items-start gap-2">
                 <div class="position-relative top-0 start-50 translate-middle-x pb-5">
                     <img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo"class="logo">
                 </div>
-                <h2 class="fw-bold text-body-emphasis">Lightweight web interface for the Raspberry Pi camera module</h2>
-                <p class="text-body-secondary">
+                <h2 class="fw-bold text-body-emphasis" data-i18n="about.tagline">Lightweight web interface for the Raspberry Pi camera module</h2>
+                <p class="text-body-secondary" data-i18n="about.description">
                   Utilizing the picamera2 library. This project provides a simple user interface to configure camera settings, capture photos, and manage images in a basic gallery.
                 </p>
-                <a href="https://github.com/j-josi/CamUI-WebRTC.git" class="btn btn-primary btn-lg">Updates on Github</a> Version: {{ version }}
+                <a href="https://github.com/j-josi/CamUI-WebRTC.git" class="btn btn-primary btn-lg" data-i18n="about.github_btn">Updates on Github</a> Version: {{ version }}
               </div>
-        
+
               <div class="col">
                 <div class="row row-cols-1 row-cols-sm-2 g-4">
                   <div class="col d-flex flex-column gap-2">
                     <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
                         <i class="bi bi-camera"></i>
                     </div>
-                    <h4 class="fw-semibold mb-0 text-body-emphasis">Simply Shoot</h4>
-                    <p class="text-body-secondary">Take photos and video recordings with a single click and save them to the media gallery.</p>
+                    <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_shoot_title">Simply Shoot</h4>
+                    <p class="text-body-secondary" data-i18n="about.feature_shoot_body">Take photos and video recordings with a single click and save them to the media gallery.</p>
                   </div>
-        
+
                   <div class="col d-flex flex-column gap-2">
                     <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
                         <i class="bi bi-toggles"></i>
                     </div>
-                    <h4 class="fw-semibold mb-0 text-body-emphasis">Configure Your Camera</h4>
-                    <p class="text-body-secondary">Easily configure camera settings such as image rotation, exposure, white balance settings, and meny more.</p>
+                    <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_configure_title">Configure Your Camera</h4>
+                    <p class="text-body-secondary" data-i18n="about.feature_configure_body">Easily configure camera settings such as image rotation, exposure, white balance settings, and many more.</p>
                   </div>
-        
+
                   <div class="col d-flex flex-column gap-2">
                     <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
                         <i class="bi bi-floppy"></i>
                     </div>
-                    <h4 class="fw-semibold mb-0 text-body-emphasis">Save Your Settings</h4>
-                    <p class="text-body-secondary">When you are happy with the configuration of your camera you can save the settings for later, even after rebooting.</p>
+                    <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_save_title">Save Your Settings</h4>
+                    <p class="text-body-secondary" data-i18n="about.feature_save_body">When you are happy with the configuration of your camera you can save the settings for later, even after rebooting.</p>
                   </div>
-        
+
                   <div class="col d-flex flex-column gap-2">
                     <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
                         <i class="bi bi-images"></i>
                     </div>
-                    <h4 class="fw-semibold mb-0 text-body-emphasis">Simple Gallery</h4>
-                    <p class="text-body-secondary">View, delete, and download your images and video recordings in a simple gallery interface.</p>
+                    <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_gallery_title">Simple Gallery</h4>
+                    <p class="text-body-secondary" data-i18n="about.feature_gallery_body">View, delete, and download your images and video recordings in a simple gallery interface.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-    
+
           <div class="container px-4 py-5 pt-0" id="featured-3">
-            <h2 class="pb-2 border-bottom">Under The Hood</h2>
+            <h2 class="pb-2 border-bottom" data-i18n="about.under_the_hood">Under The Hood</h2>
             <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
               <div class="feature col">
                 <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3">
                     <i class="bi bi-tools"></i>
                 </div>
                 <h3 class="fs-2 text-body-emphasis">Picamera2</h3>
-                <p>This project utilizes the Picamera2 library for Python. Picamera2 is the libcamera-based replacement for Picamera which was a Python interface to the Raspberry Pi's legacy camera stack.</p>
+                <p data-i18n="about.picamera2_desc">This project utilizes the Picamera2 library for Python. Picamera2 is the libcamera-based replacement for Picamera which was a Python interface to the Raspberry Pi's legacy camera stack.</p>
                 <ul class="list-group list-group-flush list-unstyled">
                     <li>
-                        <a href="https://github.com/raspberrypi/picamera2" class="icon-link">
+                        <a href="https://github.com/raspberrypi/picamera2" class="icon-link" data-i18n="about.picamera2_github">
                             Picamera2 on Github
                           </a>
                     </li>
                     <li>
-                        <a href="https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf" class="icon-link">
+                        <a href="https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf" class="icon-link" data-i18n="about.picamera2_manual">
                             Picamera2 Manual
                           </a>
                     </li>
@@ -101,15 +101,15 @@
                     <i class="bi bi-nut"></i>
                 </div>
                 <h3 class="fs-2 text-body-emphasis">Flask</h3>
-                <p>Flask is a micro web framework written in Python. It is classified as a microframework because it does not require particular tools or libraries. It has no database abstraction layer, form validation, or any other components where pre-existing third-party libraries provide common functions.</p>
+                <p data-i18n="about.flask_desc">Flask is a micro web framework written in Python. It is classified as a microframework because it does not require particular tools or libraries. It has no database abstraction layer, form validation, or any other components where pre-existing third-party libraries provide common functions.</p>
                 <ul class="list-group list-group-flush list-unstyled">
                     <li>
-                        <a href="https://flask.palletsprojects.com/en/3.0.x/" class="icon-link">
+                        <a href="https://flask.palletsprojects.com/en/3.0.x/" class="icon-link" data-i18n="about.flask_link">
                             Flask
                           </a>
                     </li>
                     <li>
-                        <a href="https://flask.palletsprojects.com/en/3.0.x/installation/" class="icon-link">
+                        <a href="https://flask.palletsprojects.com/en/3.0.x/installation/" class="icon-link" data-i18n="about.flask_install">
                             Install Flask
                           </a>
                     </li>
@@ -120,10 +120,10 @@
                     <i class="bi bi-bootstrap"></i>
                 </div>
                 <h3 class="fs-2 text-body-emphasis">Bootstrap</h3>
-                <p>Powerful, extensible, and feature-packed frontend toolkit. Build and customize with Sass, utilize prebuilt grid system and components, and bring projects to life with powerful JavaScript plugins.</p>
+                <p data-i18n="about.bootstrap_desc">Powerful, extensible, and feature-packed frontend toolkit. Build and customize with Sass, utilize prebuilt grid system and components, and bring projects to life with powerful JavaScript plugins.</p>
                 <ul class="list-group list-group-flush list-unstyled">
                     <li>
-                        <a href="https://getbootstrap.com/" class="icon-link">
+                        <a href="https://getbootstrap.com/" class="icon-link" data-i18n="about.bootstrap_link">
                             Get Bootstrap
                           </a>
                     </li>
@@ -134,20 +134,20 @@
                     <i class="bi bi-person-arms-up"></i>
                 </div>
                 <h3 class="fs-2 text-body-emphasis">James Mitchell</h3>
-                <p>Raspberry Pi Enthusiast and Organiser of the Raspberry Jam Berlin and hobbyist coder.</p>
+                <p data-i18n="about.james_desc">Raspberry Pi Enthusiast and Organiser of the Raspberry Jam Berlin and hobbyist coder.</p>
                 <ul class="list-group list-group-flush list-unstyled">
                     <li>
-                        <a href="https://github.com/monkeymademe/" class="icon-link">
+                        <a href="https://github.com/monkeymademe/" class="icon-link" data-i18n="about.james_github">
                             My Github Page
                           </a>
                     </li>
                     <li>
-                        <a href="https://raspberryjamberlin.de" class="icon-link">
+                        <a href="https://raspberryjamberlin.de" class="icon-link" data-i18n="about.james_jam">
                             Raspberry Jam Berlin
                           </a>
                     </li>
                     <li>
-                        <a href="https://discord.gg/q5EVbrhS8x" class="icon-link">
+                        <a href="https://discord.gg/q5EVbrhS8x" class="icon-link" data-i18n="about.james_discord">
                             Raspberry Jam Berlin Discord
                           </a>
                     </li>
@@ -156,10 +156,10 @@
             </div>
           </div>
 </div>
- 
-  
-  
-  
+
+
+
+
 
 
 <script>

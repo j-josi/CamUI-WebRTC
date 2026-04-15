@@ -25,8 +25,7 @@ class CameraManager:
     # Active recordings are automatically stopped when free space drops below this threshold.
     # Also used as the buffer subtracted from reported free space in get_storage_info(),
     # so the UI never shows the reserved space as "available".
-    # STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
-    STORAGE_MIN_FREE_BYTES = 51400 * 1024 * 1024
+    STORAGE_MIN_FREE_BYTES = 500 * 1024 * 1024
 
     # Additional safety margin on top of STORAGE_MIN_FREE_BYTES (10 MB).
     # A new photo capture or video recording is rejected unless free space exceeds
@@ -77,8 +76,8 @@ class CameraManager:
         system_settings_path: str,
     ):
         """
-        :param camera_module_info_path: Path to camera-module-info.json
-        :param camera_active_profile_path: Path to camera-active-profile.json
+        :param camera_module_info_path: Path to camera_module_info.json
+        :param camera_active_profile_path: Path to camera_active_profile.json
         :param media_upload_folder: Path to the folder where photos and videos are stored (media gallery)
         :camera_ui_settings_db_path: Path to file storing camera controls parameter, controllable via webui
         :camera_profile_folder: Path to folder storing files of saved camera profiles (.json)
@@ -91,7 +90,9 @@ class CameraManager:
 
         self.connected_cameras: List[dict] = []
         self.cameras: Dict[int, Camera] = {}
-        self.camera_active_profile = {"cameras": []}
+        # Flat dict: "{camera_num}_{sensor_model}" → active profile filename.
+        # Keyed by (port, sensor) so switching cameras never overwrites another sensor's entry.
+        self.camera_active_profile: dict = {}
         self.lock = threading.Lock()
         self._gallery = MediaGallery(media_upload_folder)
         self._settings = SystemSettings(system_settings_path)
@@ -150,8 +151,6 @@ class CameraManager:
                 "Num": connected_camera["Num"],
                 "Model": connected_camera["Model"],
                 "Is_Pi_Cam": is_pi_cam,
-                "Has_Config": False,
-                "Config_Location": f"{connected_camera['Model']}_default.json",
             }
 
             currently_connected.append(camera_info)
@@ -161,7 +160,6 @@ class CameraManager:
     def init_cameras(self):
         """Create Camera instances for all connected cameras."""
         self.connected_cameras = self._detect_connected_cameras()
-        self._update_active_profiles_file(self.connected_cameras)
 
         saved_settings = self._settings.get_all()
         available_sources = CameraManager.get_available_audio_sources()
@@ -493,70 +491,56 @@ class CameraManager:
         return self.connected_cameras
 
     # -------------- Camera Profile Management -------------------
+
+    @staticmethod
+    def _profile_key(camera_num: int, model: str) -> str:
+        """Return the lookup key used in camera_active_profile for a (port, sensor) pair."""
+        return f"{camera_num}_{model}"
+
     def _load_active_profiles_file(self, filepath: str):
         """
-        Load the file storing informations about the active camera profiles
-        or initalize file, if not already existing
+        Load camera_active_profile.json into self.camera_active_profile.
+
+        Format: flat dict mapping "{camera_num}_{sensor_model}" → profile filename.
+        Automatically migrates the legacy {"cameras": [...]} format on first read.
         """
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, "r") as f:
-                    self.camera_active_profile = json.load(f)
-            except Exception as exc:
-                logger.error(
-                    "Failed to load active camera profile file '%s': %s",
-                    filepath,
-                    exc,
-                    exc_info=True,
-                )
-                self.camera_active_profile = {"cameras": []}
+        if not os.path.exists(filepath):
+            self.camera_active_profile = {}
+            return
+
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+        except Exception as exc:
+            logger.error("Failed to load '%s': %s", filepath, exc, exc_info=True)
+            self.camera_active_profile = {}
+            return
+
+        # Migrate legacy format: {"cameras": [{"Num":0, "Model":"imx708", "Config_Location":"..."}]}
+        if isinstance(data, dict) and "cameras" in data:
+            migrated = {}
+            for cam in data.get("cameras", []):
+                filename = cam.get("Config_Location")
+                if filename and cam.get("Num") is not None and cam.get("Model"):
+                    key = self._profile_key(cam["Num"], cam["Model"])
+                    migrated[key] = filename
+            logger.info("Migrated camera_active_profile.json to per-sensor format: %s", migrated)
+            self.camera_active_profile = migrated
+            with open(filepath, "w") as f:
+                json.dump(self.camera_active_profile, f, indent=4)
+            return
+
+        if isinstance(data, dict):
+            self.camera_active_profile = data
         else:
-            self.camera_active_profile = {"cameras": []}
-
-
-    def _update_active_profiles_file(self, connected_cameras: List[dict]):
-        """
-        Compare currently connected cameras with the file storing informations
-        about the active camera profiles (camera_active_profile_path)
-        and update its settings/values if necessary.
-        """
-        existing_lookup = {
-            cam["Num"]: cam for cam in self.camera_active_profile.get("cameras", [])
-        }
-
-        updated_cameras = []
-
-        for cam in self.connected_cameras:
-            cam_num = cam["Num"]
-
-            if cam_num in existing_lookup:
-                config_cam = existing_lookup[cam_num]
-
-                if (
-                    config_cam["Model"] != cam["Model"]
-                    or config_cam.get("Is_Pi_Cam") != cam.get("Is_Pi_Cam")
-                ):
-                    logger.info(
-                        "Camera %s changed (model or Pi Camera flag). Updating config.",
-                        cam_num,
-                    )
-                    updated_cameras.append(cam)
-                else:
-                    updated_cameras.append(config_cam)
-            else:
-                logger.info("New camera detected and added to config: %s", cam)
-                updated_cameras.append(cam)
-
-        self.camera_active_profile = {"cameras": updated_cameras}
-        with open(self.camera_active_profile_path, "w") as f:
-            json.dump(self.camera_active_profile, f, indent=4)
-
-        self.connected_cameras = updated_cameras
-        return updated_cameras
+            logger.warning("Unexpected format in '%s'; resetting.", filepath)
+            self.camera_active_profile = {}
 
     def _is_profile_active(self, filename: str) -> bool:
-        for cam in self.camera_active_profile.get("cameras", []):
-            if cam.get("Config_Location") == filename:
+        """Return True if filename is the active profile for any currently connected camera."""
+        for cam_num, camera in self.cameras.items():
+            model = camera.camera_info.get("Model", "")
+            if self.camera_active_profile.get(self._profile_key(cam_num, model)) == filename:
                 return True
         return False
 
@@ -589,19 +573,29 @@ class CameraManager:
             return False
 
     def _set_active_profile(self, camera_num: int, filename: str):
-        for cam in self.camera_active_profile["cameras"]:
-            if cam["Num"] == camera_num:
-                cam["Has_Config"] = True
-                cam["Config_Location"] = filename
-                break
-
+        """Record filename as the active profile for the given camera's (port, sensor) pair."""
+        camera = self.get_camera(camera_num)
+        if not camera:
+            logger.warning("_set_active_profile: camera %s not found", camera_num)
+            return
+        model = camera.camera_info.get("Model", "")
+        key = self._profile_key(camera_num, model)
+        self.camera_active_profile[key] = filename
         with open(self.camera_active_profile_path, "w") as f:
             json.dump(self.camera_active_profile, f, indent=4)
 
+    def get_active_profile_filename(self, camera_num: int) -> Optional[str]:
+        """Return the active profile filename for camera_num, or None if none is set."""
+        camera = self.get_camera(camera_num)
+        if not camera:
+            return None
+        model = camera.camera_info.get("Model", "")
+        return self.camera_active_profile.get(self._profile_key(camera_num, model))
+
     def get_active_profile(self) -> dict:
         """
-        Return the content of camera-active-profile.json.
-        Always returns a valid structure.
+        Return the raw active-profile dict (key → filename).
+        Kept for backward compatibility with any callers that inspect this dict directly.
         """
         return copy.deepcopy(self.camera_active_profile)
 
@@ -703,84 +697,36 @@ class CameraManager:
 
     def _load_active_profile(self, camera_num: int) -> None:
         """
-        Load and apply the active profile for a specific camera
-        based on camera-active-profile.json.
+        Apply the last-active profile for camera_num (looked up by port + sensor model).
+        Does nothing if no profile has been set for this (port, sensor) combination.
         """
-
-        # Load camera-active-profile.json if it exists
-        if not os.path.exists(self.camera_active_profile_path):
-            logger.info(
-                "No active profile file found (%s). Using defaults for camera %s.",
-                self.camera_active_profile_path,
-                camera_num,
-            )
-            return
-
-        try:
-            with open(self.camera_active_profile_path, "r") as f:
-                self.camera_active_profile = json.load(f)
-        except Exception as exc:
-            logger.error(
-                "Failed to read active profile file '%s': %s",
-                self.camera_active_profile_path,
-                exc,
-                exc_info=True,
-            )
-            return
-
-        camera_entry = next(
-            (c for c in self.camera_active_profile.get("cameras", []) if c.get("Num") == camera_num),
-            None,
-        )
-
-        if not camera_entry:
-            logger.info(
-                "No active profile entry for camera %s. Using defaults.",
-                camera_num,
-            )
-            return
-
-        if not camera_entry.get("Has_Config"):
-            logger.info(
-                "Camera %s has no active profile configured. Using defaults.",
-                camera_num,
-            )
-            return
-
-        profile_filename = camera_entry.get("Config_Location")
+        profile_filename = self.get_active_profile_filename(camera_num)
         if not profile_filename:
-            logger.warning(
-                "Camera %s marked Has_Config but Config_Location is empty.",
-                camera_num,
+            camera = self.get_camera(camera_num)
+            model = camera.camera_info.get("Model", "") if camera else "unknown"
+            logger.info(
+                "No active profile for camera %s (sensor: %s). Using defaults.",
+                camera_num, model,
             )
             return
 
         if self.load_profile(camera_num, profile_filename):
-            logger.debug(
-                "Loaded active profile '%s' for camera %s",
-                profile_filename,
-                camera_num,
+            logger.info(
+                "Loaded active profile '%s' for camera %s.",
+                profile_filename, camera_num,
             )
         else:
             logger.error(
-                "Failed to load active profile '%s' for camera %s",
-                profile_filename,
-                camera_num,
+                "Failed to load active profile '%s' for camera %s.",
+                profile_filename, camera_num,
             )
 
     def save_param(self, camera_num: int, param_type: str, param_id: str, value) -> bool:
         """Save a single parameter to the active profile file on disk."""
-        camera = self.get_camera(camera_num)
-        if not camera:
+        if not self.get_camera(camera_num):
             return False
 
-        # Find the active profile filename for this camera
-        active = self.get_active_profile()
-        cameras = active.get("cameras", [])
-        filename = next(
-            (c.get("Config_Location") for c in cameras if c.get("Num") == camera_num),
-            None
-        )
+        filename = self.get_active_profile_filename(camera_num)
         if not filename:
             logger.warning("No active profile for camera %s — cannot save param", camera_num)
             return False
@@ -818,12 +764,7 @@ class CameraManager:
 
     def get_saved_params(self, camera_num: int) -> dict:
         """Return a flat dict of all param values currently saved in the active profile."""
-        active = self.get_active_profile()
-        cameras = active.get("cameras", [])
-        filename = next(
-            (c.get("Config_Location") for c in cameras if c.get("Num") == camera_num),
-            None
-        )
+        filename = self.get_active_profile_filename(camera_num)
         if not filename:
             return {}
 
