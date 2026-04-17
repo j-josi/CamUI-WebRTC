@@ -43,7 +43,7 @@
         <li class="nav-item">
           <a class="nav-link {% if cam_info.Num == camera.Num %}active{% endif %}"
              id="cameraTab_{{ cam_info.Num }}"
-             href="{{ url_for('live_view', cam=cam_info.Num) }}">
+             href="{{ url_for('camera', cam=cam_info.Num) }}">
             {{ camera_names.get(cam_info.Num, "Cam" ~ cam_info.Num) }}
           </a>
         </li>

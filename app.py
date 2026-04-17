@@ -712,7 +712,7 @@ def inject_camera_list():
         for camera in camera_manager.cameras.values()  # CameraObject instances
     ]
     # DEV: uncomment following line to add a second fake camera to simulate/test ux with multiple cameras
-    # camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
+    camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
     return dict(camera_list=camera_list, navbar=True)
 
 @app.context_processor
@@ -731,7 +731,7 @@ def home():
     """Redirect to the first camera page, or to an error if no cameras are found."""
     cameras = list(camera_manager.cameras.values())
     if cameras:
-        return redirect(url_for('live_view'))
+        return redirect(url_for('camera'))
     return render_template('error.html', message="No cameras found"), 404
 
 def _list_audio_sources() -> list:
@@ -814,6 +814,7 @@ def system_settings():
         hostname=_hostname,
         audio_sources=_list_audio_sources(),
         cameras_audio=cameras_audio,
+        full_url=request.url_root.rstrip('/'),
     )
 
 @app.route('/set_camera_config', methods=['POST'])
@@ -925,6 +926,8 @@ def get_system_settings():
         str(cam_num): cam.audio_device
         for cam_num, cam in camera_manager.cameras.items()
     }
+    # _deferred_stream_delay_cams is computed server-side in get_system_settings()
+    # and already present in settings — no proxy access needed here.
     return jsonify(settings)
 
 @app.route('/api/system_settings', methods=['POST'])
@@ -961,6 +964,14 @@ def update_system_settings():
                 pass
         if names_payload:
             socketio.emit("camera_names_changed", {"names": names_payload})
+    # Notify live-view clients to reconnect whenever a stream was restarted
+    restarted = updated.get("_restarted_stream_cams", [])
+    if restarted:
+        def _emit_stream_reinit(cam_nums):
+            time.sleep(0.5)  # give MediaMTX time to receive the first keyframe
+            for cam_num in cam_nums:
+                socketio.emit("stream_reinit", {"camera_num": cam_num}, room=f"camera_{cam_num}")
+        socketio.start_background_task(_emit_stream_reinit, restarted)
     return jsonify(updated)
 
 @app.route('/shutdown', methods=['POST'])
@@ -988,18 +999,18 @@ def restart():
 # Flask routes - Camera Control
 ####################
 
-@app.route("/live_view")
-def live_view():
-    """Live view route."""
+@app.route("/camera")
+def camera():
+    """Camera live view route."""
     try:
         cameras = list(camera_manager.cameras.values())
         if not cameras:
             return render_template('camera_not_found.html', camera_num=0)
         default_num = cameras[0].camera_num
         camera_num = request.args.get('cam', default_num, type=int)
-        camera = camera_manager.get_camera(camera_num)
-        if not camera:
-            return redirect(url_for('live_view'))
+        cam = camera_manager.get_camera(camera_num)
+        if not cam:
+            return redirect(url_for('camera'))
 
         sys_settings = camera_manager.get_system_settings()
         cam_display = {
@@ -1008,11 +1019,11 @@ def live_view():
         }
         camera_names = {c.camera_num: c.name for c in camera_manager.cameras.values()}
         return render_template(
-            'live_view.html',
-            camera = camera.camera_info,
-            settings = camera.ui_settings,
+            'camera.html',
+            camera = cam.camera_info,
+            settings = cam.ui_settings,
             profiles = camera_manager.list_profiles(),
-            has_audio = bool(camera.audio_device),
+            has_audio = bool(cam.audio_device),
             hostname = _hostname,
             camera_display = cam_display,
             camera_names = camera_names,

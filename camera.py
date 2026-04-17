@@ -6,6 +6,7 @@ import json
 import copy
 import logging
 import shutil
+import subprocess
 import threading
 import time
 
@@ -112,6 +113,11 @@ class Camera:
         # audio_device is determined by camera_manager before construction.
         self.audio_device: Optional[str] = audio_device
         self._configured_audio_device: Optional[str] = None  # user's saved choice (never changed by auto-fallback)
+        self.audio_volume: int = 100                    # PulseAudio source volume in percent (0–200)
+        self.audio_delay_ms: int = 0                    # A/V sync offset in ms applied to the recording encoder
+        self.audio_stream_delay_ms: int = 0             # A/V sync offset in ms applied to the stream encoder
+        self._audio_stream_delay_applied_ms: int = 0    # value actually applied in the last start_streaming() call
+        self._audio_delay_applied_ms: int = 0           # value actually applied when the current recording started
 
         # Placeholder; start_streaming() always creates a fresh encoder so that
         # _first_audio_time and other internal state are reset between sessions.
@@ -1379,8 +1385,12 @@ class Camera:
             self.encoder_stream = H264Encoder(bitrate=Camera.BITRATE_ENCODER_STREAM)
             self.encoder_stream.audio = bool(self.audio_device)
             if self.audio_device:
+                self._apply_volume()
+                self.encoder_stream.audio_input = {"file": self.audio_device, "format": "pulse"}
                 self.encoder_stream.audio_output = {"codec_name": "libopus"}
-                self.encoder_stream.audio_sync = 0
+                # Same convention as recording: -100 000 µs base + user offset (µs).
+                self.encoder_stream.audio_sync = -100_000 + (self.audio_stream_delay_ms * 1000)
+                self._audio_stream_delay_applied_ms = self.audio_stream_delay_ms
 
             self.output_stream = PyavOutput(
                 f"{Camera.MEDIAMTX_RTSP_ROOT_DOMAIN}/cam{self.camera_num}",
@@ -1410,6 +1420,19 @@ class Camera:
         free = shutil.disk_usage(self.upload_folder).free
         return free >= self._storage_min_free_bytes
 
+    def _apply_volume(self) -> None:
+        """Apply self.audio_volume to the PulseAudio source via pactl."""
+        if not self.audio_device:
+            return
+        try:
+            subprocess.run(
+                ["pactl", "set-source-volume", self.audio_device, f"{self.audio_volume}%"],
+                check=True, capture_output=True,
+            )
+            logger.debug("Audio volume for '%s' set to %d%%", self.audio_device, self.audio_volume)
+        except Exception as exc:
+            logger.warning("Failed to set audio volume for '%s': %s", self.audio_device, exc)
+
     def start_recording(self, filename: str) -> bool:
         with self.lock:
             if self.states["is_video_recording"]:
@@ -1420,7 +1443,16 @@ class Camera:
         self.encoder_recording = H264Encoder(bitrate=Camera.BITRATE_ENCODER_RECORDING)
         self.encoder_recording.audio = bool(self.audio_device)
         if self.audio_device:
+            self._apply_volume()
+            self.encoder_recording.audio_input = {"file": self.audio_device, "format": "pulse"}
             self.encoder_recording.audio_output = {"codec_name": "aac"}
+            # audio_sync unit: microseconds. picamera2 default: -100 000 µs.
+            # Increasing the value shifts audio earlier (compensates for late-arriving audio).
+            # delay_ms = 0   → -100 000 µs  (picamera2 default, no user adjustment)
+            # delay_ms = 100 →       0 µs   (audio at its natural capture position)
+            # delay_ms > 100 → positive     (audio shifted ahead of capture position)
+            self.encoder_recording.audio_sync = -100_000 + (self.audio_delay_ms * 1000)
+            self._audio_delay_applied_ms = self.audio_delay_ms
         self.output_recording = PyavOutput(path)
 
         try:

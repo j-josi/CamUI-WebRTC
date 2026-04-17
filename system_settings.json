@@ -1,15 +1,30 @@
 {
-  "max_recording_duration_min": 1,
-  "theme": "dark",
+  "max_recording_duration_min": 90,
+  "theme": "light",
   "default_language": "en",
   "live_view_title": "TrainCam",
-  "live_view_hide_title": false,
+  "live_view_hide_title": true,
   "camera_names": {
     "0": "Front",
     "1": "Back"
   },
   "camera_audio_devices": {
-    "0": "",
-    "1": ""
+    "0": "alsa_input.usb-C-Media_Electronics_Inc._USB_PnP_Sound_Device-00.analog-mono",
+    "1": "alsa_input.usb-C-Media_Electronics_Inc._USB_PnP_Sound_Device-00.analog-mono"
+  },
+  "audio_source_settings": {
+    "alsa_input.usb-C-Media_Electronics_Inc._USB_PnP_Sound_Device-00.analog-mono": {
+      "volume": 165
+    }
+  },
+  "camera_audio_delay_settings": {
+    "0": {
+      "delay_ms": 0,
+      "stream_delay_ms": 0
+    },
+    "1": {
+      "delay_ms": 0,
+      "stream_delay_ms": 0
+    }
   }
 }

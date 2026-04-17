@@ -20,6 +20,8 @@ DEFAULTS: dict = {
     "live_view_hide_title": False,      # hide the heading entirely
     "camera_names": {},                 # {str(camera_num): str}  — tab name per camera object
     "camera_audio_devices": {},         # {str(camera_num): str}  — audio source name ("" = none)
+    "audio_source_settings": {},        # {device_name: {"volume": 100}}  — global per PulseAudio source
+    "camera_audio_delay_settings": {},  # {str(camera_num): {"delay_ms": 0, "stream_delay_ms": 0}}  — per camera
 }
 
 

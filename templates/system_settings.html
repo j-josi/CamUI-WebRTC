@@ -1,208 +1,597 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+  .feature-icon-small { width: 3rem; height: 3rem; }
+  .feature-icon { width: 4rem; height: 4rem; border-radius: 0.75rem; }
+  img.about-logo {
+    filter: brightness(0) saturate(100%) invert(12%) sepia(4%) saturate(1870%) hue-rotate(169deg) brightness(94%) contrast(92%);
+    height: clamp(50px, 5vw, 150px);
+    width: auto;
+  }
+  [data-bs-theme="dark"] img.about-logo { filter: brightness(0) invert(1); }
+</style>
+
 <div class="container-fluid px-4 py-4">
 
-  <!-- 1. Theme Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.theme_title">Theme</h2>
-    <p class="text-muted small" data-i18n="settings.theme_desc">Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.</p>
-    <div class="d-flex gap-3 mb-2">
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="defaultTheme" id="themeLight" value="light">
-        <label class="form-check-label" for="themeLight">
-          <i class="bi bi-brightness-high-fill me-1"></i> <span data-i18n="settings.theme_light">Light</span>
-        </label>
-      </div>
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="defaultTheme" id="themeDark" value="dark">
-        <label class="form-check-label" for="themeDark">
-          <i class="bi bi-moon-stars-fill me-1"></i> <span data-i18n="settings.theme_dark">Dark</span>
-        </label>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="saveDefaultTheme()" data-i18n="settings.theme_save">Save as default</button>
-    <div id="themeMsg" class="mt-2 small d-none"></div>
-  </div>
-
-  <!-- 1b. Language Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.lang_title">Language</h2>
-    <p class="text-muted small" data-i18n="settings.lang_desc">Sets the default language for new or unrecognised devices. Each device can override this via the navbar selector.</p>
-    <div class="d-flex gap-3 mb-2">
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="defaultLang" id="langEn" value="en">
-        <label class="form-check-label" for="langEn">
-          🇬🇧 <span data-i18n="settings.lang_en">English</span>
-        </label>
-      </div>
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="defaultLang" id="langDe" value="de">
-        <label class="form-check-label" for="langDe">
-          🇩🇪 <span data-i18n="settings.lang_de">Deutsch</span>
-        </label>
-      </div>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="saveDefaultLanguage()" data-i18n="settings.lang_save">Save as default</button>
-    <div id="langMsg" class="mt-2 small d-none"></div>
-  </div>
-
-  <!-- 2. Recording Settings Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.recording_title">Recording Settings</h2>
-    <div class="row g-3 align-items-end" style="max-width: 480px;">
-      <div class="col">
-        <label for="maxRecordingDuration" class="form-label" data-i18n="settings.recording_max_label">Max. recording duration (minutes)</label>
-        <input type="number" class="form-control" id="maxRecordingDuration" min="1" max="600" step="1" value="90">
-        <div class="form-text" data-i18n="settings.recording_max_desc">Video recording (.mp4 file) stops automatically when this duration is reached.</div>
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" onclick="saveRecordingSettings()" data-i18n="settings.recording_save">Save</button>
-      </div>
-    </div>
-    <div id="recordingSettingsMsg" class="mt-2 small d-none"></div>
-  </div>
-
-  <!-- 2. Microphone Assignment Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.mic_title">Microphone Assignment</h2>
-    <p class="text-muted small" data-i18n="settings.mic_desc">
-      Assign a microphone to each camera for live stream and video recording.
-      Changes take effect after restarting the stream.
-    </p>
-    <div class="d-flex flex-column gap-3" style="max-width: 560px;">
-      {% for cam_info, cam_module_info in camera_list %}
-      <div>
-        <label class="form-label" for="micSelect_{{ cam_info.Num }}">
-          <strong>Cam{{ cam_info.Num }}</strong>
-          <span class="text-muted">({% if cam_module_info and cam_module_info.is_pi_cam %}{{ cam_module_info.module_name }}{% else %}{{ cam_info.Model }}{% endif %})</span>
-        </label>
-        <select class="form-select mic-select"
-                id="micSelect_{{ cam_info.Num }}"
-                data-cam-num="{{ cam_info.Num }}">
-          <option value="" data-i18n="settings.mic_no_audio">— No audio —</option>
-          {% for src in audio_sources %}
-          <option value="{{ src.name }}">
-            Mic{{ loop.index0 }}: {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      {% endfor %}
-    </div>
-    <div id="micSharedWarning" class="alert alert-warning d-none mt-3" role="alert">
-      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Experimental:</strong>
-      Assigning a single microphone to multiple cameras has not yet been tested on real hardware.
-      If you have experience with this feature on real hardware, you are welcome to leave a comment on 
-      <a href="https://github.com/j-josi/CamUI-WebRTC.git" target="_blank" class="alert-link">
-        GitHub <i class="bi bi-box-arrow-up-right" style="font-size:0.8em;"></i>
-      </a>
-       letting me know whether you have had success with this feature or if you have encountered any issues.
-      Thank you.
-    </div>
-    <div class="mt-3">
-      <button class="btn btn-primary btn-sm" onclick="saveMicrophoneAssignments()">Save</button>
-    </div>
-    <div id="micMsg" class="mt-2 small d-none"></div>
-  </div>
-
-  <!-- 3. Live View Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.liveview_title">Live View</h2>
-
-    <!-- 2a. Page title -->
-    <div class="row g-3 align-items-end mb-4" style="max-width: 480px;">
-      <div class="col">
-        <label for="liveViewTitle" class="form-label">Page Title</label>
-        <input type="text" class="form-control" id="liveViewTitle"
-               placeholder="{{ hostname }}">
-        <div class="form-text">Displayed above the video feed. Defaults to the hostname if left empty.</div>
-      </div>
-      <div class="col-auto d-flex flex-column gap-2">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="liveViewHideTitle">
-          <label class="form-check-label" for="liveViewHideTitle">Hide title</label>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="saveLiveViewTitle()">Save</button>
-      </div>
-    </div>
-    <div id="liveViewTitleMsg" class="mt-2 small d-none"></div>
-
-    {% if camera_list|length > 1 %}
-    <!-- 2b. Per-camera names (only shown when multiple cameras are connected) -->
-    <label class="form-label">Camera Names</label>
-    <div class="row g-3 align-items-end" style="max-width: 480px;">
-      {% for cam_info, cam_module_info in camera_list %}
-      <div class="col-12">
-        <div class="input-group">
-          <span class="input-group-text">Camera {{ cam_info.Num }}</span>
-          <input type="text" class="form-control camera-name-input"
-                 id="cameraNameInput_{{ cam_info.Num }}"
-                 placeholder="Cam{{ cam_info.Num }}"
-                 data-cam-num="{{ cam_info.Num }}">
-        </div>
-      </div>
-      {% endfor %}
-      <div class="col-auto">
-        <button class="btn btn-primary btn-sm" onclick="saveCameraNames()">Save</button>
-      </div>
-    </div>
-    <div id="cameraNamesMsg" class="mt-2 small d-none"></div>
+  <!-- Tab Navigation -->
+  <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="tab-appearance-btn" data-bs-toggle="tab" data-bs-target="#tab-appearance" type="button" role="tab" data-i18n="settings.tab_appearance">Appearance</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-camera-audio-btn" data-bs-toggle="tab" data-bs-target="#tab-camera-audio" type="button" role="tab" data-i18n="settings.tab_camera_audio">Camera &amp; Audio</button>
+    </li>
+    {% if firmware_control %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-firmware-btn" data-bs-toggle="tab" data-bs-target="#tab-firmware" type="button" role="tab" data-i18n="settings.tab_firmware">Firmware</button>
+    </li>
     {% endif %}
-  </div>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-info-btn" data-bs-toggle="tab" data-bs-target="#tab-info" type="button" role="tab" data-i18n="settings.tab_info">Info</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="tab-about-btn" data-bs-toggle="tab" data-bs-target="#tab-about" type="button" role="tab" data-i18n="settings.tab_about">About</button>
+    </li>
+  </ul>
 
-  <!-- 3. System Control Section -->
-  <div class="mb-5">
-    <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.system_title">System Controls</h2>
-    <div class="d-flex gap-3">
-     <!-- Shutdown Button -->
-<form action="{{ url_for('shutdown') }}" method="POST">
-  <button type="submit" class="btn btn-danger">Shutdown</button>
-</form>
+  <div class="tab-content" id="settingsTabContent">
 
-<!-- Restart Button -->
-<form action="{{ url_for('restart') }}" method="POST">
-  <button type="submit" class="btn btn-warning">Restart</button>
-</form>
-    </div>
-  </div>
+    <!-- ================================================================ -->
+    <!-- Tab: Appearance                                                   -->
+    <!-- ================================================================ -->
+    <div class="tab-pane fade show active" id="tab-appearance" role="tabpanel">
 
-  {% if firmware_control %}
-  <!-- 2. Camera Modules Section -->
-  <div>
-    <h2 class="pb-2 mb-4 border-bottom">Select a Camera Module</h2>
-    <div class="alert alert-danger d-flex align-items-center" role="alert">
-      <div>
-        <p>If you found this awesome! Please be VERY careful with this setting and its recomended to backup manually your '/boot/firmware/config.txt' as this feature changes that file and can effect the booting of your Pi</p>
-        <p>Some carrier boards for the CM4/5 don't allow automatic camera detection or at the least not allowing it to happen. So this feature turns off automatic detection and actually sets which camera you want loaded to the system. Unfortunatly you can only have one camera set at a time so if you change your camera you are going to need to return to this setting.</p>
-        <p>If you are running on a Raspberry Pi 5/4 directly you should not experiance any issue and you should not need this setting at all.</p>
-      </div>
-    </div>
-    <div class="row row-cols-1 row-cols-md-3 g-4">
-      {% for camera in camera_modules %}
-      {% if camera.module_name != 'Unknown Camera' %}
-      <div class="col">
-        <div class="card h-100 shadow-sm">
-                <img id="Camera: {{ camera.sensor_model }}" src="{{ url_for('static', filename='img/' + camera.sensor_model|string + '.jpg') }}" alt="..." onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/unknown.jpg') }}';">
-          <div class="card-body text-center">
-            <h5 class="card-title">{{ camera.module_name }}</h5>
-            <button class="btn btn-primary" onclick="showCameraModal('{{ camera.sensor_model }}', '{{ camera.module_name }}')">Select Camera</button>
+      <!-- Theme -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.theme_title">Theme</h2>
+        <p class="text-muted small" data-i18n="settings.theme_desc">Sets the default theme for new or unrecognised devices. Each device can override this via the navbar toggle.</p>
+        <div class="d-flex gap-3 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="defaultTheme" id="themeLight" value="light">
+            <label class="form-check-label" for="themeLight">
+              <i class="bi bi-brightness-high-fill me-1"></i> <span data-i18n="settings.theme_light">Light</span>
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="defaultTheme" id="themeDark" value="dark">
+            <label class="form-check-label" for="themeDark">
+              <i class="bi bi-moon-stars-fill me-1"></i> <span data-i18n="settings.theme_dark">Dark</span>
+            </label>
           </div>
         </div>
       </div>
+
+      <!-- Language -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.lang_title">Language</h2>
+        <p class="text-muted small" data-i18n="settings.lang_desc">Sets the default language for new or unrecognised devices. Each device can override this via the navbar selector.</p>
+        <div class="d-flex gap-3 mb-2">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="defaultLang" id="langEn" value="en">
+            <label class="form-check-label" for="langEn">
+              🇬🇧 <span data-i18n="settings.lang_en">English</span>
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="defaultLang" id="langDe" value="de">
+            <label class="form-check-label" for="langDe">
+              🇩🇪 <span data-i18n="settings.lang_de">Deutsch</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Name -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.liveview_title">Device Name</h2>
+        <div style="max-width: 480px;">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="liveViewHideTitle"
+                   onchange="document.getElementById('liveViewTitle').disabled = !this.checked;">
+            <label class="form-check-label" for="liveViewHideTitle" data-i18n="settings.liveview_show_title">Show as title in camera page</label>
+          </div>
+          <label for="liveViewTitle" class="form-label" data-i18n="settings.liveview_page_title_label">Name</label>
+          <input type="text" class="form-control" id="liveViewTitle" placeholder="{{ hostname }}">
+          <div class="form-text" data-i18n="settings.liveview_page_title_desc">Identifies this device. Shown as the title above the camera feed.</div>
+        </div>
+      </div>
+
+      {% if camera_list|length > 1 %}
+      <!-- Camera Names -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.camera_names_title">Camera Names</h2>
+        <div class="row g-3" style="max-width: 480px;">
+          {% for cam_info, cam_module_info in camera_list %}
+          <div class="col-12">
+            <div class="input-group">
+              <span class="input-group-text">Cam{{ cam_info.Num }}</span>
+              <input type="text" class="form-control camera-name-input"
+                     id="cameraNameInput_{{ cam_info.Num }}"
+                     placeholder="Cam{{ cam_info.Num }}"
+                     data-cam-num="{{ cam_info.Num }}">
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
       {% endif %}
-      {% endfor %}
-    </div>
-  </div>
-  <div class="col-12 text-center mt-4">
-    <button class="btn btn-warning" onclick="showResetModal()">Reset Automatic Camera Detection</button>
-  </div>
-  {% endif %}
 
-</div>
+      <div class="mb-2">
+        <button class="btn btn-primary btn-sm" onclick="saveAppearanceTab()" data-i18n="general.save">Save</button>
+        <div id="appearanceMsg" class="mt-2 small d-none"></div>
+      </div>
+
+    </div><!-- /tab-appearance -->
+
+    <!-- ================================================================ -->
+    <!-- Tab: Camera & Audio                                               -->
+    <!-- ================================================================ -->
+    <div class="tab-pane fade" id="tab-camera-audio" role="tabpanel">
+
+      <!-- Recording Settings -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.recording_title">Recording Settings</h2>
+        <div style="max-width: 480px;">
+          <label for="maxRecordingDuration" class="form-label" data-i18n="settings.recording_max_label">Max. recording duration (minutes)</label>
+          <input type="number" class="form-control" id="maxRecordingDuration" min="1" max="600" step="1" value="90">
+          <div class="form-text" data-i18n="settings.recording_max_desc">Video recording (.mp4 file) stops automatically when this duration is reached.</div>
+        </div>
+      </div>
+
+      <!-- Microphone & Audio Settings -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.mic_title">Microphone &amp; Audio Settings</h2>
+        <p class="text-muted small">
+          <span data-i18n="settings.mic_desc">Assign a microphone to each camera and configure volume and audio synchronization.</span>
+          <span class="d-block mt-1">
+            <span data-i18n="settings.mic_info_hint">Details about connected hardware (cameras and microphones) can be found in the</span>
+            <a href="#" class="link-secondary" onclick="bootstrap.Tab.getOrCreateInstance(document.getElementById('tab-info-btn')).show(); return false;" data-i18n="settings.mic_info_link_text">Info tab</a>.
+          </span>
+        </p>
+        <div class="row g-3">
+          {% for cam_info, cam_module_info in camera_list %}
+          <div class="col-12 col-xxl-6">
+          <div class="border rounded p-3 h-100">
+            <div class="mb-2">
+              <strong>Cam{{ cam_info.Num }}</strong>
+              <span class="text-muted">({% if cam_module_info and cam_module_info.is_pi_cam %}{{ cam_module_info.module_name }}{% else %}{{ cam_info.Model }}{% endif %})</span>
+            </div>
+            <label class="form-label small mb-1" for="micSelect_{{ cam_info.Num }}" data-i18n="settings.mic_assignment_label">Microphone Assignment</label>
+            <select class="form-select mic-select"
+                    id="micSelect_{{ cam_info.Num }}"
+                    data-cam-num="{{ cam_info.Num }}">
+              <option value="" data-i18n="settings.mic_no_audio">— No audio —</option>
+              {% for src in audio_sources %}
+              <option value="{{ src.name }}">
+                Mic{{ loop.index0 }}: {{ src.description }}{% if src.sample_spec %} — {{ src.sample_spec }}{% endif %}
+              </option>
+              {% endfor %}
+            </select>
+            <!-- Per-microphone audio settings (hidden when no mic is selected) -->
+            <div class="mic-audio-settings d-none mt-2" id="micAudioSettings_{{ cam_info.Num }}">
+              <div class="d-flex flex-column flex-md-row gap-3 align-items-start">
+                <div>
+                  <label class="form-label small mb-1" for="micVolume_{{ cam_info.Num }}">
+                    <span data-i18n="settings.mic_volume_label">Volume</span>
+                    <i class="bi bi-info-circle ms-1 text-muted"
+                       data-bs-toggle="tooltip" data-bs-placement="top"
+                       data-i18n-tooltip="settings.mic_volume_tooltip"
+                       title=""></i>
+                  </label>
+                  <div class="d-flex align-items-center gap-2">
+                    <input type="range" class="form-range mic-volume"
+                           id="micVolume_{{ cam_info.Num }}"
+                           data-cam-num="{{ cam_info.Num }}"
+                           min="0" max="200" step="5" value="100"
+                           style="width: 130px;">
+                    <span id="micVolumeLabel_{{ cam_info.Num }}" class="small text-muted" style="min-width: 3.5em">100%</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label small mb-1" for="micDelay_{{ cam_info.Num }}">
+                    <span data-i18n="settings.mic_delay_label">Recording delay (ms)</span>
+                    <i class="bi bi-info-circle ms-1 text-muted"
+                       data-bs-toggle="tooltip" data-bs-placement="top"
+                       data-i18n-tooltip="settings.mic_delay_tooltip"
+                       title=""></i>
+                  </label>
+                  <input type="number" class="form-control form-control-sm mic-delay"
+                         id="micDelay_{{ cam_info.Num }}"
+                         data-cam-num="{{ cam_info.Num }}"
+                         min="0" max="5000" step="1" value="0"
+                         style="width: 90px;">
+                  <small id="micDelayError_{{ cam_info.Num }}"
+                         class="text-danger d-block"
+                         style="visibility:hidden;font-size:0.75em;line-height:1.4"
+                         data-i18n="settings.mic_delay_range_error">0–5000 ms</small>
+                </div>
+                <div>
+                  <label class="form-label small mb-1" for="micStreamDelay_{{ cam_info.Num }}">
+                    <span data-i18n="settings.mic_stream_delay_label">Stream delay (ms)</span>
+                    <i class="bi bi-info-circle ms-1 text-muted"
+                       data-bs-toggle="tooltip" data-bs-placement="top"
+                       data-i18n-tooltip="settings.mic_stream_delay_tooltip"
+                       title=""></i>
+                  </label>
+                  <input type="number" class="form-control form-control-sm mic-stream-delay"
+                         id="micStreamDelay_{{ cam_info.Num }}"
+                         data-cam-num="{{ cam_info.Num }}"
+                         min="0" max="5000" step="1" value="0"
+                         style="width: 90px;">
+                  <small id="micStreamDelayError_{{ cam_info.Num }}"
+                         class="text-danger d-block"
+                         style="visibility:hidden;font-size:0.75em;line-height:1.4"
+                         data-i18n="settings.mic_delay_range_error">0–5000 ms</small>
+                </div>
+              </div>
+            </div>
+            <div class="alert alert-warning d-none mt-2 mb-0 py-2" id="micDeferredAlert_{{ cam_info.Num }}" role="alert">
+              <i class="bi bi-clock-history me-1"></i><strong id="micDeferredAlertTitle_{{ cam_info.Num }}"></strong> <span id="micDeferredAlertText_{{ cam_info.Num }}"></span>
+            </div>
+          </div>
+          </div><!-- /col -->
+          {% endfor %}
+        </div><!-- /row -->
+        <div id="micSharedWarning" class="alert alert-warning d-none mt-3" role="alert">
+          <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Experimental:</strong>
+          Assigning a single microphone to multiple cameras has not yet been tested on real hardware.
+          If you have experience with this feature on real hardware, you are welcome to leave a comment on
+          <a href="https://github.com/j-josi/CamUI-WebRTC.git" target="_blank" class="alert-link">
+            GitHub <i class="bi bi-box-arrow-up-right" style="font-size:0.8em;"></i>
+          </a>
+          letting me know whether you have had success with this feature or if you have encountered any issues.
+          Thank you.
+        </div>
+      </div>
+
+      <div class="mb-2">
+        <button class="btn btn-primary btn-sm" id="saveCameraAudioBtn" onclick="saveCameraAudioTab()" data-i18n="general.save">Save</button>
+        <div id="cameraAudioMsg" class="mt-2 small d-none"></div>
+      </div>
+
+    </div><!-- /tab-camera-audio -->
 
 
+    {% if firmware_control %}
+    <!-- ================================================================ -->
+    <!-- Tab: Firmware                                                     -->
+    <!-- ================================================================ -->
+    <div class="tab-pane fade" id="tab-firmware" role="tabpanel">
 
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom">Select a Camera Module</h2>
+        <div class="alert alert-danger d-flex align-items-center" role="alert">
+          <div>
+            <p>If you found this awesome! Please be VERY careful with this setting and its recomended to backup manually your '/boot/firmware/config.txt' as this feature changes that file and can effect the booting of your Pi</p>
+            <p>Some carrier boards for the CM4/5 don't allow automatic camera detection or at the least not allowing it to happen. So this feature turns off automatic detection and actually sets which camera you want loaded to the system. Unfortunatly you can only have one camera set at a time so if you change your camera you are going to need to return to this setting.</p>
+            <p>If you are running on a Raspberry Pi 5/4 directly you should not experiance any issue and you should not need this setting at all.</p>
+          </div>
+        </div>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+          {% for camera in camera_modules %}
+          {% if camera.module_name != 'Unknown Camera' %}
+          <div class="col">
+            <div class="card h-100 shadow-sm">
+              <img id="Camera: {{ camera.sensor_model }}" src="{{ url_for('static', filename='img/' + camera.sensor_model|string + '.jpg') }}" alt="..." onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/unknown.jpg') }}';">
+              <div class="card-body text-center">
+                <h5 class="card-title">{{ camera.module_name }}</h5>
+                <button class="btn btn-primary" onclick="showCameraModal('{{ camera.sensor_model }}', '{{ camera.module_name }}')">Select Camera</button>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div class="col-12 text-center mt-4">
+          <button class="btn btn-warning" onclick="showResetModal()">Reset Automatic Camera Detection</button>
+        </div>
+      </div>
+
+    </div><!-- /tab-firmware -->
+    {% endif %}
+
+    <!-- ================================================================ -->
+    <!-- Tab: Info                                                         -->
+    <!-- ================================================================ -->
+    <div class="tab-pane fade" id="tab-info" role="tabpanel">
+
+      <div class="container-xxl px-0">
+
+        <!-- Cameras -->
+        <div class="mb-5">
+          <h2 class="pb-2 mb-4 border-bottom">
+            <i class="bi bi-cpu me-2"></i><span data-i18n="info.heading">Detected Hardware</span>
+          </h2>
+
+          <h3 class="pb-2 mb-3 border-bottom">
+            <i class="bi bi-camera-video me-2"></i><span data-i18n="info.cameras_title">Cameras</span>
+          </h3>
+
+          {% if camera_list|length >= 1 %}
+          <!-- Per-camera tabs (JS-based, no page reload) -->
+          <ul class="nav nav-tabs mb-3" id="infoCamTabs" role="tablist">
+            {% for cam_info, cam_module_info in camera_list %}
+            <li class="nav-item" role="presentation">
+              <button class="nav-link {% if loop.first %}active{% endif %}"
+                      data-bs-toggle="tab"
+                      data-bs-target="#info-cam-{{ cam_info.Num }}"
+                      type="button" role="tab">
+                Cam{{ cam_info.Num }}
+              </button>
+            </li>
+            {% endfor %}
+          </ul>
+
+          <div class="tab-content" id="infoCamTabContent">
+            {% for cam_info, cam_module_info in camera_list %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+                 id="info-cam-{{ cam_info.Num }}" role="tabpanel">
+
+              {% if cam_module_info %}
+              <div class="row row-cols-1 row-cols-md-2">
+                <div class="col d-flex flex-column align-items-center">
+                  <div class="card mb-3" style="width: 18rem;">
+                    <img class="m-1"
+                         src="{{ url_for('static', filename='img/' + (cam_module_info.sensor_model if cam_module_info.sensor_model else 'unknown') + '.jpg') }}"
+                         alt="Camera Image"
+                         onerror="this.onerror=null; this.src='{{ url_for('static', filename='img/unknown.jpg') }}';">
+                  </div>
+                  <h2 class="fw-bold text-body-emphasis">{{ cam_module_info.module_name }}</h2>
+                </div>
+                <div class="col">
+                  <ul class="nav nav-tabs mt-0" id="infoSpecTabs_{{ cam_info.Num }}" role="tablist">
+                    <li class="nav-item">
+                      <a href="#info_specs_{{ cam_info.Num }}" class="nav-link active" data-bs-toggle="tab" data-i18n="info.tab_specs">Camera Specs</a>
+                    </li>
+                    <li class="nav-item">
+                      <a href="#info_links_{{ cam_info.Num }}" class="nav-link" data-bs-toggle="tab" data-i18n="info.tab_links">Camera Links</a>
+                    </li>
+                  </ul>
+                  <div class="tab-content">
+                    <div class="tab-pane fade show active table-responsive" id="info_specs_{{ cam_info.Num }}">
+                      <table class="table">
+                        <tbody>
+                          <tr><th scope="row" data-i18n="info.spec_sensor">Sensor</th><td>{{ cam_module_info.manufacturer }} {{ cam_module_info.sensor_model }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_megapixels">Megapixels</th><td>{{ cam_module_info.megapixels }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_resolution">Sensor Resolution</th><td>{{ cam_module_info.sensor_resolution }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_video_modes">Video Modes</th><td>{{ cam_module_info.video_modes }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_image_area">Sensor Image Area</th><td>{{ cam_module_info.sensor_image_area }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_pixel_size">Pixel Size</th><td>{{ cam_module_info.pixel_size }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_optical_size">Optical Size</th><td>{{ cam_module_info.optical_size }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_focus">Focus</th><td>{{ cam_module_info.focus }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_dof">Depth of field</th><td>{{ cam_module_info.dof }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_focal_length">Focal Length</th><td>{{ cam_module_info.focal_length }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_h_fov">Horizontal FoV</th><td>{{ cam_module_info.horizontal_fov }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_v_fov">Vertical FoV</th><td>{{ cam_module_info.vertical_fov }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_f_stop">F-Stop</th><td>{{ cam_module_info.f_stop }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_max_exposure">Max. exposure time</th><td>{{ cam_module_info.max_exposure_time }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_lens_mount">Lens Mount</th><td>{{ cam_module_info.lens_mount }}</td></tr>
+                          <tr><th scope="row" data-i18n="info.spec_infrared_sensitive">Infrared-sensitive</th><td>{{ cam_module_info.infrared_sensitive }}</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="tab-pane fade table-responsive" id="info_links_{{ cam_info.Num }}">
+                      <table class="table">
+                        <tbody>
+                          <tr>
+                            <th scope="row" data-i18n="info.link_video_feed">Video Feed</th>
+                            <td><a href="{{ url_for('video_feed', camera_num=cam_info.Num) }}" class="user-select-all text-break" id="video_feed_link_{{ cam_info.Num }}">{{ full_url }}{{ url_for('video_feed', camera_num=cam_info.Num) }}</a></td>
+                            <td><button type="button" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="Copy to clipboard" onclick="copyToClipboard('video_feed_link_{{ cam_info.Num }}')"><i class="bi bi-clipboard"></i></button></td>
+                          </tr>
+                          <tr>
+                            <th scope="row" data-i18n="info.link_snapshot">Snapshot Link</th>
+                            <td><a href="{{ url_for('snapshot', camera_num=cam_info.Num) }}" class="user-select-all text-break" id="snapshot_link_{{ cam_info.Num }}">{{ full_url }}{{ url_for('snapshot', camera_num=cam_info.Num) }}</a></td>
+                            <td><button type="button" class="btn btn-primary btn-sm" data-bs-toggle="tooltip" data-bs-title="Copy to clipboard" onclick="copyToClipboard('snapshot_link_{{ cam_info.Num }}')"><i class="bi bi-clipboard"></i></button></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div class="alert alert-info d-flex align-items-center gap-2" role="alert">
+                        <i class="bi bi-info-circle"></i>
+                        <span data-i18n="info.link_alert">These links work in VLC Player, OBS and Octoprint. If the hostname URL does not work it is recommended to use the IP address instead.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% else %}
+              <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+                <i class="bi bi-camera-video-off-fill"></i>
+                <span data-i18n="info.no_camera">No camera detected.</span>
+              </div>
+              {% endif %}
+
+            </div><!-- /info-cam-N -->
+            {% endfor %}
+          </div><!-- /infoCamTabContent -->
+          {% endif %}
+        </div><!-- /Cameras -->
+
+        <!-- Microphones -->
+        <div class="mb-5">
+          <h3 class="pb-2 mb-3 border-bottom">
+            <i class="bi bi-mic me-2"></i><span data-i18n="info.microphones_title">Microphones</span>
+          </h3>
+
+          {% if audio_sources %}
+          <div class="row row-cols-1 row-cols-md-2 g-4">
+            {% for src in audio_sources %}
+            <div class="col">
+              <div class="card h-100">
+                <div class="card-body">
+                  <h5 class="card-title d-flex align-items-center gap-2">
+                    <i class="bi bi-mic-fill text-secondary"></i>
+                    Mic{{ loop.index0 }}
+                  </h5>
+                  <table class="table table-sm mb-0">
+                    <tbody>
+                      {% if src.description and src.description != src.name %}
+                      <tr><th scope="row" style="width:40%" data-i18n="info.mic_description">Description</th><td>{{ src.description }}</td></tr>
+                      {% endif %}
+                      <tr><th scope="row" style="width:40%" data-i18n="info.mic_name">Name</th><td class="text-break font-monospace" style="font-size:0.8rem">{{ src.name }}</td></tr>
+                      {% if src.sample_spec %}
+                      <tr><th scope="row" data-i18n="info.mic_sample_format">Sample Format</th><td>{{ src.sample_spec }}</td></tr>
+                      {% endif %}
+                      <tr>
+                        <th scope="row" data-i18n="info.mic_state">State</th>
+                        <td>
+                          {% if src.state == "RUNNING" %}
+                            <span class="badge bg-success" data-i18n="info.mic_state_running">Running</span>
+                          {% elif src.state == "SUSPENDED" %}
+                            <span class="badge bg-secondary" data-i18n="info.mic_state_suspended">Suspended</span>
+                          {% elif src.state == "IDLE" %}
+                            <span class="badge bg-warning text-dark" data-i18n="info.mic_state_idle">Idle</span>
+                          {% else %}
+                            <span class="badge bg-light text-dark">{{ src.state }}</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row" data-i18n="info.mic_assigned_to">Assigned camera</th>
+                        <td>
+                          {% set used_by = [] %}
+                          {% for cam_num, dev in cameras_audio.items() %}
+                            {% if dev == src.name %}
+                              {% set _ = used_by.append("Cam" ~ cam_num) %}
+                            {% endif %}
+                          {% endfor %}
+                          {% if used_by %}
+                            <span class="badge bg-primary">{{ used_by | join(", ") }}</span>
+                          {% else %}
+                            <span class="text-muted">—</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-mic-mute-fill"></i>
+            <span data-i18n="info.no_mic">No microphones detected.</span>
+          </div>
+          {% endif %}
+        </div><!-- /Microphones -->
+
+      </div>
+
+    </div><!-- /tab-info -->
+
+    <!-- ================================================================ -->
+    <!-- Tab: About                                                        -->
+    <!-- ================================================================ -->
+    <div class="tab-pane fade" id="tab-about" role="tabpanel">
+
+      <div class="container">
+        <div class="container" id="custom-cards">
+          <div class="row row-cols-1 row-cols-md-2 align-items-md-center g-5 py-5">
+            <div class="col d-flex flex-column align-items-start gap-2">
+              <div class="position-relative top-0 start-50 translate-middle-x pb-5">
+                <img src="{{ url_for('static', filename='img/camui_logo.svg') }}" alt="Logo" class="about-logo">
+              </div>
+              <h2 class="fw-bold text-body-emphasis" data-i18n="about.tagline">Lightweight web interface for the Raspberry Pi camera module</h2>
+              <p class="text-body-secondary" data-i18n="about.description">
+                Utilizing the picamera2 library. This project provides a simple user interface to configure camera settings, capture photos, and manage images in a basic gallery.
+              </p>
+              <a href="https://github.com/j-josi/CamUI-WebRTC.git" class="btn btn-primary btn-lg" data-i18n="about.github_btn">Updates on Github</a> Version: {{ version }}
+            </div>
+            <div class="col">
+              <div class="row row-cols-1 row-cols-sm-2 g-4">
+                <div class="col d-flex flex-column gap-2">
+                  <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
+                    <i class="bi bi-camera"></i>
+                  </div>
+                  <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_shoot_title">Simply Shoot</h4>
+                  <p class="text-body-secondary" data-i18n="about.feature_shoot_body">Take photos and video recordings with a single click and save them to the media gallery.</p>
+                </div>
+                <div class="col d-flex flex-column gap-2">
+                  <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
+                    <i class="bi bi-toggles"></i>
+                  </div>
+                  <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_configure_title">Configure Your Camera</h4>
+                  <p class="text-body-secondary" data-i18n="about.feature_configure_body">Easily configure camera settings such as image rotation, exposure, white balance settings, and many more.</p>
+                </div>
+                <div class="col d-flex flex-column gap-2">
+                  <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
+                    <i class="bi bi-floppy"></i>
+                  </div>
+                  <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_save_title">Save Your Settings</h4>
+                  <p class="text-body-secondary" data-i18n="about.feature_save_body">When you are happy with the configuration of your camera you can save the settings for later, even after rebooting.</p>
+                </div>
+                <div class="col d-flex flex-column gap-2">
+                  <div class="feature-icon-small d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-4 rounded-3">
+                    <i class="bi bi-images"></i>
+                  </div>
+                  <h4 class="fw-semibold mb-0 text-body-emphasis" data-i18n="about.feature_gallery_title">Simple Gallery</h4>
+                  <p class="text-body-secondary" data-i18n="about.feature_gallery_body">View, delete, and download your images and video recordings in a simple gallery interface.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container px-4 py-5 pt-0" id="featured-3">
+          <h2 class="pb-2 border-bottom" data-i18n="about.under_the_hood">Under The Hood</h2>
+          <div class="row g-4 py-5 row-cols-1 row-cols-lg-3">
+            <div class="feature col">
+              <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3">
+                <i class="bi bi-tools"></i>
+              </div>
+              <h3 class="fs-2 text-body-emphasis">Picamera2</h3>
+              <p data-i18n="about.picamera2_desc">This project utilizes the Picamera2 library for Python.</p>
+              <ul class="list-group list-group-flush list-unstyled">
+                <li><a href="https://github.com/raspberrypi/picamera2" class="icon-link" data-i18n="about.picamera2_github">Picamera2 on Github</a></li>
+                <li><a href="https://datasheets.raspberrypi.com/camera/picamera2-manual.pdf" class="icon-link" data-i18n="about.picamera2_manual">Picamera2 Manual</a></li>
+              </ul>
+            </div>
+            <div class="feature col">
+              <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3">
+                <i class="bi bi-nut"></i>
+              </div>
+              <h3 class="fs-2 text-body-emphasis">Flask</h3>
+              <p data-i18n="about.flask_desc">Flask is a micro web framework written in Python.</p>
+              <ul class="list-group list-group-flush list-unstyled">
+                <li><a href="https://flask.palletsprojects.com/en/3.0.x/" class="icon-link" data-i18n="about.flask_link">Flask</a></li>
+                <li><a href="https://flask.palletsprojects.com/en/3.0.x/installation/" class="icon-link" data-i18n="about.flask_install">Install Flask</a></li>
+              </ul>
+            </div>
+            <div class="feature col">
+              <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3">
+                <i class="bi bi-bootstrap"></i>
+              </div>
+              <h3 class="fs-2 text-body-emphasis">Bootstrap</h3>
+              <p data-i18n="about.bootstrap_desc">Powerful, extensible, and feature-packed frontend toolkit.</p>
+              <ul class="list-group list-group-flush list-unstyled">
+                <li><a href="https://getbootstrap.com/" class="icon-link" data-i18n="about.bootstrap_link">Get Bootstrap</a></li>
+              </ul>
+            </div>
+            <div class="feature col">
+              <div class="feature-icon d-inline-flex align-items-center justify-content-center text-bg-primary bg-gradient fs-2 mb-3">
+                <i class="bi bi-person-arms-up"></i>
+              </div>
+              <h3 class="fs-2 text-body-emphasis">James Mitchell</h3>
+              <p data-i18n="about.james_desc">Raspberry Pi Enthusiast and Organiser of the Raspberry Jam Berlin and hobbyist coder.</p>
+              <ul class="list-group list-group-flush list-unstyled">
+                <li><a href="https://github.com/monkeymademe/" class="icon-link" data-i18n="about.james_github">My Github Page</a></li>
+                <li><a href="https://raspberryjamberlin.de" class="icon-link" data-i18n="about.james_jam">Raspberry Jam Berlin</a></li>
+                <li><a href="https://discord.gg/q5EVbrhS8x" class="icon-link" data-i18n="about.james_discord">Raspberry Jam Berlin Discord</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-about -->
+
+  </div><!-- /tab-content -->
+</div><!-- /container-fluid -->
+
+
+<!-- Camera module modal -->
 <div class="modal fade" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content shadow">
@@ -221,253 +610,534 @@
   </div>
 </div>
 
+<!-- Unsaved Changes Modal -->
+<div class="modal fade" id="unsavedChangesModal" tabindex="-1" aria-labelledby="unsavedChangesModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unsavedChangesModalLabel" data-i18n="settings.unsaved_title">Unsaved Changes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2" id="unsavedModalBodyText"></p>
+        <ul id="unsavedChangesList" class="mb-0 small"></ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="general.cancel">Cancel</button>
+        <button type="button" class="btn btn-outline-danger" id="unsavedModalDiscard" data-i18n="settings.unsaved_discard">Discard</button>
+        <button type="button" class="btn btn-primary" id="unsavedModalSave" data-i18n="general.save">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-  /**
-   * Show a success or error message for a setting.
-   *
-   * @param {string} msgId     - ID of the message element
-   * @param {boolean} success  - true = success (green), false = error (red)
-   * @param {string} label     - Human-readable parameter name, e.g. "Max. recording duration"
-   * @param {number|string} value - The value that was set or entered
-   * @param {string} unit      - Unit string, e.g. "min"
-   * @param {number} min       - Minimum allowed value (shown in error message)
-   * @param {number} max       - Maximum allowed value (shown in error message)
-   */
-  function showSettingMsg(msgId, success, label, value, unit, min, max) {
-    const el = document.getElementById(msgId);
-    if (success) {
-      el.textContent = `${label} set to ${value} ${unit}`;
-      el.className = 'mt-2 small text-success';
-      setTimeout(() => el.classList.add('d-none'), 3000);
-    } else {
-      el.textContent = `Invalid value — ${label} must be between ${min} and ${max} ${unit}`;
-      el.className = 'mt-2 small text-danger';
+  // ── Tab persistence ──────────────────────────────────────────────────
+  // NOTE: bootstrap.bundle.min.js is loaded after the content block in base.html,
+  // so Bootstrap is NOT available when this inline script runs. Wrap any Bootstrap
+  // API calls in DOMContentLoaded, which fires after all synchronous scripts
+  // (including bootstrap.bundle.min.js) have finished executing.
+  const _TAB_KEY = 'settingsActiveTab';
+  document.addEventListener('DOMContentLoaded', function () {
+    // Restore saved tab
+    const saved = localStorage.getItem(_TAB_KEY);
+    if (saved) {
+      const target = (saved === '#tab-general' || saved === '#tab-system') ? '#tab-appearance' : saved;
+      const btn = document.querySelector(`#settingsTabs button[data-bs-target="${target}"]`);
+      if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
     }
+
+    // ── Unsaved changes: intercept tab switches ──────────────────────
+    document.querySelectorAll('#settingsTabs button[data-bs-toggle="tab"]').forEach(btn => {
+      btn.addEventListener('show.bs.tab', function(e) {
+        const fromBtn = e.relatedTarget;
+        if (!fromBtn) return;
+        const fromId = fromBtn.getAttribute('data-bs-target')?.replace('#', '');
+        if (!fromId || !_dirtyTabs.has(fromId)) return;
+        e.preventDefault();
+        _pendingAction = { type: 'tab', btn: e.target };
+        _openUnsavedModal([fromId]);
+      });
+    });
+
+    // ── Unsaved changes modal: Save button ──────────────────────────
+    document.getElementById('unsavedModalSave')?.addEventListener('click', function() {
+      const action = _pendingAction;
+      _pendingAction = null;
+      _hideUnsavedModal();
+      const dirty = [..._dirtyTabs];
+      Promise.allSettled(dirty.map(id => (_TAB_SAVE_FN[id] || (() => Promise.resolve()))()))
+        .then(results => {
+          if (results.every(r => r.status === 'fulfilled')) _doAction(action);
+        });
+    });
+
+    // ── Unsaved changes modal: Discard button ────────────────────────
+    document.getElementById('unsavedModalDiscard')?.addEventListener('click', function() {
+      const action = _pendingAction;
+      _pendingAction = null;
+      [..._dirtyTabs].forEach(tabId => _revertTabToSnapshot(tabId));
+      _dirtyTabs.clear();
+      _hideUnsavedModal();
+      _doAction(action);
+    });
+
+    // Clear pending if modal is dismissed via X / Escape
+    document.getElementById('unsavedChangesModal')?.addEventListener('hidden.bs.modal', function() {
+      _pendingAction = null;
+    });
+  });
+
+  document.querySelectorAll('#settingsTabs button[data-bs-toggle="tab"]').forEach(btn => {
+    btn.addEventListener('shown.bs.tab', () => localStorage.setItem(_TAB_KEY, btn.dataset.bsTarget));
+  });
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  function _showTabMsg(elId, success, text) {
+    const el = document.getElementById(elId);
+    el.textContent = text;
+    el.className = 'mt-2 small ' + (success ? 'text-success' : 'text-danger');
     el.classList.remove('d-none');
+    if (success) setTimeout(() => el.classList.add('d-none'), 3000);
   }
 
-  function saveDefaultTheme() {
-    const selected = document.querySelector('input[name="defaultTheme"]:checked');
-    if (!selected) return;
-    const theme = selected.value;
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => {
-      const el = document.getElementById('themeMsg');
-      el.textContent = `Default theme set to "${theme}".`;
-      el.className = 'mt-2 small text-success';
-      el.classList.remove('d-none');
-      setTimeout(() => el.classList.add('d-none'), 3000);
-    })
-    .catch(() => {
-      const el = document.getElementById('themeMsg');
-      el.textContent = 'Failed to save default theme.';
-      el.className = 'mt-2 small text-danger';
-      el.classList.remove('d-none');
+  function copyToClipboard(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    navigator.clipboard?.writeText(el.href || el.textContent).catch(() => {
+      const tmp = document.createElement('input');
+      document.body.appendChild(tmp);
+      tmp.value = el.href || el.textContent;
+      tmp.select();
+      document.execCommand('copy');
+      document.body.removeChild(tmp);
     });
   }
 
-  function saveDefaultLanguage() {
-    const selected = document.querySelector('input[name="defaultLang"]:checked');
-    if (!selected) return;
-    const language = selected.value;
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ default_language: language })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => {
-      const el = document.getElementById('langMsg');
-      el.textContent = `Default language set to "${language}".`;
-      el.className = 'mt-2 small text-success';
-      el.classList.remove('d-none');
-      setTimeout(() => el.classList.add('d-none'), 3000);
-    })
-    .catch(() => {
-      const el = document.getElementById('langMsg');
-      el.textContent = 'Failed to save default language.';
-      el.className = 'mt-2 small text-danger';
-      el.classList.remove('d-none');
-    });
-  }
+  // ── Unsaved changes tracking ─────────────────────────────────────────
+  const _dirtyTabs = new Set();
+  let _pendingAction = null;
+  const _tabSnapshot = {};   // baseline captured after page-load fetch and after each save
 
-  // Load current settings on page load
-  fetch('/api/system_settings')
-    .then(r => r.json())
-    .then(data => {
-      // Theme
-      const currentTheme = data.theme || 'light';
-      const radio = document.querySelector(`input[name="defaultTheme"][value="${currentTheme}"]`);
-      if (radio) radio.checked = true;
+  const _TAB_SAVE_FN = {
+    'tab-appearance':   () => saveAppearanceTab(),
+    'tab-camera-audio': () => saveCameraAudioTab(),
+  };
 
-      // Language
-      const currentLang = data.default_language || 'en';
-      const langRadio = document.querySelector(`input[name="defaultLang"][value="${currentLang}"]`);
-      if (langRadio) langRadio.checked = true;
+  const _TAB_NAME_KEYS = {
+    'tab-appearance':   'settings.tab_appearance',
+    'tab-camera-audio': 'settings.tab_camera_audio',
+  };
 
-      if (data.max_recording_duration_min !== undefined) {
-        document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;
-      }
-      // Live View title
-      document.getElementById('liveViewTitle').value = data.live_view_title || '';
-      document.getElementById('liveViewHideTitle').checked = !!data.live_view_hide_title;
-      // Microphone assignments
-      // activeAudio: runtime device (may be auto-fallback); audioDevices: saved user config
-      const audioDevices = data.camera_audio_devices || {};
-      const activeAudio = data.camera_audio_devices_active || {};
-      document.querySelectorAll('.mic-select').forEach(sel => {
-        const num = sel.dataset.camNum;
-        // Show active runtime device first (covers fallback case); fall back to saved setting
-        const active = activeAudio[num];
-        const value = (active != null) ? active : (audioDevices[num] ?? '');
-        sel.value = value;
-        sel.addEventListener('change', checkMicSharing);
-      });
-      checkMicSharing();
-      // Camera names
-      const cameraNames = data.camera_names || {};
+  function _takeTabSnapshot(tabId) {
+    const snap = {};
+    if (tabId === 'tab-appearance') {
+      snap.theme     = document.querySelector('input[name="defaultTheme"]:checked')?.value ?? '';
+      snap.lang      = document.querySelector('input[name="defaultLang"]:checked')?.value ?? '';
+      snap.showTitle = document.getElementById('liveViewHideTitle')?.checked ?? false;
+      snap.title     = document.getElementById('liveViewTitle')?.value ?? '';
       document.querySelectorAll('.camera-name-input').forEach(input => {
-        const num = input.dataset.camNum;
-        input.value = cameraNames[num] || '';
+        snap['cam_' + input.dataset.camNum] = input.value;
+      });
+    }
+    if (tabId === 'tab-camera-audio') {
+      snap.maxDuration = document.getElementById('maxRecordingDuration')?.value ?? '';
+      document.querySelectorAll('.mic-select').forEach(sel => {
+        const n = sel.dataset.camNum;
+        snap['mic_' + n] = sel.value;
+        if (sel.value) {
+          snap['vol_'   + n] = document.getElementById('micVolume_'      + n)?.value ?? '';
+          snap['delay_' + n] = document.getElementById('micDelay_'       + n)?.value ?? '';
+          snap['sdel_'  + n] = document.getElementById('micStreamDelay_' + n)?.value ?? '';
+        }
+      });
+    }
+    _tabSnapshot[tabId] = snap;
+  }
+
+  function _computeTabChanges(tabId) {
+    const snap = _tabSnapshot[tabId];
+    if (!snap) return [];
+    const changes = [];
+    const add = (label, sv, cv, fmt = v => String(v ?? '')) => {
+      if (sv !== cv) changes.push({ label, saved: fmt(sv), current: fmt(cv) });
+    };
+
+    if (tabId === 'tab-appearance') {
+      const theme     = document.querySelector('input[name="defaultTheme"]:checked')?.value ?? '';
+      const lang      = document.querySelector('input[name="defaultLang"]:checked')?.value ?? '';
+      const showTitle = document.getElementById('liveViewHideTitle')?.checked ?? false;
+      const title     = document.getElementById('liveViewTitle')?.value ?? '';
+      const fmtTheme  = v => v === 'dark' ? (window.t('settings.theme_dark') || 'Dark') : (window.t('settings.theme_light') || 'Light');
+      const fmtLang   = v => v === 'de' ? (window.t('settings.lang_de') || 'Deutsch') : (window.t('settings.lang_en') || 'English');
+      const fmtBool   = v => v ? (window.t('general.yes') || 'Yes') : (window.t('general.no') || 'No');
+      add(window.t('settings.theme_title')               || 'Theme',             snap.theme,     theme,     fmtTheme);
+      add(window.t('settings.lang_title')                || 'Language',          snap.lang,      lang,      fmtLang);
+      add(window.t('settings.liveview_show_title')       || 'Show as title',     snap.showTitle, showTitle, fmtBool);
+      add(window.t('settings.liveview_page_title_label') || 'Name',              snap.title,     title,     v => v || '(hostname)');
+      document.querySelectorAll('.camera-name-input').forEach(input => {
+        const n = input.dataset.camNum;
+        add(`Cam${n} – ${window.t('settings.camera_name_label') || 'Name'}`, snap['cam_' + n], input.value, v => v || `Cam${n}`);
+      });
+    }
+
+    if (tabId === 'tab-camera-audio') {
+      const dur = document.getElementById('maxRecordingDuration')?.value ?? '';
+      add(window.t('settings.recording_max_label') || 'Max. recording duration', snap.maxDuration, dur, v => v + ' min');
+      document.querySelectorAll('.mic-select').forEach(sel => {
+        const n = sel.dataset.camNum;
+        const noAudio = window.t('settings.mic_no_audio') || '— No audio —';
+        add(`Cam${n} – ${window.t('settings.mic_assignment_label') || 'Microphone'}`,
+            snap['mic_' + n] || '', sel.value || '', v => v || noAudio);
+        if (sel.value && snap['mic_' + n] === sel.value) {
+          const vol   = document.getElementById('micVolume_'      + n)?.value ?? '';
+          const delay = document.getElementById('micDelay_'       + n)?.value ?? '';
+          const sdel  = document.getElementById('micStreamDelay_' + n)?.value ?? '';
+          add(`Cam${n} – ${window.t('settings.mic_volume_label')       || 'Volume'}`,          snap['vol_'   + n], vol,   v => v + ' %');
+          add(`Cam${n} – ${window.t('settings.mic_delay_label')        || 'Recording delay'}`, snap['delay_' + n], delay, v => v + ' ms');
+          add(`Cam${n} – ${window.t('settings.mic_stream_delay_label') || 'Stream delay'}`,    snap['sdel_'  + n], sdel,  v => v + ' ms');
+        }
+      });
+    }
+
+    return changes;
+  }
+
+  function _openUnsavedModal(dirtyIds) {
+    const names = dirtyIds.map(id => window.t(_TAB_NAME_KEYS[id]) || id).join(', ');
+    const tpl = window.t('settings.unsaved_body') || 'The "{tabs}" tab has unsaved changes:';
+    document.getElementById('unsavedModalBodyText').textContent = tpl.replace('{tabs}', names);
+    const listEl = document.getElementById('unsavedChangesList');
+    listEl.innerHTML = '';
+    dirtyIds.forEach(tabId => {
+      _computeTabChanges(tabId).forEach(({ label, saved, current }) => {
+        const li = document.createElement('li');
+        li.textContent = `${label} (${saved} → ${current})`;
+        listEl.appendChild(li);
       });
     });
+    new bootstrap.Modal(document.getElementById('unsavedChangesModal')).show();
+  }
 
-  function saveRecordingSettings() {
-    const MIN = 1, MAX = 600;
-    const LABEL = 'Max. recording duration', UNIT = 'min';
-    const minutes = parseInt(document.getElementById('maxRecordingDuration').value, 10);
-    if (isNaN(minutes) || minutes < MIN || minutes > MAX) {
-      showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX);
-      return;
+  function _hideUnsavedModal() {
+    bootstrap.Modal.getInstance(document.getElementById('unsavedChangesModal'))?.hide();
+  }
+
+  function _doAction(action) {
+    if (!action) return;
+    if (action.type === 'tab') bootstrap.Tab.getOrCreateInstance(action.btn).show();
+    else if (action.type === 'nav') window.location.href = action.url;
+  }
+
+  function _revertTabToSnapshot(tabId) {
+    const snap = _tabSnapshot[tabId];
+    if (!snap) return;
+    if (tabId === 'tab-appearance') {
+      const themeRadio = document.querySelector(`input[name="defaultTheme"][value="${snap.theme}"]`);
+      if (themeRadio) themeRadio.checked = true;
+      const langRadio = document.querySelector(`input[name="defaultLang"][value="${snap.lang}"]`);
+      if (langRadio) langRadio.checked = true;
+      const showTitle = document.getElementById('liveViewHideTitle');
+      const titleEl   = document.getElementById('liveViewTitle');
+      if (showTitle) showTitle.checked = snap.showTitle ?? false;
+      if (titleEl)   { titleEl.value = snap.title ?? ''; titleEl.disabled = !(snap.showTitle ?? false); }
+      document.querySelectorAll('.camera-name-input').forEach(input => {
+        const n = input.dataset.camNum;
+        if (snap['cam_' + n] != null) input.value = snap['cam_' + n];
+      });
     }
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ max_recording_duration_min: minutes })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => showSettingMsg('recordingSettingsMsg', true, LABEL, minutes, UNIT, MIN, MAX))
-    .catch(() => showSettingMsg('recordingSettingsMsg', false, LABEL, minutes, UNIT, MIN, MAX));
+    if (tabId === 'tab-camera-audio') {
+      const maxDur = document.getElementById('maxRecordingDuration');
+      if (maxDur) maxDur.value = snap.maxDuration ?? maxDur.value;
+      document.querySelectorAll('.mic-select').forEach(sel => {
+        const n = sel.dataset.camNum;
+        sel.value = snap['mic_' + n] ?? '';
+        const vol   = document.getElementById('micVolume_'      + n);
+        const delay = document.getElementById('micDelay_'       + n);
+        const sdel  = document.getElementById('micStreamDelay_' + n);
+        const lbl   = document.getElementById('micVolumeLabel_' + n);
+        if (vol   && snap['vol_'   + n] != null) { vol.value   = snap['vol_'   + n]; if (lbl) lbl.textContent = vol.value + '%'; }
+        if (delay && snap['delay_' + n] != null)   delay.value = snap['delay_' + n];
+        if (sdel  && snap['sdel_'  + n] != null)   sdel.value  = snap['sdel_'  + n];
+        // Clear any validation errors on delay fields
+        [delay, sdel].forEach(el => { if (el) { el.classList.remove('is-invalid'); } });
+        const errDelay = document.getElementById('micDelayError_'       + n);
+        const errSdel  = document.getElementById('micStreamDelayError_' + n);
+        if (errDelay) errDelay.style.visibility = 'hidden';
+        if (errSdel)  errSdel.style.visibility  = 'hidden';
+        // Sync audio settings panel visibility
+        const settingsDiv = document.getElementById('micAudioSettings_' + n);
+        if (settingsDiv) settingsDiv.classList.toggle('d-none', !sel.value);
+      });
+      _updateMicSaveBtn();
+      checkMicSharing();
+    }
   }
 
-  function checkMicSharing() {
-    const selects = document.querySelectorAll('.mic-select');
-    const counts = {};
-    selects.forEach(sel => {
-      if (sel.value) counts[sel.value] = (counts[sel.value] || 0) + 1;
-    });
-    const shared = Object.values(counts).some(c => c > 1);
-    document.getElementById('micSharedWarning').classList.toggle('d-none', !shared);
+  // Intercept navbar/link clicks when tabs have unsaved changes
+  document.addEventListener('click', function(e) {
+    if (_dirtyTabs.size === 0) return;
+    const link = e.target.closest('a[href]');
+    if (!link) return;
+    const href = link.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+    if (link.getAttribute('data-bs-toggle')) return;
+    e.preventDefault();
+    _pendingAction = { type: 'nav', url: link.href };
+    _openUnsavedModal([..._dirtyTabs]);
+  }, true);
+
+  // Fallback for address bar / browser back / refresh
+  window.addEventListener('beforeunload', function(e) {
+    if (_dirtyTabs.size > 0) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // ── Settings save functions ──────────────────────────────────────────
+  function saveAppearanceTab() {
+    const theme = document.querySelector('input[name="defaultTheme"]:checked')?.value;
+    const language = document.querySelector('input[name="defaultLang"]:checked')?.value;
+    const title = document.getElementById('liveViewTitle')?.value ?? '';
+    const hide_title = !(document.getElementById('liveViewHideTitle')?.checked ?? false);
+    const payload = {};
+    if (theme) payload.theme = theme;
+    if (language) payload.default_language = language;
+    payload.live_view_title = title;
+    payload.live_view_hide_title = hide_title;
+    const nameInputs = document.querySelectorAll('.camera-name-input');
+    if (nameInputs.length > 0) {
+      const names = {};
+      nameInputs.forEach(input => { names[input.dataset.camNum] = input.value; });
+      payload.camera_names = names;
+    }
+    return fetch('/api/system_settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(() => { _dirtyTabs.delete('tab-appearance'); _takeTabSnapshot('tab-appearance'); _showTabMsg('appearanceMsg', true, window.t('settings.saved') || 'Saved.'); })
+      .catch(err => { _showTabMsg('appearanceMsg', false, window.t('settings.save_failed') || 'Failed to save.'); return Promise.reject(err); });
   }
 
-  function saveMicrophoneAssignments() {
-    const assignments = {};
+  function saveCameraAudioTab() {
+    document.querySelectorAll('.mic-delay, .mic-stream-delay').forEach(_validateDelayField);
+    _updateMicSaveBtn();
+    if (document.querySelectorAll('.mic-delay.is-invalid, .mic-stream-delay.is-invalid').length > 0)
+      return Promise.reject(new Error('validation'));
+    const minutes = parseInt(document.getElementById('maxRecordingDuration').value, 10);
+    if (isNaN(minutes) || minutes < 1 || minutes > 600) {
+      _showTabMsg('cameraAudioMsg', false, window.t('settings.recording_range_error') || 'Invalid recording duration — must be between 1 and 600 minutes.');
+      return Promise.reject(new Error('validation'));
+    }
+    const assignments = {}, audioSourceSettings = {}, cameraAudioDelaySettings = {};
     document.querySelectorAll('.mic-select').forEach(sel => {
-      assignments[sel.dataset.camNum] = sel.value;
+      const camNum = sel.dataset.camNum, device = sel.value;
+      assignments[camNum] = device;
+      if (device) {
+        const vol = document.getElementById('micVolume_' + camNum);
+        const del = document.getElementById('micDelay_' + camNum);
+        const sdl = document.getElementById('micStreamDelay_' + camNum);
+        const volume = vol ? parseInt(vol.value, 10) : 100;
+        const delayMs = del ? parseInt(del.value, 10) : 0;
+        const streamDelayMs = sdl ? parseInt(sdl.value, 10) : 0;
+        audioSourceSettings[device] = { volume: isNaN(volume) ? 100 : Math.min(200, Math.max(0, volume)) };
+        cameraAudioDelaySettings[camNum] = {
+          delay_ms: isNaN(delayMs) ? 0 : Math.min(5000, Math.max(0, delayMs)),
+          stream_delay_ms: isNaN(streamDelayMs) ? 0 : Math.min(5000, Math.max(0, streamDelayMs)),
+        };
+      }
     });
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ camera_audio_devices: assignments })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => {
-      const el = document.getElementById('micMsg');
-      el.textContent = 'Microphone assignments saved.';
-      el.className = 'mt-2 small text-success';
-      el.classList.remove('d-none');
-      setTimeout(() => el.classList.add('d-none'), 3000);
-    })
-    .catch(() => {
-      const el = document.getElementById('micMsg');
-      el.textContent = 'Failed to save microphone assignments.';
-      el.className = 'mt-2 small text-danger';
-      el.classList.remove('d-none');
-    });
+    return fetch('/api/system_settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_recording_duration_min: minutes, camera_audio_devices: assignments, audio_source_settings: audioSourceSettings, camera_audio_delay_settings: cameraAudioDelaySettings }) })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const ds = data._deferred_stream_delay_cams || [], dr = data._deferred_recording_delay_cams || [];
+        if (ds.length > 0 || dr.length > 0) _showDeferredBanner(ds, dr);
+        _dirtyTabs.delete('tab-camera-audio');
+        _takeTabSnapshot('tab-camera-audio');
+        _showTabMsg('cameraAudioMsg', true, window.t('settings.saved') || 'Saved.');
+      })
+      .catch(err => {
+        if (err?.message !== 'validation') _showTabMsg('cameraAudioMsg', false, window.t('settings.save_failed') || 'Failed to save.');
+        return Promise.reject(err);
+      });
   }
 
-  function saveLiveViewTitle() {
-    const title = document.getElementById('liveViewTitle').value;
-    const hide_title = document.getElementById('liveViewHideTitle').checked;
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ live_view_title: title, live_view_hide_title: hide_title })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => showSettingMsg('liveViewTitleMsg', true, 'Live View title', title || '(hostname)', '', '', ''))
-    .catch(() => showSettingMsg('liveViewTitleMsg', false, 'Live View title', title, '', '', ''));
+  // ── Mic / Audio ──────────────────────────────────────────────────────
+  function checkMicSharing() {
+    const counts = {};
+    document.querySelectorAll('.mic-select').forEach(sel => { if (sel.value) counts[sel.value] = (counts[sel.value] || 0) + 1; });
+    document.getElementById('micSharedWarning').classList.toggle('d-none', !Object.values(counts).some(c => c > 1));
   }
 
-  function saveCameraNames() {
-    const names = {};
-    document.querySelectorAll('.camera-name-input').forEach(input => {
-      names[input.dataset.camNum] = input.value;
-    });
-    fetch('/api/system_settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ camera_names: names })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(() => {
-      const el = document.getElementById('cameraNamesMsg');
-      el.textContent = 'Camera names saved.';
-      el.className = 'mt-2 small text-success';
-      el.classList.remove('d-none');
-      setTimeout(() => el.classList.add('d-none'), 3000);
-    })
-    .catch(() => {
-      const el = document.getElementById('cameraNamesMsg');
-      el.textContent = 'Failed to save camera names.';
-      el.className = 'mt-2 small text-danger';
-      el.classList.remove('d-none');
-    });
+  function _updateMicAudioSettingsVisibility(camNum, deviceValue, audioSourceSettings, cameraAudioDelaySettings) {
+    const settingsDiv = document.getElementById('micAudioSettings_' + camNum);
+    if (!settingsDiv) return;
+    if (!deviceValue) { settingsDiv.classList.add('d-none'); return; }
+    settingsDiv.classList.remove('d-none');
+    const deviceSettings = (audioSourceSettings || {})[deviceValue] || {};
+    const volume = deviceSettings.volume != null ? deviceSettings.volume : 100;
+    const camDelays = (cameraAudioDelaySettings || {})[String(camNum)] || {};
+    const delayMs = camDelays.delay_ms != null ? camDelays.delay_ms : 0;
+    const streamDelayMs = camDelays.stream_delay_ms != null ? camDelays.stream_delay_ms : 0;
+    const volInput = document.getElementById('micVolume_' + camNum);
+    const volLabel = document.getElementById('micVolumeLabel_' + camNum);
+    if (volInput) volInput.value = volume;
+    if (volLabel) volLabel.textContent = volume + '%';
+    const delayInput = document.getElementById('micDelay_' + camNum);
+    const streamDelayInput = document.getElementById('micStreamDelay_' + camNum);
+    if (delayInput) delayInput.value = delayMs;
+    if (streamDelayInput) streamDelayInput.value = streamDelayMs;
   }
 
+  function _validateDelayField(input) {
+    const val = parseInt(input.value, 10);
+    const valid = !isNaN(val) && val >= 0 && val <= 5000;
+    input.classList.toggle('is-invalid', !valid);
+    const isStream = input.classList.contains('mic-stream-delay');
+    const errEl = document.getElementById((isStream ? 'micStreamDelayError_' : 'micDelayError_') + input.dataset.camNum);
+    if (errEl) errEl.style.visibility = valid ? 'hidden' : 'visible';
+    return valid;
+  }
+
+  function _updateMicSaveBtn() {
+    const btn = document.getElementById('saveCameraAudioBtn');
+    if (btn) btn.disabled = document.querySelectorAll('.mic-delay.is-invalid, .mic-stream-delay.is-invalid').length > 0;
+  }
+
+  document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('mic-volume')) {
+      const changedCamNum = e.target.dataset.camNum;
+      const newValue = e.target.value;
+      const changedDevice = document.getElementById('micSelect_' + changedCamNum)?.value;
+      document.querySelectorAll('.mic-volume').forEach(slider => {
+        const otherDevice = document.getElementById('micSelect_' + slider.dataset.camNum)?.value;
+        if (changedDevice && otherDevice === changedDevice) {
+          slider.value = newValue;
+          const lbl = document.getElementById('micVolumeLabel_' + slider.dataset.camNum);
+          if (lbl) lbl.textContent = newValue + '%';
+        }
+      });
+    }
+    if (e.target.classList.contains('mic-delay') || e.target.classList.contains('mic-stream-delay')) {
+      _validateDelayField(e.target);
+      _updateMicSaveBtn();
+    }
+  });
+
+  let _deferredPollTimer = null;
+
+  function _showDeferredBanner(streamCams, recCams) {
+    document.querySelectorAll('[id^="micDeferredAlert_"]').forEach(banner => {
+      const camNum = parseInt(banner.id.replace('micDeferredAlert_', ''), 10);
+      const active = streamCams.includes(camNum) || recCams.includes(camNum);
+      if (!active) { banner.classList.add('d-none'); return; }
+      const title = document.getElementById('micDeferredAlertTitle_' + camNum);
+      const text  = document.getElementById('micDeferredAlertText_' + camNum);
+      if (title) title.textContent = window.t('settings.mic_delay_pending_title') || 'Pending change:';
+      if (text)  text.textContent  = window.t('settings.mic_delay_pending') || 'Audio delay change will take effect after the current recording ends.';
+      banner.classList.remove('d-none');
+    });
+    if (streamCams.length > 0 || recCams.length > 0) _startDeferredPoll();
+  }
+
+  function _startDeferredPoll() {
+    if (_deferredPollTimer) return;
+    _deferredPollTimer = setInterval(() => {
+      fetch('/api/system_settings').then(r => r.json()).then(data => {
+        const sd = data._deferred_stream_delay_cams || [];
+        const rd = data._deferred_recording_delay_cams || [];
+        if (sd.length === 0 && rd.length === 0) {
+          clearInterval(_deferredPollTimer); _deferredPollTimer = null;
+          document.querySelectorAll('[id^="micDeferredAlert_"]').forEach(b => b.classList.add('d-none'));
+        } else { _showDeferredBanner(sd, rd); }
+      }).catch(() => {});
+    }, 5000);
+  }
+
+
+  // ── Camera module modal ──────────────────────────────────────────────
   let currentAction = null;
 
   function showCameraModal(sensorModel, moduleName) {
     currentAction = 'set_camera';
-    document.getElementById("cameraModalLabel").innerText = "Set Camera";
-    document.getElementById("cameraModalBody").innerText = 
-      `Set "${moduleName}" as the default camera in boot config?`;
-    document.getElementById("cameraModalConfirmBtn").onclick = function() {
-      fetch('/set_camera_config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sensor_model: sensorModel })
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log(data.message); // Or replace this with a toast/snackbar
-        bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
-      });
+    document.getElementById('cameraModalLabel').innerText = 'Set Camera';
+    document.getElementById('cameraModalBody').innerText = `Set "${moduleName}" as the default camera in boot config?`;
+    document.getElementById('cameraModalConfirmBtn').onclick = function() {
+      fetch('/set_camera_config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sensor_model: sensorModel }) })
+        .then(res => res.json()).then(() => bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide());
     };
     new bootstrap.Modal(document.getElementById('cameraModal')).show();
   }
 
   function showResetModal() {
     currentAction = 'reset_camera';
-    document.getElementById("cameraModalLabel").innerText = "Reset Camera Detection";
-    document.getElementById("cameraModalBody").innerText = 
-      `Reset boot config to automatically detect cameras?`;
-    document.getElementById("cameraModalConfirmBtn").onclick = function() {
-      fetch('/reset_camera_detection', {
-        method: 'POST'
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log(data.message);
-        bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide();
-      });
+    document.getElementById('cameraModalLabel').innerText = 'Reset Camera Detection';
+    document.getElementById('cameraModalBody').innerText = 'Reset boot config to automatically detect cameras?';
+    document.getElementById('cameraModalConfirmBtn').onclick = function() {
+      fetch('/reset_camera_detection', { method: 'POST' })
+        .then(res => res.json()).then(() => bootstrap.Modal.getInstance(document.getElementById('cameraModal')).hide());
     };
     new bootstrap.Modal(document.getElementById('cameraModal')).show();
   }
+
+  // ── Page load: populate all settings fields ──────────────────────────
+  fetch('/api/system_settings')
+    .then(r => r.json())
+    .then(data => {
+      // Theme
+      const themeRadio = document.querySelector(`input[name="defaultTheme"][value="${data.theme || 'light'}"]`);
+      if (themeRadio) themeRadio.checked = true;
+      // Language
+      const langRadio = document.querySelector(`input[name="defaultLang"][value="${data.default_language || 'en'}"]`);
+      if (langRadio) langRadio.checked = true;
+      // Recording duration
+      if (data.max_recording_duration_min !== undefined)
+        document.getElementById('maxRecordingDuration').value = data.max_recording_duration_min;
+      // Live View title
+      document.getElementById('liveViewTitle').value = data.live_view_title || '';
+      const hideTitle = !!data.live_view_hide_title;
+      document.getElementById('liveViewHideTitle').checked = !hideTitle;
+      document.getElementById('liveViewTitle').disabled = hideTitle;
+      // Mic assignments
+      const audioSourceSettings = data.audio_source_settings || {};
+      const cameraAudioDelaySettings = data.camera_audio_delay_settings || {};
+      const audioDevices = data.camera_audio_devices || {};
+      const activeAudio  = data.camera_audio_devices_active || {};
+      document.querySelectorAll('.mic-select').forEach(sel => {
+        const num = sel.dataset.camNum;
+        const active = activeAudio[num];
+        sel.value = (active != null) ? active : (audioDevices[num] ?? '');
+        _updateMicAudioSettingsVisibility(num, sel.value, audioSourceSettings, cameraAudioDelaySettings);
+        sel.addEventListener('change', function() {
+          checkMicSharing();
+          _updateMicAudioSettingsVisibility(num, this.value, audioSourceSettings, cameraAudioDelaySettings);
+        });
+      });
+      checkMicSharing();
+      // Deferred delay banners
+      const dss = data._deferred_stream_delay_cams || [], drs = data._deferred_recording_delay_cams || [];
+      if (dss.length > 0 || drs.length > 0) _showDeferredBanner(dss, drs);
+      // Camera names
+      const cameraNames = data.camera_names || {};
+      document.querySelectorAll('.camera-name-input').forEach(input => {
+        input.value = cameraNames[input.dataset.camNum] || '';
+      });
+      // Bootstrap tooltips for info icons (html:true to allow <strong> in tooltip text)
+      document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
+        const text = window.t(el.getAttribute('data-i18n-tooltip')) || '';
+        el.setAttribute('title', text);
+        new bootstrap.Tooltip(el, { trigger: 'hover focus', html: true });
+      });
+      // Bootstrap tooltips for copy buttons in Info tab
+      document.querySelectorAll('[data-bs-toggle="tooltip"][data-bs-title]').forEach(el => {
+        new bootstrap.Tooltip(el);
+      });
+      // Capture baseline snapshot and set up dirty tracking
+      // (after inputs are populated — programmatic .value= does not fire input/change events)
+      ['tab-appearance', 'tab-camera-audio'].forEach(tabId => {
+        _takeTabSnapshot(tabId);
+        const pane = document.getElementById(tabId);
+        if (!pane) return;
+        pane.addEventListener('change', () => _dirtyTabs.add(tabId));
+        pane.addEventListener('input',  () => _dirtyTabs.add(tabId));
+      });
+    });
 </script>
 {% endblock %}

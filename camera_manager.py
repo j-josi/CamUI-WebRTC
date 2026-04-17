@@ -186,6 +186,9 @@ class CameraManager:
                     audio_device=initial_audio,
                 )
 
+                if initial_audio:
+                    self._apply_audio_source_settings_to_camera(camera)
+
                 saved_name = saved_settings.get("camera_names", {}).get(str(cam_info["Num"]))
                 if saved_name:
                     camera.name = saved_name
@@ -318,7 +321,20 @@ class CameraManager:
         return self._gallery.get_storage_info(buffer_bytes=CameraManager.STORAGE_MIN_FREE_BYTES)
 
     def get_system_settings(self) -> dict:
-        return self._settings.get_all()
+        result = self._settings.get_all()
+        # Stream delay: deferred whenever configured value != last applied value
+        result["_deferred_stream_delay_cams"] = [
+            cam_num for cam_num, cam in self.cameras.items()
+            if cam.audio_stream_delay_ms != cam._audio_stream_delay_applied_ms
+        ]
+        # Recording delay: deferred when a recording is active and the delay
+        # differs from the value applied when that recording started
+        result["_deferred_recording_delay_cams"] = [
+            cam_num for cam_num, cam in self.cameras.items()
+            if cam.states.get("is_video_recording")
+            and cam.audio_delay_ms != cam._audio_delay_applied_ms
+        ]
+        return result
 
     def update_system_settings(self, data: dict) -> dict:
         result = self._settings.update(data)
@@ -335,9 +351,54 @@ class CameraManager:
                 try:
                     cam = self.get_camera(int(cam_num_str))
                     if cam:
-                        self.set_camera_audio_device(cam, device if device else None)
+                        new_device = device if device else None
+                        # Only reconfigure if the device actually changed; skipping
+                        # when unchanged prevents disturbing the running stream encoder
+                        # when the user merely adjusts volume or delay settings.
+                        if new_device != cam._configured_audio_device:
+                            self.set_camera_audio_device(cam, new_device)
                 except (ValueError, TypeError):
                     pass
+        deferred_stream_delay_cams: list = []
+        deferred_recording_delay_cams: list = []
+        restarted_stream_cams: list = []
+        # Volume is per PulseAudio source — apply immediately via pactl to all cameras using
+        # any device whose volume entry appears in the update payload.
+        if "audio_source_settings" in data:
+            for cam in self.cameras.values():
+                if cam.audio_device and cam.audio_device in data["audio_source_settings"]:
+                    cam.audio_volume = int(
+                        data["audio_source_settings"][cam.audio_device].get("volume", 100)
+                    )
+                    cam._apply_volume()
+        # Delays are per camera — each encoder gets an independent audio_sync offset.
+        # A stream delay change triggers an immediate stream restart (unless recording).
+        if "camera_audio_delay_settings" in data:
+            for cam in self.cameras.values():
+                cam_key = str(cam.camera_num)
+                if cam_key in data["camera_audio_delay_settings"]:
+                    old_stream_delay = cam.audio_stream_delay_ms
+                    old_rec_delay = cam.audio_delay_ms
+                    cam_delays = data["camera_audio_delay_settings"][cam_key]
+                    cam.audio_delay_ms = int(cam_delays.get("delay_ms", 0))
+                    cam.audio_stream_delay_ms = int(cam_delays.get("stream_delay_ms", 0))
+                    # Stream delay: restart stream immediately if not recording, else defer
+                    if cam.audio_stream_delay_ms != old_stream_delay:
+                        if (cam.states.get("is_video_streaming")
+                                and not cam.states.get("is_video_recording")):
+                            cam.stop_streaming()
+                            cam.start_streaming()
+                            restarted_stream_cams.append(cam.camera_num)
+                        elif cam.states.get("is_video_recording"):
+                            deferred_stream_delay_cams.append(cam.camera_num)
+                    # Recording delay: deferred whenever a recording is active
+                    if (cam.audio_delay_ms != old_rec_delay
+                            and cam.states.get("is_video_recording")):
+                        deferred_recording_delay_cams.append(cam.camera_num)
+        # Meta-only — not persisted, only for the HTTP response
+        result["_deferred_stream_delay_cams"] = deferred_stream_delay_cams
+        result["_deferred_recording_delay_cams"] = deferred_recording_delay_cams
+        result["_restarted_stream_cams"] = restarted_stream_cams
         return result
 
     # ------------------------------------------------------------------
@@ -387,17 +448,40 @@ class CameraManager:
         logger.info("Camera %s: using fallback audio device '%s'", camera.camera_num, source_name)
         self._apply_camera_audio_device(camera, source_name)
 
-    @staticmethod
-    def _apply_camera_audio_device(camera: Camera, source_name: Optional[str]) -> None:
+    def _apply_camera_audio_device(self, camera: Camera, source_name: Optional[str]) -> None:
         """Set the runtime audio device on a camera. If the stream encoder is already
-        running, updates it in place (takes effect on next stream restart)."""
+        running, updates it in place (takes effect on next stream restart).
+        Also applies saved volume/delay settings for the device."""
         camera.audio_device = source_name or None
+        if camera.audio_device:
+            self._apply_audio_source_settings_to_camera(camera)
         if camera.encoder_stream is not None:
+            # Only toggle audio on/off on the running encoder — audio_input and
+            # audio_sync are set fresh in start_streaming() on every restart and
+            # must not be modified while the encoder is running.
             camera.encoder_stream.audio = bool(camera.audio_device)
             if camera.audio_device:
                 camera.encoder_stream.audio_output = {"codec_name": "libopus"}
-                camera.encoder_stream.audio_sync = 0
         logger.info("Camera %s audio device set to: %s", camera.camera_num, camera.audio_device)
+
+    def _apply_audio_source_settings_to_camera(self, camera: Camera) -> None:
+        """Copy saved volume/delay settings onto the camera and apply volume immediately via pactl.
+
+        Volume is stored per PulseAudio source (global across all cameras sharing the same
+        device).  Delays are stored per camera so two cameras can share a microphone with
+        independent sync offsets.
+        """
+        if not camera.audio_device:
+            return
+        settings = self._settings.get_all()
+        # Volume: per device (PulseAudio source) — changing this affects all cameras using it
+        device_settings = settings.get("audio_source_settings", {}).get(camera.audio_device, {})
+        camera.audio_volume = int(device_settings.get("volume", 100))
+        # Delays: per camera — each encoder instance can have an independent audio_sync offset
+        cam_delays = settings.get("camera_audio_delay_settings", {}).get(str(camera.camera_num), {})
+        camera.audio_delay_ms = int(cam_delays.get("delay_ms", 0))
+        camera.audio_stream_delay_ms = int(cam_delays.get("stream_delay_ms", 0))
+        camera._apply_volume()  # pactl changes the source volume live — takes effect immediately
 
     # ------------------------------------------------------------------
     # Recording duration timer (push-based, triggered by state change callback)

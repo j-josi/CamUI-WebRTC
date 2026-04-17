@@ -46,6 +46,13 @@
   .navbar .battery-display.text-danger {
     color: var(--bs-danger) !important;
   }
+  /* Thicker stroke for power, restart and theme icons */
+  .bi-power,
+  .bi-arrow-clockwise,
+  .bi-brightness-high-fill,
+  .bi-moon-stars-fill {
+    -webkit-text-stroke: 0.8px currentColor;
+  }
 </style>
 
 <script>
@@ -79,22 +86,20 @@
       <div class="collapse navbar-collapse" id="navbarCollapse">
         <ul class="navbar-nav nav-pills me-auto mb-2 mb-md-0">
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'live_view' %}active{% endif %}" href="{{ url_for('live_view') }}" data-i18n="navbar.live_view">Live View</a>
+            <a class="nav-link {% if request.endpoint == 'camera' %}active{% endif %}" href="{{ url_for('camera') }}">
+              <i class="bi bi-camera-video me-1"></i><span data-i18n="navbar.camera">Camera</span>
+            </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'media_gallery' %}active{% endif %}" href="{{ url_for('media_gallery') }}" data-i18n="navbar.media_gallery">Media Gallery</a>
+            <a class="nav-link {% if request.endpoint == 'media_gallery' %}active{% endif %}" href="{{ url_for('media_gallery') }}">
+              <i class="bi bi-images me-1"></i><span data-i18n="navbar.media_gallery">Media Gallery</span>
+            </a>
           </li>
 
           <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'info' %}active{% endif %}" href="{{ url_for('info') }}" data-i18n="navbar.info">Info</a>
-          </li>
-
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}" data-i18n="navbar.about">About</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link {% if request.endpoint == 'system_settings' %}active{% endif %}" href="{{ url_for('system_settings') }}"><i class="bi bi-gear"></i>
+            <a class="nav-link {% if request.endpoint == 'system_settings' %}active{% endif %}" href="{{ url_for('system_settings') }}">
+              <i class="bi bi-gear me-1"></i><span data-i18n="navbar.settings">Settings</span>
             </a>
           </li>
         </ul>
@@ -140,7 +145,57 @@
               <li><a class="dropdown-item" href="#" onclick="setTheme('dark'); return false;"><i class="bi bi-moon-stars-fill"></i> <span data-i18n="navbar.theme_dark">Dark Mode</span></a></li>
             </ul>
           </li>
+          <!-- Power -->
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-power"></i>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="#" onclick="navPowerAction('shutdown'); return false;">
+                <i class="bi bi-power me-1 text-danger"></i> <span data-i18n="navbar.shutdown">Shutdown</span>
+              </a></li>
+              <li><a class="dropdown-item" href="#" onclick="navPowerAction('restart'); return false;">
+                <i class="bi bi-arrow-clockwise me-1"></i> <span data-i18n="navbar.restart">Restart</span>
+              </a></li>
+            </ul>
+          </li>
         </ul>
       </div>
     </div>
   </nav>
+
+<!-- Power confirmation modal -->
+<div class="modal fade" id="navPowerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content shadow">
+      <div class="modal-header">
+        <h5 class="modal-title" id="navPowerModalTitle"></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="navPowerModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-i18n="general.cancel">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm" id="navPowerModalConfirm"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function navPowerAction(action) {
+    const isShutdown = action === 'shutdown';
+    const url = isShutdown ? '{{ url_for("shutdown") }}' : '{{ url_for("restart") }}';
+    document.getElementById('navPowerModalTitle').textContent =
+      isShutdown ? (window.t?.('navbar.shutdown') || 'Shutdown') : (window.t?.('navbar.restart') || 'Restart');
+    document.getElementById('navPowerModalBody').textContent =
+      isShutdown ? (window.t?.('navbar.confirm_shutdown') || 'Shut down the device?') : (window.t?.('navbar.confirm_restart') || 'Restart the device?');
+    const confirmBtn = document.getElementById('navPowerModalConfirm');
+    confirmBtn.textContent = isShutdown ? (window.t?.('navbar.shutdown') || 'Shutdown') : (window.t?.('navbar.restart') || 'Restart');
+    confirmBtn.className = isShutdown ? 'btn btn-danger btn-sm' : 'btn btn-warning btn-sm';
+    confirmBtn.onclick = function() {
+      bootstrap.Modal.getInstance(document.getElementById('navPowerModal'))?.hide();
+      fetch(url, { method: 'POST' }).catch(() => {});
+    };
+    new bootstrap.Modal(document.getElementById('navPowerModal')).show();
+  }
+</script>
