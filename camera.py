@@ -1453,7 +1453,10 @@ class Camera:
             # delay_ms > 100 → positive     (audio shifted ahead of capture position)
             self.encoder_recording.audio_sync = -100_000 + (self.audio_delay_ms * 1000)
             self._audio_delay_applied_ms = self.audio_delay_ms
-        self.output_recording = PyavOutput(path)
+        self.output_recording = PyavOutput(
+            path,
+            options={"movflags": "frag_keyframe+empty_moov+default_base_moof"},
+        )
 
         try:
             self.picam2.start_recording(

@@ -17,18 +17,42 @@ logger = logging.getLogger(__name__)
 class MediaGallery:
     def __init__(self, upload_folder: str):
         self.upload_folder: str = upload_folder
-        self.thumbnails_folder: str = os.path.join(upload_folder, "video_thumbnails")
+        self.thumbnails_folder: str = os.path.join(upload_folder, "thumbnails")
         os.makedirs(self.thumbnails_folder, exist_ok=True)
+        self._migrate_old_thumbnail_folders(upload_folder)
         self.image_exts: Tuple[str, ...] = ('.jpg', '.jpeg')
         self.video_exts: Tuple[str, ...] = ('.mp4',)
+
+    def _migrate_old_thumbnail_folders(self, upload_folder: str) -> None:
+        for old_dir in ("video_thumbnails", "image_thumbnails"):
+            old_path = os.path.join(upload_folder, old_dir)
+            if not os.path.isdir(old_path):
+                continue
+            for fname in os.listdir(old_path):
+                src = os.path.join(old_path, fname)
+                dst = os.path.join(self.thumbnails_folder, fname)
+                if not os.path.exists(dst):
+                    shutil.move(src, dst)
+            try:
+                os.rmdir(old_path)
+            except OSError:
+                pass
 
     def get_image_resolution(self, path: str) -> Tuple[int, int]:
         with Image.open(path) as img:
             width, height = img.size
         return width, height
 
+    def get_video_duration(self, path: str) -> Optional[float]:
+        """Return exact video duration in seconds by parsing trun sample durations."""
+        try:
+            from fmp4 import get_exact_video_duration
+            return get_exact_video_duration(path)
+        except Exception:
+            return None
+
     def get_video_metadata(self, path: str) -> Dict[str, Any]:
-        """Return width, height, and duration (seconds) for a video file."""
+        """Return width and height for a video file."""
         try:
             result = subprocess.run(
                 [
@@ -36,7 +60,6 @@ class MediaGallery:
                     "-v", "error",
                     "-select_streams", "v:0",
                     "-show_entries", "stream=width,height",
-                    "-show_entries", "format=duration",
                     "-of", "json",
                     path,
                 ],
@@ -47,19 +70,20 @@ class MediaGallery:
             )
             data = json.loads(result.stdout)
             stream = data.get("streams", [{}])[0]
-            duration = data.get("format", {}).get("duration")
             return {
                 "width": stream.get("width"),
                 "height": stream.get("height"),
-                "duration": float(duration) if duration is not None else None,
             }
         except Exception as e:
             logger.warning("Could not read video metadata for %s: %s", path, e)
-            return {"width": None, "height": None, "duration": None}
+            return {"width": None, "height": None}
 
-    def get_media_files(self, type: str = "all", excluded_files: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_media_files(self, type: str = "all", excluded_files: Optional[List[str]] = None, sort: str = "newest",
+                        date_from: Optional[datetime] = None, date_to: Optional[datetime] = None,
+                        camera: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
             excluded_files = excluded_files or []
+            cache = self._load_cache()
 
             files = os.listdir(self.upload_folder)
             media: List[Dict[str, Any]] = []
@@ -77,29 +101,66 @@ class MediaGallery:
                 elif type not in ["all", "image", "video"]:
                     continue
 
+                full_path = os.path.join(self.upload_folder, f)
+                try:
+                    stat = os.stat(full_path)
+                    file_size = stat.st_size
+                    file_mtime = stat.st_mtime
+                except OSError:
+                    file_size = 0
+                    file_mtime = 0
+
+                if date_from is not None or date_to is not None:
+                    file_date = datetime.fromtimestamp(file_mtime).date()
+                    if date_from is not None and file_date < date_from:
+                        continue
+                    if date_to is not None and file_date > date_to:
+                        continue
+
+                file_camera = cache.get(f, {}).get("camera_name") if isinstance(cache.get(f), dict) else None
+                if camera is not None and file_camera != camera:
+                    continue
+
+                cached = cache.get(f, {}) if isinstance(cache.get(f), dict) else {}
                 item: Dict[str, Any] = {
                     "filename": f,
                     "type": "video" if ext in self.video_exts else "image",
+                    "size": file_size,
+                    "created": file_mtime,
                     "width": None,
                     "height": None,
                     "has_raw": False,
                     "has_dng": False,
                     "dng_file": None,
                     "thumbnail": None,
-                    "duration": None,
+                    "camera_name": file_camera,
+                    "duration": cached.get("duration") if ext in self.video_exts else None,
                 }
 
                 if item["type"] == "image":
                     dng = os.path.splitext(f)[0] + ".dng"
                     item["has_dng"] = os.path.exists(os.path.join(self.upload_folder, dng))
                     item["dng_file"] = dng
+                    if os.path.exists(self._thumb_path(f)):
+                        item["thumbnail"] = os.path.splitext(f)[0] + "_thumb.jpg"
                 elif item["type"] == "video":
                     if os.path.exists(self._thumb_path(f)):
                         item["thumbnail"] = os.path.splitext(f)[0] + "_thumb.jpg"
 
                 media.append(item)
 
-            media.sort(key=lambda x: x["filename"], reverse=True)
+            if sort == "oldest":
+                media.sort(key=lambda x: x["created"])
+            elif sort == "size_desc":
+                media.sort(key=lambda x: x["size"], reverse=True)
+            elif sort == "size_asc":
+                media.sort(key=lambda x: x["size"])
+            elif sort == "duration_desc":
+                media.sort(key=lambda x: x["duration"] if x["duration"] is not None else -1, reverse=True)
+            elif sort == "duration_asc":
+                media.sort(key=lambda x: x["duration"] if x["duration"] is not None else float('inf'))
+            else:
+                media.sort(key=lambda x: x["created"], reverse=True)
             return media
 
         except Exception as e:
@@ -197,45 +258,41 @@ class MediaGallery:
     #                 except OSError:
     #                     pass
 
-    def register_media(self, filename: str, width: int, height: int, has_raw: bool = False) -> None:
-        """Populate media item dictionaries with resolution and related metadata.
-
-        For each item, attempts to read width and height (and duration for videos,
-        has_raw for images) from the persistent cache. If no cache entry exists,
-        extracts the required metadata from the file, updates the item, and stores
-        the result in the cache.
-
-        If register_media() was called when the file was created, the metadata is
-        typically already present in the cache.
-
-        This function mutates the provided list in-place and may update the cache.
-        """
-
+    def register_media(self, filename: str, width: int, height: int,
+                        has_raw: bool = False, camera_name: Optional[str] = None) -> None:
+        """Store resolution, has_raw, and camera info in the persistent cache."""
         entry: Dict[str, Any] = {"width": width, "height": height}
-        # video (.mp4)
         if filename.lower().endswith(".mp4"):
             path = os.path.join(self.upload_folder, filename)
             meta = self.get_video_metadata(path)
-            entry["duration"] = meta.get("duration")
-        # image
+            entry["width"] = meta.get("width") or width
+            entry["height"] = meta.get("height") or height
+            entry["duration"] = self.get_video_duration(path)
         else:
             entry["has_raw"] = has_raw
+        if camera_name:
+            entry["camera_name"] = camera_name
         cache = self._load_cache()
         cache[filename] = entry
         self._save_cache(cache)
 
+    def get_gallery_cameras(self) -> List[str]:
+        """Return sorted list of distinct camera names recorded in the cache."""
+        cache = self._load_cache()
+        names = {
+            v["camera_name"]
+            for v in cache.values()
+            if isinstance(v, dict) and v.get("camera_name")
+        }
+        return sorted(names)
+
     def _thumb_path(self, video_filename: str) -> str:
-        """Return the full path to the thumbnail for a given video filename."""
         thumb_filename = os.path.splitext(video_filename)[0] + "_thumb.jpg"
         return os.path.join(self.thumbnails_folder, thumb_filename)
 
-    def generate_video_thumbnail(self, video_filename: str) -> Optional[str]:
-        """Extract the first frame of a video as a JPEG thumbnail.
 
-        Thumbnails are stored in the video_thumbnails/ subfolder.
-        Returns the thumbnail filename on success, None on failure.
-        Safe to call from a background thread.
-        """
+    def generate_video_thumbnail(self, video_filename: str) -> Optional[str]:
+        """Extract and scale the first frame of a video as a JPEG thumbnail (max 400px wide)."""
         video_path = os.path.join(self.upload_folder, video_filename)
         thumb_filename = os.path.splitext(video_filename)[0] + "_thumb.jpg"
         thumb_path = self._thumb_path(video_filename)
@@ -246,6 +303,7 @@ class MediaGallery:
                     "-ss", "0",
                     "-i", video_path,
                     "-frames:v", "1",
+                    "-vf", "scale=400:-2",
                     "-q:v", "5",
                     thumb_path,
                 ],
@@ -253,11 +311,35 @@ class MediaGallery:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            logger.debug("Generated thumbnail: %s", thumb_filename)
+            logger.debug("Generated video thumbnail: %s", thumb_filename)
             return thumb_filename
         except Exception as e:
             logger.warning("Could not generate thumbnail for %s: %s", video_filename, e)
             return None
+
+    def generate_image_thumbnail(self, image_filename: str) -> Optional[str]:
+        """Resize image to max 400px (longest side), store in thumbnails/."""
+        full_path = os.path.join(self.upload_folder, image_filename)
+        thumb_filename = os.path.splitext(image_filename)[0] + "_thumb.jpg"
+        thumb_path = self._thumb_path(image_filename)
+        try:
+            with Image.open(full_path) as img:
+                img = ImageOps.exif_transpose(img)
+                img.thumbnail((400, 400), Image.LANCZOS)
+                img.convert('RGB').save(thumb_path, 'JPEG', quality=82, optimize=True)
+            logger.debug("Generated image thumbnail: %s", thumb_filename)
+            return thumb_filename
+        except Exception as e:
+            logger.warning("Could not generate image thumbnail for %s: %s", image_filename, e)
+            return None
+
+    def backfill_image_thumbnails(self) -> None:
+        """Generate thumbnails for existing images that don't have one yet."""
+        for f in os.listdir(self.upload_folder):
+            if os.path.splitext(f)[1].lower() not in self.image_exts:
+                continue
+            if not os.path.exists(self._thumb_path(f)):
+                self.generate_image_thumbnail(f)
 
     def backfill_video_thumbnails(self) -> None:
         """Generate thumbnails for any existing videos that don't have one yet.
@@ -274,9 +356,8 @@ class MediaGallery:
         """Populate media item dictionaries with resolution and related metadata.
 
         For each item, attempts to read metadata from the persistent cache. If no cache
-        entry exists, extracts width and height (plus duration for videos or has_raw
-        for images) from the file, writes these fields into the item, and persists them
-        in the cache.
+        entry exists, extracts width and height (plus has_raw for images) from the file,
+        writes these fields into the item, and persists them in the cache.
 
         This function mutates the provided list in-place and may update the cache.
         """
@@ -291,7 +372,14 @@ class MediaGallery:
                 item["width"] = entry.get("width")
                 item["height"] = entry.get("height")
                 if item["type"] == "video":
-                    item["duration"] = entry.get("duration")
+                    cached_dur = entry.get("duration")
+                    if cached_dur is None:
+                        path = os.path.join(self.upload_folder, filename)
+                        cached_dur = self.get_video_duration(path)
+                        entry["duration"] = cached_dur
+                        cache[filename] = entry
+                        cache_updated = True
+                    item["duration"] = cached_dur
                 else:
                     item["has_raw"] = entry.get("has_raw", False)
             else:
@@ -307,6 +395,7 @@ class MediaGallery:
                     meta = self.get_video_metadata(path)
                     item["width"] = meta["width"]
                     item["height"] = meta["height"]
+                    meta["duration"] = self.get_video_duration(path)
                     item["duration"] = meta["duration"]
                     cache[filename] = meta
                 cache_updated = True
@@ -314,9 +403,12 @@ class MediaGallery:
         if cache_updated:
             self._save_cache(cache)
 
-    def get_media_slice(self, offset: int = 0, limit: int = 20, type: str = "all", excluded_files: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_media_slice(self, offset: int = 0, limit: int = 20, type: str = "all", excluded_files: Optional[List[str]] = None,
+                        sort: str = "newest", date_from: Optional[datetime] = None, date_to: Optional[datetime] = None,
+                        camera: Optional[str] = None) -> List[Dict[str, Any]]:
         """Return a slice of media for infinite scroll."""
-        all_media = self.get_media_files(type=type, excluded_files=excluded_files)
+        all_media = self.get_media_files(type=type, excluded_files=excluded_files, sort=sort,
+                                         date_from=date_from, date_to=date_to, camera=camera)
         sliced = all_media[offset:offset + limit]
         self._enrich_with_resolutions(sliced)
         return sliced

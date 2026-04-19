@@ -61,6 +61,14 @@ class CameraRPCServer:
         self._manager.on_camera_setting_changed = on_changed
 
         def on_media_created(camera_num, filename, w, h, has_raw=False):
+            if filename.lower().endswith('.mp4'):
+                from fmp4 import append_mfra
+                upload_folder = self._manager._gallery.upload_folder
+                path = os.path.join(upload_folder, filename)
+                threading.Thread(
+                    target=append_mfra, args=(path,), daemon=True,
+                    name=f"mfra-{filename}",
+                ).start()
             self._broadcast_event("media_created", {
                 "camera_num": camera_num,
                 "filename": filename,
@@ -119,6 +127,8 @@ class CameraRPCServer:
             return m.get_system_settings()
         if method == "manager.update_system_settings":
             return m.update_system_settings(*params)
+        if method == "manager.generate_media_filename":
+            return m.generate_media_filename(*params)
 
         # ---- Camera methods (first param is always camera_num) ----
         if method.startswith("camera."):

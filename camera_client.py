@@ -342,6 +342,9 @@ class CameraManagerClient:
     def media_upload_folder(self):
         return self._client.call("manager.get_attr", "media_upload_folder")
 
+    def generate_media_filename(self, cam_num: int, extension: str, timestamp: str) -> str:
+        return self._client.call("manager.generate_media_filename", cam_num, extension, timestamp)
+
 
 # ---------------------------------------------------------------------------
 # Helper: connect with retry (used by app.py)

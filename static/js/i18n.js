@@ -17,21 +17,20 @@
         ? window._i18nDefaultLang : 'en';
     var lang = localStorage.getItem('camui_lang') || serverDefault;
 
-    // Load language file synchronously so translations are ready at DOMContentLoaded
     var translations = {};
-    try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/static/i18n/' + lang + '.json', false); // synchronous
-        xhr.send();
-        if (xhr.status === 200) {
-            translations = JSON.parse(xhr.responseText);
-        }
-    } catch (e) {
-        console.warn('[i18n] Failed to load language file for "' + lang + '":', e);
-    }
-
     window._i18n    = translations;
     window._i18nLang = lang;
+
+    // Async fetch — avoids the synchronous XHR deprecation warning
+    var _ready = fetch('/static/i18n/' + lang + '.json')
+        .then(function (r) { return r.ok ? r.json() : {}; })
+        .then(function (data) {
+            Object.assign(translations, data);
+            window._i18n = translations;
+        })
+        .catch(function (e) {
+            console.warn('[i18n] Failed to load language file for "' + lang + '":', e);
+        });
 
     /**
      * Resolve a dot-notation key from the translations object.
@@ -80,9 +79,9 @@
         });
     };
 
-    // Apply as soon as the DOM is ready
+    // Apply once both DOM and translations are ready
     document.addEventListener('DOMContentLoaded', function () {
-        window.applyI18n();
+        _ready.then(function () { window.applyI18n(); });
     });
 
     /**

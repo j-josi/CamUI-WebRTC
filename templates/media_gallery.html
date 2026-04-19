@@ -1,53 +1,133 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<div class="container-fluid px-4">
+<style>
+  .btn-filter-active {
+    background-color: rgba(var(--bs-primary-rgb), 0.15);
+    border-color: rgba(var(--bs-primary-rgb), 0.45);
+    color: var(--bs-primary);
+  }
+  .btn-filter-active:hover {
+    background-color: rgba(var(--bs-primary-rgb), 0.25);
+    border-color: rgba(var(--bs-primary-rgb), 0.65);
+    color: var(--bs-primary);
+  }
+  #selection-banner {
+    position: fixed;
+    bottom: -110px;
+    left: 0; right: 0;
+    z-index: 1050;
+    transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-top: 1px solid var(--bs-border-color);
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    background: var(--bs-body-bg);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.10);
+  }
+  #selection-banner.visible { bottom: 0; }
+  @media (min-width: 768px) { .flex-md-grow-1 { flex-grow: 1; } }
+  /* Storage info: full-width row above dropdowns on mobile, right-aligned inline on md+ */
+  @media (max-width: 767.98px) {
+    #storageInfo { order: -1; flex: 0 0 100%; }
+  }
+  @media (min-width: 768px) {
+    #storageInfo { order: 999; margin-left: auto; }
+  }
+  #media-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+  @keyframes recPulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+  }
+</style>
+
+<div class="container-fluid px-4" style="margin-top: -1rem;">
 
     <!-- Sticky Filter + Bulk Actions -->
-    <div class="sticky-top bg-body shadow-sm pt-2" style="top:66px; z-index:1020;">
-        {% set tab_labels = {"all": "All", "image": "Photos", "video": "Videos"} %}
-        {% set tab_i18n  = {"all": "media_gallery.tab_all", "image": "media_gallery.tab_photos", "video": "media_gallery.tab_videos"} %}
+    <div class="sticky-top bg-body shadow-sm" style="top:66px; z-index:1020; border-bottom-left-radius: 0.5rem; border-bottom-right-radius: 0.5rem;">
 
-        <!-- Tabs row + Storage info desktop (right-aligned, same row) -->
-        <div class="d-flex align-items-end mb-2 border-bottom">
-            <ul class="nav nav-tabs flex-grow-1 border-bottom-0">
-                {% for t in ["all", "image", "video"] %}
-                <li class="nav-item">
-                    <a class="nav-link {% if media_type == t %}active{% endif %}"
-                       href="?type={{ t }}"
-                       data-i18n="{{ tab_i18n[t] }}">
-                        {{ tab_labels[t] }}
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-            <div id="storageInfo" class="d-none d-sm-block pb-1 pe-2" style="min-width:260px; max-width:360px;">
-                <div class="text-body small"><i class="bi bi-hdd"></i> Loading…</div>
+        <!-- Filter + Sort row -->
+        <div class="d-flex align-items-center gap-2 py-3 px-2 flex-wrap">
+            <!-- Filter dropdown + clear -->
+            <div class="d-flex">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="filterBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-filter me-1"></i><span id="filterLabel" data-i18n="media_gallery.tab_all">All</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item active" href="#" data-filter="all" onclick="setFilter('all'); return false;" data-i18n="media_gallery.tab_all">All</a></li>
+                        <li><a class="dropdown-item" href="#" data-filter="image" onclick="setFilter('image'); return false;" data-i18n="media_gallery.tab_photos">Photos</a></li>
+                        <li><a class="dropdown-item" href="#" data-filter="video" onclick="setFilter('video'); return false;" data-i18n="media_gallery.tab_videos">Videos</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-filter-active btn-sm d-none rounded-start-0 border-start-0 px-2" id="filterClearBtn" onclick="setFilter('all')">
+                    <i class="bi bi-x"></i>
+                </button>
             </div>
-        </div>
-
-        <!-- Bulk Actions -->
-        <div id="bulk-actions" class="mb-2 d-flex align-items-center flex-wrap gap-2 px-2 py-1">
-            <input type="checkbox" class="btn-check" id="selectAll">
-            <label class="btn btn-outline-primary btn-sm" for="selectAll" id="selectAllLabel" data-i18n="media_gallery.select_all">Select all</label>
-
-            <button id="bulk-download"
-                    class="btn btn-secondary btn-sm"
-                    onclick="bulkDownload()"
-                    disabled>
-                <i class="bi bi-download"></i> <span id="bulk-download-label" data-i18n="media_gallery.btn_download">Download</span>
-            </button>
-
-            <button id="bulk-delete"
-                    class="btn btn-danger btn-sm"
-                    onclick="openBulkDeleteModal()"
-                    disabled>
-                <i class="bi bi-trash"></i> <span id="bulk-delete-label" data-i18n="media_gallery.btn_delete">Delete</span>
-            </button>
-
-            <!-- Storage info mobile: full-width below buttons -->
-            <div id="storageInfoMobile" class="w-100 d-sm-none">
-                <div class="text-muted small"><i class="bi bi-hdd"></i> Loading…</div>
+            <!-- Date range dropdown + clear -->
+            <div class="d-flex">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="dateDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                        <i class="bi bi-calendar me-1"></i><span id="dateLabel" data-i18n="media_gallery.date_all">All dates</span>
+                    </button>
+                    <div class="dropdown-menu p-3" style="min-width:240px;">
+                        <div class="mb-2">
+                            <label class="form-label small mb-1" for="dateFrom" data-i18n="media_gallery.date_from">From</label>
+                            <input type="date" class="form-control form-control-sm" id="dateFrom">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="dateTo" data-i18n="media_gallery.date_to">To</label>
+                            <input type="date" class="form-control form-control-sm" id="dateTo">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary btn-sm flex-grow-1" onclick="applyDateFilter()" data-i18n="media_gallery.date_apply">Apply</button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearDateFilter()" data-i18n="media_gallery.date_clear">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-filter-active btn-sm d-none rounded-start-0 border-start-0 px-2" id="dateClearBtn" onclick="clearDateFilter()">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <!-- Camera filter dropdown + clear (hidden until 2+ cameras exist in gallery) -->
+            <div class="d-flex d-none" id="cameraFilterWrap">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="cameraDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-camera me-1"></i><span id="cameraLabel" data-i18n="media_gallery.camera_all">All cameras</span>
+                    </button>
+                    <ul class="dropdown-menu" id="cameraDropdownMenu">
+                        <li><a class="dropdown-item active" href="#" data-camera="" onclick="setCamera(''); return false;" data-i18n="media_gallery.camera_all">All cameras</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-filter-active btn-sm d-none rounded-start-0 border-start-0 px-2" id="cameraClearBtn" onclick="setCamera('')">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <!-- Divider between filters and sort -->
+            <div class="vr mx-1 align-self-stretch"></div>
+            <!-- Sort: criterion dropdown + direction toggle -->
+            <div class="d-flex">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-end-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-sort-down-alt me-1"></i><span id="sortLabel" data-i18n="media_gallery.sort_date">Date</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item active" href="#" data-sort-by="date" onclick="setSortBy('date'); return false;" data-i18n="media_gallery.sort_date">Date</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort-by="size" onclick="setSortBy('size'); return false;" data-i18n="media_gallery.sort_size">Size</a></li>
+                        <li><a class="dropdown-item" href="#" data-sort-by="duration" onclick="setSortBy('duration'); return false;" data-i18n="media_gallery.sort_duration">Duration</a></li>
+                    </ul>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm rounded-start-0 border-start-0" onclick="toggleSortDir()" id="sortDirBtn">
+                    <i id="sortDirIcon" class="bi bi-sort-down"></i>
+                </button>
+            </div>
+            <!-- Storage info -->
+            <div id="storageInfo" style="max-width:360px;">
+                <div class="text-body small"><i class="bi bi-hdd"></i> Loading…</div>
             </div>
         </div>
     </div>
@@ -92,7 +172,7 @@
 
 
     <!-- Media Gallery -->
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 row-cols-xxl-6 g-3" id="media-gallery"></div>
+    <div id="media-gallery"></div>
     <div id="loading" class="text-center my-3" style="display:none;">
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -100,12 +180,59 @@
     </div>
 </div>
 
+<!-- Floating Selection Banner -->
+<div id="selection-banner" aria-live="polite">
+    <div class="container-fluid px-4 pt-2 pb-2 d-flex flex-column flex-md-row align-items-md-center gap-2">
+        <span class="small fw-semibold" id="selectionCount"></span>
+        <div class="d-flex align-items-center gap-2 flex-md-grow-1">
+            <button class="btn btn-outline-secondary btn-sm" id="bannerSelectAllBtn" onclick="bannerToggleSelectAll()">
+                <span data-i18n="media_gallery.select_all">Select all</span>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="bulkDownload()">
+                <i class="bi bi-download me-1"></i><span data-i18n="media_gallery.btn_download">Download</span>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="openBulkDeleteModal()">
+                <i class="bi bi-trash me-1"></i><span data-i18n="media_gallery.btn_delete">Delete</span>
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+
+const _hlsMap = {};   // filename → Hls instance (for cleanup)
+// MSE is not supported on iOS Safari; use native HLS playback there instead.
+const _isIOS = /iPhone|iPod/.test(navigator.userAgent) ||
+               (/iPad/.test(navigator.userAgent) && !window.MSStream);
+// Safari (macOS + iOS) does not show video duration until play is clicked,
+// so the duration overlay is kept for Safari but hidden for other browsers.
+const _isSafari = /^((?!Chrome|CriOS|FxiOS|Firefox).)*Safari/.test(navigator.userAgent);
+
+/* ========================================================= */
+
+const _urlParams = new URLSearchParams(window.location.search);
+let currentFilter = ['all','image','video'].includes(_urlParams.get('type')) ? _urlParams.get('type') : 'all';
+let currentSortBy  = ['date','size'].includes(_urlParams.get('sort_by')) ? _urlParams.get('sort_by') : 'date';
+let currentSortDir = ['desc','asc'].includes(_urlParams.get('sort_dir')) ? _urlParams.get('sort_dir') : 'desc';
+let currentDateFrom = '';
+let currentDateTo   = '';
+let currentCamera   = '';
+
+function _getSort() {
+    if (currentSortBy === 'size')     return currentSortDir === 'asc' ? 'size_asc'     : 'size_desc';
+    if (currentSortBy === 'duration') return currentSortDir === 'asc' ? 'duration_asc' : 'duration_desc';
+    return currentSortDir === 'asc' ? 'oldest' : 'newest';
+}
 let offset = 0;
-const limit = 20;
 let isLoading = false;
+
+function computeLimit() {
+    const MIN = 12;
+    const cols = Math.max(1, Math.floor((gallery.offsetWidth || window.innerWidth) / 280));
+    const rows = Math.max(1, Math.ceil(window.innerHeight / 280));
+    return Math.max(MIN, cols * rows);
+}
 let allLoaded = false;
-const mediaType = "{{ media_type }}";
 const gallery = document.getElementById("media-gallery");
 
 
@@ -128,16 +255,187 @@ fetch('/get_storage_info')
             `<div class="progress mb-1" style="height:6px;">
                 <div class="progress-bar ${barColor}" style="width:${displayPct}%"></div>
              </div>
-             <div class="d-flex justify-content-between small">
-                 <span class="text-body"><i class="bi bi-hdd"></i> ${fmtBytes(data.media_used_bytes)} ${window.t('media_gallery.storage_used') || 'used'}</span>
-                 <span class="${lowFree ? 'text-danger fw-semibold' : 'text-body'}">${fmtBytes(data.disk_free_bytes)} ${window.t('media_gallery.storage_free') || 'free'}</span>
+             <div class="small ${lowFree ? 'text-danger fw-semibold' : 'text-body'}">
+                 <i class="bi bi-hdd me-1"></i>${fmtBytes(data.media_used_bytes)} ${window.t('media_gallery.storage_of') || 'of'} ${fmtBytes(total)} ${window.t('media_gallery.storage_used') || 'used'} (${usedPct}&nbsp;%)
              </div>`;
-        document.getElementById("storageInfo").innerHTML = html;
-        document.getElementById("storageInfoMobile").innerHTML = html;
+        const storageEl = document.getElementById("storageInfo");
+        storageEl.innerHTML = html;
+
+        if (data.estimated_recording_seconds != null && data.recording_resolution) {
+            const secs = data.estimated_recording_seconds;
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            const [rw, rh] = data.recording_resolution;
+            const timeStr = h > 0
+                ? `${h}h ${String(m).padStart(2, '0')}min`
+                : `${m}min`;
+            const tip = `~${timeStr} ${window.t('media_gallery.storage_remaining_recording') || 'remaining recording time at'} ${rw}\u00d7${rh}`;
+            storageEl.setAttribute('title', tip);
+            storageEl.setAttribute('data-bs-toggle', 'tooltip');
+            storageEl.setAttribute('data-bs-placement', 'bottom');
+            storageEl.style.cursor = 'default';
+            new bootstrap.Tooltip(storageEl);
+        }
     });
+
+/* ---------- Filter + Sort + Date ---------- */
+function _updateFilterUI() {
+    const active = currentFilter !== 'all';
+    const btn      = document.getElementById('filterBtn');
+    const clearBtn = document.getElementById('filterClearBtn');
+    btn.classList.toggle('btn-filter-active', active);
+    btn.classList.toggle('btn-outline-secondary', !active);
+    btn.classList.toggle('rounded-end-0', active);
+    clearBtn.classList.toggle('d-none', !active);
+}
+
+function _updateDateUI() {
+    const active = !!(currentDateFrom || currentDateTo);
+    const btn      = document.getElementById('dateDropdownBtn');
+    const clearBtn = document.getElementById('dateClearBtn');
+    btn.classList.toggle('btn-filter-active', active);
+    btn.classList.toggle('btn-outline-secondary', !active);
+    btn.classList.toggle('rounded-end-0', active);
+    clearBtn.classList.toggle('d-none', !active);
+}
+
+function setFilter(type) {
+    currentFilter = type;
+    document.querySelectorAll('[data-filter]').forEach(el => el.classList.toggle('active', el.dataset.filter === type));
+    const keys = { all: 'media_gallery.tab_all', image: 'media_gallery.tab_photos', video: 'media_gallery.tab_videos' };
+    document.getElementById('filterLabel').textContent = window.t(keys[type]) || { all: 'All', image: 'Photos', video: 'Videos' }[type];
+    _updateFilterUI();
+    resetAndReload();
+}
+
+function setSortBy(by) {
+    currentSortBy = by;
+    document.querySelectorAll('[data-sort-by]').forEach(el => el.classList.toggle('active', el.dataset.sortBy === by));
+    const keys = { date: 'media_gallery.sort_date', size: 'media_gallery.sort_size', duration: 'media_gallery.sort_duration' };
+    const fallback = { date: 'Date', size: 'Size', duration: 'Duration' };
+    document.getElementById('sortLabel').textContent = window.t(keys[by]) || fallback[by];
+    resetAndReload();
+}
+
+function toggleSortDir() {
+    currentSortDir = currentSortDir === 'desc' ? 'asc' : 'desc';
+    document.getElementById('sortDirIcon').className = `bi bi-sort-${currentSortDir === 'desc' ? 'down' : 'up'}`;
+    resetAndReload();
+}
+
+function _fmtDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y.slice(2)}`;
+}
+
+function _updateDateLabel() {
+    const el = document.getElementById('dateLabel');
+    if (!currentDateFrom && !currentDateTo) {
+        el.textContent = window.t('media_gallery.date_all') || 'All dates';
+    } else if (currentDateFrom && currentDateTo) {
+        el.textContent = `${_fmtDate(currentDateFrom)} – ${_fmtDate(currentDateTo)}`;
+    } else if (currentDateFrom) {
+        el.textContent = `≥ ${_fmtDate(currentDateFrom)}`;
+    } else {
+        el.textContent = `≤ ${_fmtDate(currentDateTo)}`;
+    }
+}
+
+function applyDateFilter() {
+    currentDateFrom = document.getElementById('dateFrom').value;
+    currentDateTo = document.getElementById('dateTo').value;
+    _updateDateLabel();
+    _updateDateUI();
+    bootstrap.Dropdown.getInstance(document.getElementById('dateDropdownBtn'))?.hide();
+    resetAndReload();
+}
+
+function clearDateFilter() {
+    currentDateFrom = '';
+    currentDateTo = '';
+    _prefillDateDefaults();
+    _updateDateLabel();
+    _updateDateUI();
+    bootstrap.Dropdown.getInstance(document.getElementById('dateDropdownBtn'))?.hide();
+    resetAndReload();
+}
+
+function _prefillDateDefaults() {
+    const today = new Date();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    document.getElementById('dateTo').value   = today.toISOString().slice(0, 10);
+    document.getElementById('dateFrom').value = sixMonthsAgo.toISOString().slice(0, 10);
+}
+
+function _updateCameraUI() {
+    const active = currentCamera !== '';
+    const btn      = document.getElementById('cameraDropdownBtn');
+    const clearBtn = document.getElementById('cameraClearBtn');
+    if (!btn) return;
+    btn.classList.toggle('btn-filter-active', active);
+    btn.classList.toggle('btn-outline-secondary', !active);
+    btn.classList.toggle('rounded-end-0', active);
+    clearBtn.classList.toggle('d-none', !active);
+    document.getElementById('cameraLabel').textContent = active
+        ? currentCamera
+        : (window.t('media_gallery.camera_all') || 'All cameras');
+    document.querySelectorAll('[data-camera]').forEach(el =>
+        el.classList.toggle('active', el.dataset.camera === currentCamera));
+}
+
+function setCamera(name) {
+    currentCamera = name;
+    _updateCameraUI();
+    bootstrap.Dropdown.getInstance(document.getElementById('cameraDropdownBtn'))?.hide();
+    resetAndReload();
+}
+
+function resetAndReload() {
+    offset = 0;
+    allLoaded = false;
+    Object.values(_hlsMap).forEach(h => { try { h.destroy(); } catch (_) {} });
+    for (const k in _hlsMap) delete _hlsMap[k];
+    gallery.innerHTML = '';
+    clearSelection();
+    loadMoreMedia();
+}
 
 /* ---------- Initial load ---------- */
 document.addEventListener("DOMContentLoaded", () => {
+    // Only one video plays at a time — pause others when a new one starts
+    gallery.addEventListener('play', (e) => {
+        if (e.target.tagName !== 'VIDEO') return;
+        document.querySelectorAll('#media-gallery video').forEach(v => {
+            if (v !== e.target && !v.paused) v.pause();
+        });
+    }, true);
+
+    // Pre-fill date inputs with defaults (today / 6 months ago)
+    _prefillDateDefaults();
+    // Sync filter + sort dropdown active states
+    document.querySelectorAll('[data-filter]').forEach(el => el.classList.toggle('active', el.dataset.filter === currentFilter));
+    document.querySelectorAll('[data-sort-by]').forEach(el => el.classList.toggle('active', el.dataset.sortBy === currentSortBy));
+    document.getElementById('sortDirIcon').className = `bi bi-sort-${currentSortDir === 'desc' ? 'down' : 'up'}`;
+    _updateFilterUI();
+    _updateDateUI();
+
+    // Populate camera filter dropdown; show only when 2+ cameras exist in gallery
+    fetch('/gallery_cameras')
+        .then(r => r.json())
+        .then(cameras => {
+            if (cameras.length < 2) return;
+            const menu = document.getElementById('cameraDropdownMenu');
+            cameras.forEach(name => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a class="dropdown-item" href="#" data-camera="${name}" onclick="setCamera('${name}'); return false;">${name}</a>`;
+                menu.appendChild(li);
+            });
+            document.getElementById('cameraFilterWrap').classList.remove('d-none');
+            _updateCameraUI();
+        });
+
     loadMoreMedia();
 });
 
@@ -154,7 +452,9 @@ function loadMoreMedia() {
     isLoading = true;
     document.getElementById("loading").style.display = "block";
 
-    fetch(`/get_media_slice?offset=${offset}&limit=${limit}&type=${mediaType}`)
+    const _dateQ = (currentDateFrom ? `&date_from=${currentDateFrom}` : '') + (currentDateTo ? `&date_to=${currentDateTo}` : '');
+    const _camQ  = currentCamera ? `&camera=${encodeURIComponent(currentCamera)}` : '';
+    fetch(`/get_media_slice?offset=${offset}&limit=${computeLimit()}&type=${currentFilter}&sort=${_getSort()}${_dateQ}${_camQ}`)
         .then(resp => resp.json())
         .then(data => {
             if (!data.media_files.length) {
@@ -168,21 +468,31 @@ function loadMoreMedia() {
                 col.id = `card_${file.filename}`;
 
                 const poster = file.thumbnail
-                    ? `poster="/static/gallery/video_thumbnails/${file.thumbnail}"`
+                    ? `poster="/static/gallery/thumbnails/${file.thumbnail}"`
                     : "";
 
+                const isRecording = !!file.is_recording;
+
+                const durOverlayId = `dur_${CSS.escape(file.filename)}`;
                 let durationOverlay = "";
-                if (file.type === "video" && file.duration != null) {
-                    const totalSec = Math.round(file.duration);
-                    const h = Math.floor(totalSec / 3600);
-                    const m = Math.floor((totalSec % 3600) / 60);
-                    const s = totalSec % 60;
-                    const durStr = h > 0
-                        ? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`
-                        : `${m}:${String(s).padStart(2,"0")}`;
+                if (isRecording) {
                     durationOverlay = `<span class="position-absolute top-0 end-0 m-1 px-1
-                        bg-dark bg-opacity-75 text-white rounded"
-                        style="font-size:0.75rem; pointer-events:none;">${durStr}</span>`;
+                        rounded d-flex align-items-center gap-1"
+                        style="font-size:0.75rem; pointer-events:none; background:rgba(0,0,0,0.65); z-index:5;">
+                        <span style="width:8px;height:8px;border-radius:50%;background:#dc3545;
+                            animation:recPulse 1s ease-in-out infinite;" ></span>
+                        <span class="text-white">REC</span>
+                    </span>`;
+                } else if (file.type === "video" && file.duration != null) {
+                    const _ts = Math.floor(file.duration);
+                    const _h  = Math.floor(_ts / 3600);
+                    const _m  = Math.floor((_ts % 3600) / 60);
+                    const _s  = _ts % 60;
+                    const _ds = _h > 0
+                        ? `${_h}:${String(_m).padStart(2,"0")}:${String(_s).padStart(2,"0")}`
+                        : `${_m}:${String(_s).padStart(2,"0")}`;
+                    durationOverlay = `<span id="${durOverlayId}" class="position-absolute top-0 end-0 m-1 px-1 bg-dark bg-opacity-75 text-white rounded"
+                        style="font-size:0.75rem;pointer-events:none;z-index:5;">${_ds}</span>`;
                 }
 
                 const rawBadge = file.type === "image" && file.has_raw
@@ -191,18 +501,46 @@ function loadMoreMedia() {
                         style="font-size:0.75rem; pointer-events:none;">RAW</span>`
                     : "";
 
+                const imgSrc = file.thumbnail
+                    ? `/static/gallery/thumbnails/${file.thumbnail}`
+                    : `/static/gallery/${file.filename}`;
+                const videoId = `video_${CSS.escape(file.filename)}`;
+                const encodedFn = encodeURIComponent(file.filename);
+                // Full-coverage overlay for all video types:
+                //   - hides greyed-out native controls (no src yet) until play is clicked
+                //   - keeps thumbnail visible during the buffering gap after play is clicked
+                // hls.js is used on non-iOS browsers that support MSE.
+                const useHlsJs = file.type === 'video' && !_isIOS
+                    && typeof Hls !== 'undefined' && Hls.isSupported();
+                const vidOverlayId = `vid_overlay_${CSS.escape(file.filename)}`;
+                const playOverlayId = `play_btn_${CSS.escape(file.filename)}`;
+                const vidOverlay = file.type === 'video' ? `
+                    <div id="${vidOverlayId}" class="position-absolute top-0 start-0 w-100 h-100" style="z-index:4;">
+                        ${file.thumbnail
+                            ? `<img src="/static/gallery/thumbnails/${file.thumbnail}"
+                                   class="w-100 h-100" style="object-fit:cover;display:block;">`
+                            : `<div class="w-100 h-100" style="background:#000;"></div>`}
+                        <button id="${playOverlayId}" type="button"
+                            class="position-absolute top-50 start-50 translate-middle"
+                            style="width:48px;height:48px;border-radius:50%;background:rgba(0,0,0,0.6);
+                                   border:2px solid rgba(255,255,255,0.7);z-index:5;padding:0;
+                                   display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                            <i class="bi bi-play-fill text-white" style="font-size:1.4rem;margin-left:3px;"></i>
+                        </button>
+                    </div>` : '';
                 const mediaContent = file.type === "image"
                     ? `<div class="position-relative">
                            <a href="/view_image/${file.filename}">
-                               <img src="/static/gallery/${file.filename}" class="card-img-top" loading="lazy">
+                               <img src="${imgSrc}" class="card-img-top" loading="lazy">
                            </a>
                            ${rawBadge}
                        </div>`
-                    : `<div class="position-relative">
-                           <video class="card-img-top" controls preload="none" ${poster}>
-                               <source src="/static/gallery/${file.filename}" type="video/mp4">
-                           </video>
+                    : `<div class="position-relative" style="min-height:120px;">
+                           <video id="${videoId}" class="card-img-top" controls ${_isIOS ? '' : 'playsinline'}
+                               ${poster}
+                               style="background:#000;display:block;width:100%;${file.width && file.height ? `aspect-ratio:${file.width}/${file.height};` : ''}"></video>
                            ${durationOverlay}
+                           ${vidOverlay}
                        </div>`;
 
                 col.innerHTML = `
@@ -212,7 +550,8 @@ function loadMoreMedia() {
                             <p class="card-text small">
                                 ${file.filename}<br>
                                 ${file.type.charAt(0).toUpperCase() + file.type.slice(1)}
-                                ${file.width && file.height ? `<br>${file.width}×${file.height}` : ""}
+                                ${file.width && file.height ? ` · ${file.width}×${file.height}` : ""}
+                                ${file.size ? `<br><span class="text-muted">${fmtBytes(file.size)}</span>` : ""}
                             </p>
                             <div class="d-flex align-items-center w-100">
                                 <div class="btn-group">
@@ -220,16 +559,17 @@ function loadMoreMedia() {
                                         onclick="window.location.href='/image_edit/${file.filename}'">
                                         <i class="bi bi-pencil"></i>
                                     </button>` : ""}
-                                    <button class="btn btn-sm btn-outline-secondary" onclick="downloadMedia(['${file.filename}'])">
+                                    <button class="btn btn-sm btn-outline-secondary" ${isRecording ? "disabled" : ""} onclick="downloadMedia(['${file.filename}'])">
                                         <i class="bi bi-download"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-outline-danger" onclick="openSingleDelete('${file.filename}')">
+                                    <button class="btn btn-sm btn-outline-danger" ${isRecording ? "disabled" : ""} onclick="openSingleDelete('${file.filename}')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </div>
                                 <div class="form-check form-check-inline ms-auto mb-0 me-1">
                                     <input class="form-check-input media-checkbox" type="checkbox"
                                         id="select_${file.filename}" value="${file.filename}"
+                                        ${isRecording ? "disabled" : ""}
                                         style="width:1.5rem; height:1.5rem; border:1px solid #6c757d;">
                                     <label class="form-check-label" for="select_${file.filename}"></label>
                                 </div>
@@ -238,7 +578,86 @@ function loadMoreMedia() {
                     </div>
                 `;
                 gallery.appendChild(col);
+                if (file.type === 'video') {
+                    const vEl = document.getElementById(videoId);
+                    if (vEl) {
+                        const hlsUrl = '/hls_playlist/' + encodedFn;
+                        const playBtn = document.getElementById(playOverlayId);
+                        const vidOverlayEl = document.getElementById(vidOverlayId);
+                        // Shared helper: swap play button for a spinner on the overlay.
+                        function _startOverlaySpinner() {
+                            if (!vidOverlayEl) return;
+                            playBtn && playBtn.remove();
+                            const sp = document.createElement('div');
+                            sp.className = 'position-absolute top-50 start-50 translate-middle';
+                            sp.innerHTML = '<div class="spinner-border text-white" role="status"'
+                                + ' style="width:2rem;height:2rem;opacity:0.85;"></div>';
+                            vidOverlayEl.appendChild(sp);
+                            vidOverlayEl.style.pointerEvents = 'none';
+                            vEl.addEventListener('canplay', () => vidOverlayEl.remove(), { once: true });
+                        }
 
+                        if (_isIOS) {
+                            // iOS: native HLS. Play button overlay triggers vEl.play() directly.
+                            vEl.preload = 'none';
+                            vEl.src = hlsUrl;
+                            if (playBtn) {
+                                playBtn.addEventListener('click', () => {
+                                    _startOverlaySpinner();
+                                    vEl.play().catch(() => {});
+                                }, { once: true });
+                            }
+                        } else if (useHlsJs) {
+                            if (playBtn) {
+                                playBtn.addEventListener('click', () => {
+                                    _startOverlaySpinner();
+                                    const hls = new Hls({});
+                                    hls.attachMedia(vEl);
+                                    _hlsMap[file.filename] = hls;
+                                    hls.on(Hls.Events.ERROR, (_, data) => {
+                                        if (data.fatal) {
+                                            hls.destroy();
+                                            delete _hlsMap[file.filename];
+                                            if (vidOverlayEl) vidOverlayEl.remove();
+                                            vEl.src = `/serve_video/${encodedFn}`;
+                                        }
+                                    });
+                                    hls.loadSource(hlsUrl);
+                                    vEl.play().catch(() => {});
+                                }, { once: true });
+                            }
+                        } else {
+                            // Fallback: native HLS (e.g. old Safari without MSE).
+                            vEl.preload = 'none';
+                            vEl.src = hlsUrl;
+                            vEl.addEventListener('error', () => {
+                                vEl.src = `/serve_video/${encodedFn}`;
+                            }, { once: true });
+                            if (playBtn) {
+                                playBtn.addEventListener('click', () => {
+                                    _startOverlaySpinner();
+                                    vEl.play().catch(() => {});
+                                }, { once: true });
+                            }
+                        }
+
+                        // Hide the duration overlay while playing; restore it on pause/end.
+                        // On Safari the overlay is removed permanently (native player shows
+                        // its own duration once playback starts).
+                        if (!isRecording && durationOverlay) {
+                            const durEl = document.getElementById(durOverlayId);
+                            if (durEl) {
+                                if (_isSafari) {
+                                    vEl.addEventListener('play', () => durEl.remove(), { once: true });
+                                } else {
+                                    vEl.addEventListener('play',  () => { durEl.style.display = 'none'; });
+                                    vEl.addEventListener('pause', () => { durEl.style.display = ''; });
+                                    vEl.addEventListener('ended', () => { durEl.style.display = ''; });
+                                }
+                            }
+                        }
+                    }
+                }
             });
 
             attachCheckboxListeners();
@@ -253,16 +672,34 @@ function loadMoreMedia() {
 /* ---------- Checkbox handling ---------- */
 // allSelectedFilenames tracks the true selection across all pages (loaded + unloaded)
 const allSelectedFilenames = new Set();
+let _lastCheckedCb = null;  // anchor for shift-click range selection
 
 function attachCheckboxListeners() {
     document.querySelectorAll(".media-checkbox").forEach(cb => {
         if (cb.dataset.listenerAttached) return;
         cb.dataset.listenerAttached = "1";
-        // Sync initial checked state from the set
         cb.checked = allSelectedFilenames.has(cb.value);
-        cb.addEventListener("change", () => {
+        cb.addEventListener("click", (e) => {
+            const all = Array.from(document.querySelectorAll('.media-checkbox:not(:disabled)'));
+            if (e.shiftKey && _lastCheckedCb && _lastCheckedCb !== cb) {
+                const i1 = all.indexOf(_lastCheckedCb);
+                const i2 = all.indexOf(cb);
+                if (i1 !== -1 && i2 !== -1) {
+                    const [from, to] = i1 < i2 ? [i1, i2] : [i2, i1];
+                    const state = cb.checked;
+                    for (let i = from; i <= to; i++) {
+                        all[i].checked = state;
+                        if (state) allSelectedFilenames.add(all[i].value);
+                        else allSelectedFilenames.delete(all[i].value);
+                    }
+                    _lastCheckedCb = cb;
+                    updateBulkActions();
+                    return;
+                }
+            }
             if (cb.checked) allSelectedFilenames.add(cb.value);
             else allSelectedFilenames.delete(cb.value);
+            _lastCheckedCb = cb;
             updateBulkActions();
         });
     });
@@ -270,38 +707,59 @@ function attachCheckboxListeners() {
 
 function updateBulkActions() {
     const count = allSelectedFilenames.size;
-    document.getElementById("bulk-delete").disabled = count === 0;
-    document.getElementById("bulk-download").disabled = count === 0;
-    const dlLabel = window.t('media_gallery.btn_download') || "Download";
-    const delLabel = window.t('media_gallery.btn_delete') || "Delete";
-    document.getElementById("bulk-download-label").textContent = count ? `${dlLabel} (${count})` : dlLabel;
-    document.getElementById("bulk-delete-label").textContent = count ? `${delLabel} (${count})` : delLabel;
+    const banner = document.getElementById('selection-banner');
+    banner.classList.toggle('visible', count > 0);
+    if (count > 0) {
+        const tpl = window.t('media_gallery.n_selected') || '{count} selected';
+        document.getElementById('selectionCount').textContent = tpl.replace('{count}', count);
+    }
 }
 
 function getSelectedFiles() {
     return Array.from(allSelectedFilenames);
 }
 
-document.getElementById("selectAll").addEventListener("change", e => {
-    const checked = e.target.checked;
-    const label = document.getElementById("selectAllLabel");
-    if (!checked) {
-        allSelectedFilenames.clear();
-        document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = false);
-        label.textContent = window.t('media_gallery.select_all') || "Select all";
-        updateBulkActions();
+let _bannerAllSelected = false;
+
+function clearSelection() {
+    allSelectedFilenames.clear();
+    document.querySelectorAll('.media-checkbox').forEach(cb => cb.checked = false);
+    _lastCheckedCb = null;
+    _bannerAllSelected = false;
+    _syncBannerSelectAllBtn();
+    updateBulkActions();
+}
+
+function bannerToggleSelectAll() {
+    if (_bannerAllSelected) {
+        clearSelection();
         return;
     }
-    // Fetch all filenames from backend, add to set, check visible boxes
-    fetch(`/get_all_media_filenames?type=${mediaType}`)
+    const _dateQA = (currentDateFrom ? `&date_from=${currentDateFrom}` : '') + (currentDateTo ? `&date_to=${currentDateTo}` : '');
+    const _camQA  = currentCamera ? `&camera=${encodeURIComponent(currentCamera)}` : '';
+    fetch(`/get_all_media_filenames?type=${currentFilter}&sort=${_getSort()}${_dateQA}${_camQA}`)
         .then(r => r.json())
         .then(filenames => {
             filenames.forEach(f => allSelectedFilenames.add(f));
-            document.querySelectorAll(".media-checkbox").forEach(cb => cb.checked = true);
-            label.textContent = window.t('media_gallery.deselect_all') || "Deselect all";
+            document.querySelectorAll('.media-checkbox').forEach(cb => cb.checked = true);
+            _bannerAllSelected = true;
+            _syncBannerSelectAllBtn();
             updateBulkActions();
         });
-});
+}
+
+function _syncBannerSelectAllBtn() {
+    const btn = document.getElementById('bannerSelectAllBtn');
+    if (!btn) return;
+    const span = btn.querySelector('span');
+    if (_bannerAllSelected) {
+        if (span) span.setAttribute('data-i18n', 'media_gallery.deselect_all');
+        btn.textContent = window.t('media_gallery.deselect_all') || 'Deselect all';
+    } else {
+        if (span) span.setAttribute('data-i18n', 'media_gallery.select_all');
+        btn.textContent = window.t('media_gallery.select_all') || 'Select all';
+    }
+}
 
 /* ---------- Delete ---------- */
 let deleteTarget = null;

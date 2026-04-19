@@ -227,6 +227,10 @@ class CameraManager:
             target=self._gallery.backfill_video_thumbnails,
             daemon=True,
         ).start()
+        threading.Thread(
+            target=self._gallery.backfill_image_thumbnails,
+            daemon=True,
+        ).start()
 
     def _auto_assign_fallback_audio(self, saved_settings: dict) -> None:
         """
@@ -283,16 +287,39 @@ class CameraManager:
         if state_name == "is_video_recording":
             if camera.states.get("is_video_recording"):
                 self._schedule_duration_timer(camera.camera_num)
+                self._schedule_recording_thumbnail(camera)
             else:
                 self._cancel_duration_timer(camera.camera_num)
         if callable(self.on_camera_setting_changed):
             self.on_camera_setting_changed(camera, state_name)
 
+    def _schedule_recording_thumbnail(self, camera: Camera, delay: float = 5.0) -> None:
+        """Generate a thumbnail a few seconds after recording starts.
+
+        The delay ensures at least one complete fragment has been written so
+        ffmpeg can decode the first frame. The thumbnail is then available in
+        the gallery while the recording is still active.
+        """
+        def _run():
+            import time as _time
+            _time.sleep(delay)
+            fn = camera.filename_recording
+            if fn and camera.states.get("is_video_recording"):
+                self._gallery.generate_video_thumbnail(fn)
+        threading.Thread(target=_run, daemon=True, name="recording-thumb").start()
+
     def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
-        self._gallery.register_media(filename, w, h, has_raw=has_raw)
+        cam = self.get_camera(camera_num)
+        self._gallery.register_media(filename, w, h, has_raw=has_raw, camera_name=cam.name if cam else None)
         if filename.lower().endswith(".mp4"):
             threading.Thread(
                 target=self._gallery.generate_video_thumbnail,
+                args=(filename,),
+                daemon=True,
+            ).start()
+        elif os.path.splitext(filename)[1].lower() in ('.jpg', '.jpeg'):
+            threading.Thread(
+                target=self._gallery.generate_image_thumbnail,
                 args=(filename,),
                 daemon=True,
             ).start()
@@ -318,7 +345,28 @@ class CameraManager:
     # ------------------------------------------------------------------
 
     def get_storage_info(self) -> dict:
-        return self._gallery.get_storage_info(buffer_bytes=CameraManager.STORAGE_MIN_FREE_BYTES)
+        storage = self._gallery.get_storage_info(buffer_bytes=CameraManager.STORAGE_MIN_FREE_BYTES)
+
+        # Find the highest available video resolution across all cameras.
+        # video_resolutions_supported is already sorted descending and capped at
+        # Camera.H264_MAX_VID_RESOLUTION, so index 0 is the effective maximum.
+        max_w, max_h = 0, 0
+        for camera in self.cameras.values():
+            resolutions = getattr(camera, 'video_resolutions_supported', [])
+            if resolutions:
+                w, h = resolutions[0]
+                if w * h > max_w * max_h:
+                    max_w, max_h = w, h
+
+        if max_w > 0 and max_h > 0:
+            # Reference: 4.85 GB in 81 min at 1920×1080 with ~1/15 of frame in motion.
+            _REF_BPS = 4_850_000_000 / (81 * 60)   # bytes/sec at 1920×1080
+            _REF_PX  = 1920 * 1080
+            bps = _REF_BPS * (max_w * max_h) / _REF_PX
+            storage['estimated_recording_seconds'] = int(storage['disk_free_bytes'] / bps)
+            storage['recording_resolution'] = [max_w, max_h]
+
+        return storage
 
     def get_system_settings(self) -> dict:
         result = self._settings.get_all()
@@ -547,6 +595,38 @@ class CameraManager:
 
         t = threading.Thread(target=_watchdog, daemon=True, name="storage-watchdog")
         t.start()
+
+    def generate_media_filename(self, cam_num: int, extension: str, timestamp: str) -> str:
+        """Build a collision-free filename for a new photo or video.
+
+        Counter is inserted between timestamp and camera suffix so the camera
+        name always appears last:
+          single-cam:  2026-04-18_12-04-49.jpg  → 2026-04-18_12-04-49_1.jpg
+          multi-cam:   2026-04-18_12-04-49_front.jpg → 2026-04-18_12-04-49_1_front.jpg
+        Collision is checked against the exact extension, not any extension.
+        """
+        if not extension.startswith("."):
+            extension = "." + extension
+
+        multi_cam = len(self.cameras) > 1 and cam_num
+        if multi_cam:
+            cam = self.get_camera(cam_num)
+            cam_suffix = (cam.name.lower() if cam else f"Cam{cam_num}").lower().replace(" ", "_")
+        else:
+            cam_suffix = None
+
+        existing = set(os.listdir(self.media_upload_folder))
+        counter = 0
+        while True:
+            counter_part = f"_{counter}" if counter else ""
+            name = (
+                f"{timestamp}{counter_part}_{cam_suffix}{extension}"
+                if cam_suffix else
+                f"{timestamp}{counter_part}{extension}"
+            )
+            if name not in existing:
+                return name
+            counter += 1
 
     def get_camera(self, cam_num: int) -> Optional[Camera]:
         """

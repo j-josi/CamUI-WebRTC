@@ -12,6 +12,8 @@ if not monkey.is_module_patched('socket'):
 # System / Standard Library Imports
 import os
 import io
+import re
+import math
 import logging
 import json
 import time
@@ -171,6 +173,7 @@ else:
 ####################
 from camera_client import CameraManagerClient, connect_with_retry
 from media_gallery import MediaGallery
+from fmp4 import VirtualFaststartMP4, get_fmp4_info, get_exact_video_duration
 
 ####################
 # Initialize Flask
@@ -260,38 +263,22 @@ def request_client_time_if_needed():
     if not system_time_is_synced() and CLIENT_EPOCH is None:
         socketio.emit("request_client_time")
 
-def generate_filename(camera_manager, cam_num: int, file_extension: str = ".jpg") -> str:
+def _generate_timestamp() -> str:
     """
-    Generates a filename timestamp based on the following priority:
+    Returns a timestamp string based on the following priority:
     1) System time (if NTP synchronized)
     2) Client-provided time (first connected client)
     3) Fallback using DEFAULT_EPOCH + monotonic elapsed time
     """
-    # Normalize file extension
-    if not file_extension.startswith("."):
-        file_extension = "." + file_extension
-
-    # 1) Use system time if synced
     if system_time_is_synced():
         timestamp = datetime.now()
-
-    # 2) Use client-provided timestamp if available
     elif CLIENT_EPOCH is not None:
         elapsed = time.monotonic() - monotonic_epoch
         timestamp = CLIENT_EPOCH + timedelta(seconds=elapsed)
-
-    # 3) Last fallback: app start time
     else:
         elapsed = time.monotonic() - monotonic_epoch
         timestamp = DEFAULT_EPOCH + timedelta(seconds=elapsed)
-    
-    str_timestamp = timestamp.strftime("%Y-%m-%d_%H-%M-%S")
-
-    # add camera number to filename, if more than one camera is connected
-    if len(camera_manager.cameras.items()) > 1 and cam_num:
-        return f"{str_timestamp}_cam{cam_num}{file_extension}"
-    else:
-        return f"{str_timestamp}{file_extension}"
+    return timestamp.strftime("%Y-%m-%d_%H-%M-%S")
 
 def _build_camera_state(camera_num: int) -> dict:
     """Build a camera state dict that includes current settings and per-param button states."""
@@ -420,6 +407,10 @@ camera_manager.on_recording_auto_stopped = handle_recording_auto_stopped
 # Initialize Media Gallery
 ####################
 media_gallery_manager = MediaGallery(media_upload_folder)
+# Tracks when each active recording filename first appeared, so we can delay
+# showing it in the gallery until enough complete fragments exist.
+_recording_first_seen: dict = {}
+_RECORDING_GALLERY_DELAY = 5  # seconds before a live recording appears in gallery
 # media_gallery_manager.recover_interrupted_mux()  # orphan code for usage of picamera2.outputs.FfmpegOutput and parallel audio recording in own thread and muxing aftertwards
 
 ####################
@@ -528,7 +519,7 @@ def _do_capture_still(camera_num, room_name):
     if not camera:
         socketio.emit("capture_done", {"camera_num": camera_num, "success": False}, room=room_name)
         return
-    image_filename = generate_filename(camera_manager, camera_num, ".jpg")
+    image_filename = camera_manager.generate_media_filename(camera_num, ".jpg", _generate_timestamp())
     success = camera.capture_still(image_filename, camera.configs["saveRAW"])
     socketio.emit("capture_done", {
         "camera_num": camera_num,
@@ -548,7 +539,7 @@ def handle_start_recording(data):
         logger.warning("Not enough storage to start recording")
         emit("storage_error", {"type": "storage_full_recording", "message": "Failed to start recording - not enough free storage available."})
         return
-    filename = generate_filename(camera_manager, camera_num, ".mp4")
+    filename = camera_manager.generate_media_filename(camera_num, ".mp4", _generate_timestamp())
     success = camera.start_recording(filename)
     if not success:
         emit("error", {"type": "recording_failed", "message": "Failed to start recording"})
@@ -930,11 +921,32 @@ def get_system_settings():
     # and already present in settings — no proxy access needed here.
     return jsonify(settings)
 
+_CAMERA_NAME_FORBIDDEN = re.compile(r'[\\/:*?"<>| .,]')
+
 @app.route('/api/system_settings', methods=['POST'])
 def update_system_settings():
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
+
+    if "camera_names" in data:
+        names = data["camera_names"]
+        if not isinstance(names, dict):
+            return jsonify({"error": "Invalid camera_names format"}), 400
+        seen = set()
+        for cam_key, name in names.items():
+            name = str(name)
+            if not name:
+                return jsonify({"error": "Camera name must not be empty"}), 400
+            if len(name) > 20:
+                return jsonify({"error": f"Camera name '{name}' exceeds 20 characters"}), 400
+            if _CAMERA_NAME_FORBIDDEN.search(name):
+                return jsonify({"error": f"Camera name '{name}' contains invalid characters"}), 400
+            normalized = name.strip().lower()
+            if normalized in seen:
+                return jsonify({"error": f"Duplicate camera name '{name}'"}), 400
+            seen.add(normalized)
+
     updated = camera_manager.update_system_settings(data)
     # Broadcast live-view title changes to all camera rooms
     if "live_view_title" in data or "live_view_hide_title" in data:
@@ -1038,7 +1050,7 @@ def snapshot(camera_num):
     """Take a snapshot from the camera feed and send it as JPG."""
     camera = camera_manager.get_camera(camera_num)
     if camera:
-        image_filename = generate_filename(camera_manager, camera_num, "_snapshot.jpg")
+        image_filename = camera_manager.generate_media_filename(camera_num, "_snapshot.jpg", _generate_timestamp())
         image_filepath = os.path.join(camera_manager.media_upload_folder, image_filename)
         success = camera.capture_still_from_feed(image_filepath)
         
@@ -1218,16 +1230,32 @@ def get_storage_info():
     storage = camera_manager.get_storage_info()
     return jsonify(storage)
 
+def _parse_date(date_str):
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else None
+    except ValueError:
+        return None
+
+@app.route('/gallery_cameras')
+def gallery_cameras():
+    """Return distinct camera names recorded in the media cache (for filter dropdown)."""
+    return jsonify(media_gallery_manager.get_gallery_cameras())
+
 @app.route('/get_all_media_filenames')
 def get_all_media_filenames():
     """Return all media filenames for the given type (used by select-all)."""
     media_type = request.args.get('type', 'all')
+    sort = request.args.get('sort', 'newest')
+    date_from = _parse_date(request.args.get('date_from'))
+    date_to = _parse_date(request.args.get('date_to'))
+    camera = request.args.get('camera') or None
     active_recordings = [
         cam.filename_recording
         for cam in camera_manager.cameras.values()
         if cam.states["is_video_recording"]
     ]
-    all_files = media_gallery_manager.get_media_files(type=media_type, excluded_files=active_recordings)
+    all_files = media_gallery_manager.get_media_files(type=media_type, excluded_files=active_recordings, sort=sort,
+                                                      date_from=date_from, date_to=date_to, camera=camera)
     return jsonify([f["filename"] for f in all_files])
 
 @app.route('/get_media_slice')
@@ -1236,16 +1264,69 @@ def get_media_slice():
     offset = request.args.get('offset', 0, type=int)
     limit = request.args.get('limit', 20, type=int)
     media_type = request.args.get('type', 'all')
+    sort = request.args.get('sort', 'newest')
+    date_from = _parse_date(request.args.get('date_from'))
+    date_to = _parse_date(request.args.get('date_to'))
+    camera = request.args.get('camera') or None
 
-    active_recordings = []
+    active_recording_entries = []
+    active_filenames = []
+    now = time.time()
 
-    for key, camera in camera_manager.cameras.items():
-        if camera.states["is_video_recording"]:
-            active_recordings.append(camera.filename_recording)
+    # Clean up entries for recordings that have already stopped
+    active_fns = {
+        cam.filename_recording
+        for cam in camera_manager.cameras.values()
+        if cam.states["is_video_recording"] and cam.filename_recording
+    }
+    for stale in list(_recording_first_seen):
+        if stale not in active_fns:
+            _recording_first_seen.pop(stale, None)
+
+    for cam in camera_manager.cameras.values():
+        if cam.states["is_video_recording"] and cam.filename_recording:
+            fn = cam.filename_recording
+            active_filenames.append(fn)
+            if media_type not in ("all", "video"):
+                continue
+            # Track first-seen time; delay gallery appearance until enough
+            # complete fragments exist (last fragment always incomplete while recording)
+            if fn not in _recording_first_seen:
+                _recording_first_seen[fn] = now
+            if now - _recording_first_seen[fn] < _RECORDING_GALLERY_DELAY:
+                continue  # not ready yet — too few complete fragments
+            path = os.path.join(camera_manager.media_upload_folder, fn)
+            try:
+                stat = os.stat(path)
+                size, created = stat.st_size, stat.st_mtime
+            except OSError:
+                size, created = 0, now
+            thumb_name = os.path.splitext(fn)[0] + "_thumb.jpg"
+            thumb_exists = os.path.exists(
+                os.path.join(camera_manager.media_upload_folder, "thumbnails", thumb_name)
+            )
+            active_recording_entries.append({
+                "filename": fn,
+                "type": "video",
+                "size": size,
+                "created": created,
+                "is_recording": True,
+                "width": None,
+                "height": None,
+                "thumbnail": thumb_name if thumb_exists else None,
+                "duration": None,
+                "has_raw": False,
+                "camera_name": cam.name,
+            })
 
     media_files = media_gallery_manager.get_media_slice(
-        offset=offset, limit=limit, type=media_type, excluded_files=active_recordings
+        offset=offset, limit=limit, type=media_type, excluded_files=active_filenames, sort=sort,
+        date_from=date_from, date_to=date_to, camera=camera
     )
+
+    # Prepend live recordings on the first page only
+    if offset == 0:
+        media_files = active_recording_entries + media_files
 
     return jsonify({'media_files': media_files})
 
@@ -1266,6 +1347,122 @@ def delete_media(filename):
 def edit_image(filename):
     """Render image editing page."""
     return render_template('image_edit.html', filename=filename)
+
+@app.route('/hls_playlist/<path:filename>')
+def hls_playlist(filename):
+    """Generate a VOD HLS playlist (CMAF/fMP4 segments) for iOS native playback."""
+    folder = app.config['media_upload_folder']
+    safe_path = os.path.realpath(os.path.join(folder, filename))
+    if not safe_path.startswith(os.path.realpath(folder) + os.sep):
+        abort(403)
+    if not os.path.exists(safe_path):
+        abort(404)
+
+    info = get_fmp4_info(safe_path)
+    moov_end  = info.get('moov_end', 0)
+    fragments = info.get('fragments', [])
+
+    if not fragments or not moov_end:
+        abort(404)
+
+    is_recording = any(
+        cam.filename_recording == filename and cam.states.get('is_video_recording')
+        for cam in camera_manager.cameras.values()
+    )
+
+    # Per-fragment durations; exact duration for the last fragment from trun parsing.
+    exact_total = None if is_recording else get_exact_video_duration(safe_path)
+    durations = []
+    for i, frag in enumerate(fragments):
+        if i + 1 < len(fragments):
+            dur = fragments[i + 1]['time_seconds'] - frag['time_seconds']
+        elif exact_total is not None:
+            dur = exact_total - frag['time_seconds']
+        else:
+            dur = (sum(durations) / len(durations)) if durations else 2.0
+        durations.append(dur)
+
+    target_duration = max(1, math.ceil(max(durations))) if durations else 2
+
+    lines = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:7',
+        f'#EXT-X-TARGETDURATION:{target_duration}',
+        '#EXT-X-MEDIA-SEQUENCE:0',
+    ]
+    if not is_recording:
+        lines.append('#EXT-X-PLAYLIST-TYPE:VOD')
+
+    # Init segment (moov box)
+    lines.append(f'#EXT-X-MAP:URI="/serve_video/{filename}",BYTERANGE="{moov_end}@0"')
+
+    # One HLS segment per fMP4 fragment, referenced by byte range.
+    # For active recordings skip the last fragment — its mdat may still be written.
+    safe_count = len(fragments) - 1 if is_recording else len(fragments)
+    for i in range(safe_count):
+        frag = fragments[i]
+        size = frag['byte_end'] - frag['byte_start']
+        lines.append(f'#EXTINF:{durations[i]:.6f},')
+        lines.append(f'#EXT-X-BYTERANGE:{size}@{frag["byte_start"]}')
+        lines.append(f'/serve_video/{filename}')
+
+    if not is_recording:
+        lines.append('#EXT-X-ENDLIST')
+
+    return Response(
+        '\n'.join(lines) + '\n',
+        mimetype='application/vnd.apple.mpegurl',
+        headers={'Cache-Control': 'no-cache'},
+    )
+
+
+@app.route('/serve_video/<path:filename>')
+def serve_video(filename):
+    """Stream an MP4 with virtual faststart (moov moved to front, no extra disk space)."""
+    folder = app.config['media_upload_folder']
+    safe_path = os.path.realpath(os.path.join(folder, filename))
+    if not safe_path.startswith(os.path.realpath(folder) + os.sep):
+        abort(403)
+    if not os.path.isfile(safe_path):
+        abort(404)
+
+    vf = VirtualFaststartMP4(safe_path)
+    total_size = vf.total_size
+
+    range_header = request.headers.get('Range')
+    if range_header:
+        m = re.match(r'bytes=(\d+)-(\d*)', range_header)
+        if m:
+            start = int(m.group(1))
+            end = int(m.group(2)) + 1 if m.group(2) else total_size
+            end = min(end, total_size)
+            length = end - start
+
+            def _gen_range():
+                yield from vf.stream_range(start, end)
+
+            return Response(
+                _gen_range(),
+                status=206,
+                mimetype='video/mp4',
+                headers={
+                    'Content-Range': f'bytes {start}-{end - 1}/{total_size}',
+                    'Content-Length': str(length),
+                    'Accept-Ranges': 'bytes',
+                },
+            )
+
+    def _gen_full():
+        yield from vf.stream_range(0, total_size)
+
+    return Response(
+        _gen_full(),
+        mimetype='video/mp4',
+        headers={
+            'Content-Length': str(total_size),
+            'Accept-Ranges': 'bytes',
+        },
+    )
 
 @app.route("/download_media", methods=["POST"])
 def download_media():

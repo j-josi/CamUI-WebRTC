@@ -100,7 +100,8 @@
       {% if camera_list|length > 1 %}
       <!-- Camera Names -->
       <div class="mb-5">
-        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.camera_names_title">Camera Names</h2>
+        <h2 class="pb-2 mb-3 border-bottom" data-i18n="settings.camera_names_title">Camera Names</h2>
+        <p class="text-body-secondary small mb-4" data-i18n="settings.camera_names_desc">These names are shown as tab labels in the camera live view and are used to filter media by camera in the media gallery.</p>
         <div class="row g-3" style="max-width: 480px;">
           {% for cam_info, cam_module_info in camera_list %}
           <div class="col-12">
@@ -109,8 +110,11 @@
               <input type="text" class="form-control camera-name-input"
                      id="cameraNameInput_{{ cam_info.Num }}"
                      placeholder="Cam{{ cam_info.Num }}"
-                     data-cam-num="{{ cam_info.Num }}">
+                     data-cam-num="{{ cam_info.Num }}"
+                     oninput="_validateCameraNames()">
             </div>
+            <div class="invalid-feedback d-block small text-danger ps-1"
+                 id="cameraNameFeedback_{{ cam_info.Num }}" style="min-height:1.2em;"></div>
           </div>
           {% endfor %}
         </div>
@@ -893,6 +897,53 @@
   });
 
   // ── Settings save functions ──────────────────────────────────────────
+  const _CAMERA_NAME_MAX_LEN = 20;
+
+  function _validateCameraNames() {
+    const FORBIDDEN = /[\\/:*?"<>| .,]/;
+    const inputs = Array.from(document.querySelectorAll('.camera-name-input'));
+    let valid = true;
+
+    // Reset state
+    inputs.forEach(input => {
+      input.classList.remove('is-invalid');
+      const fb = document.getElementById('cameraNameFeedback_' + input.dataset.camNum);
+      if (fb) fb.textContent = '';
+    });
+
+    inputs.forEach(input => {
+      const fb = document.getElementById('cameraNameFeedback_' + input.dataset.camNum);
+      const val = input.value;
+      if (val.length > _CAMERA_NAME_MAX_LEN) {
+        input.classList.add('is-invalid');
+        if (fb && !fb.textContent) fb.textContent = window.t('settings.camera_name_too_long') || `Name must not exceed ${_CAMERA_NAME_MAX_LEN} characters.`;
+        valid = false;
+      } else if (FORBIDDEN.test(val)) {
+        input.classList.add('is-invalid');
+        if (fb) fb.textContent = window.t('settings.camera_name_invalid_chars') || 'Name contains invalid characters (\\ / : * ? " < > | space)';
+        valid = false;
+      }
+    });
+
+    // Check duplicates (case-insensitive; empty fields use their placeholder → include in check)
+    const seen = {};
+    inputs.forEach(input => {
+      const val = (input.value || input.placeholder).trim().toLowerCase();
+      if (seen[val] !== undefined) {
+        [input, seen[val]].forEach(el => {
+          el.classList.add('is-invalid');
+          const fb = document.getElementById('cameraNameFeedback_' + el.dataset.camNum);
+          if (fb && !fb.textContent) fb.textContent = window.t('settings.camera_name_duplicate') || 'Camera names must be unique.';
+        });
+        valid = false;
+      } else {
+        seen[val] = input;
+      }
+    });
+
+    return valid;
+  }
+
   function saveAppearanceTab() {
     const theme = document.querySelector('input[name="defaultTheme"]:checked')?.value;
     const language = document.querySelector('input[name="defaultLang"]:checked')?.value;
@@ -905,6 +956,12 @@
     payload.live_view_hide_title = hide_title;
     const nameInputs = document.querySelectorAll('.camera-name-input');
     if (nameInputs.length > 0) {
+      if (!_validateCameraNames()) {
+        _showTabMsg('appearanceMsg', false, window.t('settings.camera_name_validation_error') || 'Please fix the camera name errors before saving.');
+        return Promise.reject(new Error('validation'));
+      }
+      // Empty field → fall back to placeholder (e.g. "Cam1")
+      nameInputs.forEach(input => { if (!input.value) input.value = input.placeholder; });
       const names = {};
       nameInputs.forEach(input => { names[input.dataset.camNum] = input.value; });
       payload.camera_names = names;
