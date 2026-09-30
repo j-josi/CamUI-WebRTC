@@ -1,5 +1,31 @@
-# run with following command:
-# /home/pi/CamUI-WebRTC/venv/bin/gunicorn   --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker   --workers 1 --bind 0.0.0.0:8080   --chdir /home/pi/CamUI-WebRTC   --env BATTERY_FILE=/run/battery/battery.json   app:app
+"""
+Flask/SocketIO web server — the single entry point for the entire application.
+
+HOW IT WORKS
+------------
+This is the only process you need to start manually (see run command below).
+On startup it automatically launches camera_server.py as a child subprocess
+(see _ensure_camera_server()). That subprocess runs all camera operations
+(picamera2, PyavOutput/libav RTSP streaming) in a completely separate OS
+process, free of Flask and gevent.
+
+WHY THE SPLIT
+-------------
+PyavOutput uses libav (C-level FFmpeg) for RTSP streaming. These C-level calls
+block the OS thread and cannot be made cooperative by gevent's monkey-patching.
+Running camera code directly inside this gevent event loop would therefore
+deadlock or silently break RTSP streaming. The subprocess boundary solves this.
+
+COMMUNICATION WITH CAMERA PROCESS
+----------------------------------
+camera_client.py provides CameraManagerClient / CameraProxy — classes that
+mirror the CameraManager / Camera interface exactly. Every method call is
+transparently forwarded to camera_server.py over a Unix domain socket using
+JSON (RPC pattern). From this file's perspective all camera calls look local.
+
+Run command:
+/home/pi/CamUI-WebRTC/venv/bin/gunicorn   --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker   --workers 1 --bind 0.0.0.0:8080   --chdir /home/pi/CamUI-WebRTC   --env BATTERY_FILE=/run/battery/battery.json   app:app
+"""
 
 from gevent import monkey
 # GeventWebSocketWorker (gunicorn) calls monkey.patch_all() before the app is
@@ -703,7 +729,7 @@ def inject_camera_list():
         for camera in camera_manager.cameras.values()  # CameraObject instances
     ]
     # DEV: uncomment following line to add a second fake camera to simulate/test ux with multiple cameras
-    camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
+    # camera_list.append(({"Num": 1, "Model": "imx219 (test)"}, {}))
     return dict(camera_list=camera_list, navbar=True)
 
 @app.context_processor

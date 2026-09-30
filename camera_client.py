@@ -1,10 +1,28 @@
 """
-Camera RPC client. Provides the same interface as CameraManager / Camera
-but delegates all calls to camera_server.py via a Unix domain socket.
+Camera IPC client for app.py (the Flask/gevent web server).
 
-Works in plain Python (real OS threads) and gevent (greenlets) — no gevent
-import here; the caller's environment determines which threading primitives
-are active.
+WHY THIS FILE EXISTS
+--------------------
+Camera operations (picamera2 + PyavOutput) use libav (C-level FFmpeg) for
+RTSP streaming. These C-level calls block the OS thread and cannot be made
+cooperative by gevent's monkey-patching used in app.py. Running camera code 
+inside the gevent event loop therefore deadlocks or breaks streaming. 
+The solution is to run all camera code in a separate OS process 
+(camera_server.py) that is completely free of gevent.
+
+HOW IT WORKS
+------------
+This module provides CameraManagerClient and CameraClient — classes whose
+interface mirrors CameraManager / Camera exactly. Every method call is
+transparently forwarded to camera_server.py over a Unix domain socket using
+newline-delimited JSON (RPC: Remote Procedure Call pattern). From app.py's
+perspective it looks like a normal local method call; in reality the work
+happens in the camera server process and only the result is returned.
+
+STARTUP ORDER
+-------------
+app.py launches camera_server.py automatically as a child subprocess on
+startup — no manual start required. See _ensure_camera_server() in app.py.
 """
 
 import json

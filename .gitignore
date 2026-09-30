@@ -2,6 +2,7 @@ static/gallery/*
 .venv/*
 venv
 *.bak*
+*.log
 __pycache__/*
 static/camera_profiles/*
 camera_active_profile.json

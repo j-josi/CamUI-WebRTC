@@ -1,10 +1,28 @@
 #!/usr/bin/env python3
 """
-Standalone camera RPC server. Run this as an independent process before (or
-alongside) app.py. It is completely free of Flask / gevent and can also be
-used on its own for testing or scripting.
+Camera subprocess — started automatically by app.py, not manually.
 
-Usage:
+WHY THIS FILE EXISTS
+--------------------
+Camera operations (picamera2 + PyavOutput) use libav (C-level FFmpeg) for
+RTSP streaming. These C-level calls block the OS thread and cannot be made
+cooperative by gevent's monkey-patching used in app.py. Running camera code
+inside the gevent event loop would therefore deadlock or silently break RTSP
+streaming. The solution is to run all camera code here, in a completely
+separate OS process that is free of Flask and gevent.
+
+HOW IT WORKS
+------------
+app.py launches this script as a child subprocess on startup (see
+_ensure_camera_server() in app.py). This process initialises CameraManager,
+starts all cameras and keeps them running indefinitely. It listens on a Unix
+domain socket and accepts JSON method-call requests forwarded by
+camera_client.py. Results and asynchronous events (e.g. recording stopped,
+media created) are sent back over the same socket. app.py never imports
+camera.py or camera_manager.py directly — all camera access goes via this
+process.
+
+Can also be run standalone for testing/scripting:
     python3 camera_server.py [--socket /tmp/camui_camera.sock] [--base-dir /path]
 
 Protocol: newline-delimited JSON over a Unix domain socket.
