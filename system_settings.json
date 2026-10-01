@@ -1,5 +1,5 @@
 {
-  "max_recording_duration_min": 90,
+  "max_recording_duration_min": 120,
   "theme": "light",
   "default_language": "en",
   "live_view_title": "TrainCam",
