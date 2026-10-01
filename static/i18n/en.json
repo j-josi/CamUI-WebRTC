@@ -193,10 +193,8 @@
     "flask_install": "Install Flask",
     "bootstrap_desc": "Powerful, extensible, and feature-packed frontend toolkit. Build and customize with Sass, utilize prebuilt grid system and components, and bring projects to life with powerful JavaScript plugins.",
     "bootstrap_link": "Get Bootstrap",
-    "james_desc": "Raspberry Pi Enthusiast and Organiser of the Raspberry Jam Berlin and hobbyist coder.",
-    "james_github": "My Github Page",
-    "james_jam": "Raspberry Jam Berlin",
-    "james_discord": "Raspberry Jam Berlin Discord"
+    "credits_title": "Credits",
+    "credits_desc": "CamUI-WebRTC is a fork of <a href=\"https://github.com/monkeymademe/CamUI\">CamUI</a> by <a href=\"https://github.com/monkeymademe/\">monkeymademe</a>. The web UI and project structure are heavily adapted from this project."
   },
   "general": {
     "yes": "Yes",
