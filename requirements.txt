@@ -5,3 +5,4 @@ gevent==25.9.1
 gunicorn==23.0.0
 gevent-websocket==0.10.1
 watchdog==6.0.0
+zipstream-ng==1.9.3

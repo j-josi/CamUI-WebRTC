@@ -24,7 +24,7 @@ transparently forwarded to camera_server.py over a Unix domain socket using
 JSON (RPC pattern). From this file's perspective all camera calls look local.
 
 Run command:
-/home/pi/CamUI-WebRTC/venv/bin/gunicorn   --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker   --workers 1 --bind 0.0.0.0:8080   --chdir /home/pi/CamUI-WebRTC   --env BATTERY_FILE=/run/battery/battery.json   app:app
+/home/pi/CamUI-WebRTC/venv/bin/gunicorn   --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker   --workers 1 --bind 0.0.0.0:443   --certfile /home/pi/CamUI-WebRTC/ssl/cert.pem   --keyfile /home/pi/CamUI-WebRTC/ssl/key.pem   --chdir /home/pi/CamUI-WebRTC   --env BATTERY_FILE=/run/battery.json   app:app
 """
 
 from gevent import monkey
@@ -44,7 +44,7 @@ import logging
 import json
 import time
 import tempfile
-import zipfile
+import zipstream
 from datetime import datetime, timedelta
 import subprocess
 import argparse
@@ -1495,16 +1495,15 @@ def download_media():
     """Download one or more media files.
 
     Expects a form field 'files' with a JSON list of filenames.
-    For image files, any matching _raw.dng is included automatically.
-    Returns the file directly when there is exactly one file and no extras,
-    otherwise returns a ZIP archive.
+    For image files, any matching _raw.dng companion is included automatically.
+    Single file with no extras is returned directly; multiple files are streamed
+    as a ZIP without loading the full archive into memory.
     """
     try:
         folder = app.config["media_upload_folder"]
-        files_json = request.form.get("files", "[]")
-        requested = json.loads(files_json)
+        requested = json.loads(request.form.get("files", "[]"))
 
-        # Expand each requested file: add _raw.dng companion for images where it exists
+        # Expand: add _raw.dng companion for images where it exists
         to_download = []
         for f in requested:
             to_download.append(f)
@@ -1513,23 +1512,48 @@ def download_media():
                 if os.path.exists(os.path.join(folder, raw)):
                     to_download.append(raw)
 
-        # Single file with no extras → return directly
         if len(to_download) == 1:
             return send_file(os.path.join(folder, to_download[0]), as_attachment=True)
 
-        # Multiple files → ZIP
-        memory_file = io.BytesIO()
-        with zipfile.ZipFile(memory_file, "w", zipfile.ZIP_DEFLATED) as zf:
-            for f in to_download:
-                path = os.path.join(folder, f)
-                if os.path.exists(path):
-                    zf.write(path, arcname=f)
-        memory_file.seek(0)
-        zip_name = os.path.splitext(requested[0])[0] + ".zip" if len(requested) == 1 else "media_selection.zip"
-        return send_file(memory_file, mimetype="application/zip", as_attachment=True, download_name=zip_name)
+        # Multiple files → stream ZIP on-the-fly (no full archive in RAM)
+        zs = zipstream.ZipStream(compress_type=zipstream.ZIP_STORED)
+        for f in to_download:
+            path = os.path.join(folder, f)
+            if os.path.exists(path):
+                zs.add_path(path, arcname=f)
+
+        zip_name = "media_selection.zip" if len(requested) > 1 else os.path.splitext(requested[0])[0] + ".zip"
+        response = Response(zs, mimetype="application/zip")
+        response.headers["Content-Disposition"] = f'attachment; filename="{zip_name}"'
+        return response
     except Exception as e:
         logger.error("Error downloading media: %s", e)
         abort(500)
+
+@app.route("/download_file/<path:filename>")
+def download_file(filename):
+    """Serve a single media file as a streaming download."""
+    folder = os.path.realpath(app.config["media_upload_folder"])
+    filepath = os.path.realpath(os.path.join(folder, filename))
+    if not filepath.startswith(folder + os.sep):
+        abort(403)
+    if not os.path.isfile(filepath):
+        abort(404)
+    return send_file(filepath, as_attachment=True)
+
+@app.route("/expand_download_list", methods=["POST"])
+def expand_download_list():
+    """Expand a list of filenames to include _raw.dng companions where they exist."""
+    folder = app.config["media_upload_folder"]
+    requested = json.loads(request.form.get("files", "[]"))
+    expanded = []
+    for f in requested:
+        expanded.append(f)
+        if os.path.splitext(f)[1].lower() in (".jpg", ".jpeg"):
+            raw = os.path.splitext(f)[0] + "_raw.dng"
+            if os.path.exists(os.path.join(folder, raw)):
+                expanded.append(raw)
+    return jsonify({"files": expanded})
 
 @app.route('/save_edit', methods=['POST'])
 def save_edit():

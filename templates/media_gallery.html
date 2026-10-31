@@ -816,7 +816,7 @@ function bulkDownload() {
     const count = selectedFiles.length;
     const dlMsg = count === 1
         ? (window.t('media_gallery.download_modal_body_single', { filename: selectedFiles[0] }) || `Download ${selectedFiles[0]}?`)
-        : (window.t('media_gallery.download_modal_body_bulk', { count }) || `Download ${count} selected files as a ZIP archive?`);
+        : (window.t('media_gallery.download_modal_body_bulk', { count }) || `Download ${count} selected files?`);
     document.getElementById("downloadModalBody").innerHTML =
         dlMsg.replace(String(count), `<strong>${count}</strong>`);
 
