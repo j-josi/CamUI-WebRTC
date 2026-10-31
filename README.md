@@ -1,133 +1,158 @@
-# CamUI for PiCamera2
+# CamUI-WebRTC
 
-![CamUI for PiCamera2](https://github.com/monkeymademe/CamUI/blob/main/static/img/camuilogosideways.png)
+A lightweight web interface for the Raspberry Pi camera module with WebRTC live stream, audio recording, media gallery, and multi-camera support. Built with Flask, PiCamera2, and MediaMTX.
 
-## Overview
+## Requirements
 
-CamUI for picamera2 is a lightweight web interface for the Raspberry Pi camera module, built on the picamera2 Python library and using Flask. This project provides a user interface to configure camera settings, capture photos, and manage images in a basic gallery.
+- Raspberry Pi 4 or 5
+- Raspberry Pi OS Bookworm (64-bit) or newer
+- Raspberry Pi Camera Module (v2, v3, or HQ)
+- Python 3.11+
 
-### Old Demo
+## Dependencies
 
-New Demo video will be coming soon!
+### System packages
 
-(If you would like to see the old demo its down below)
-
-[![Watch the Demo here](https://img.youtube.com/vi/K_pSdu5fv1M/0.jpg)](https://www.youtube.com/watch?v=K_pSdu5fv1M)
-
-## Features
-
-- **Camera Control:** Easily configure camera settings such as image rotation, exposure, white balance settings, and many more. Take control of your Raspberry Pi Camera and instantly see the feedback!
-- **Capture Photos and Video Recordings:** Take photos and video recordings with a single click and save them to the media gallery!
-- **Media Gallery:** View, edit, delete, and download your images and videos in a simple gallery interface.
-- **Use the stream url:** Video and Snapshot URL's are available to use in applications like OBS, VLC, Home assistent and Octoprint
-- **Multi Camera Support!:** If you are on a Raspberry Pi5 you can connect 2 cameras at the same time CamUI supports using both at the same time
- 
-## Whats new from the old Picamera2 WebUI
-
-This project was formarally known as 'Picamera2 WebUI' but the name made me feel that it was an edit of picamera2 which its not, its a extra control layer that pulls at picamera2's strings. 
-
-- **App Name:** Its now CamUI for picamera2
-- **More effecant code:** Now v2 of CamUI will load faster and deal with camera issues better and can be maintained more easilly if more settings are added to picamera2
-- **Desktop and Mobile mode:** You can choose which template to use that suits your need. New Mobile mode means you get a more touch friendly UI!
-- **Settings all in one place:** Sensor mode has been moved to the camera controls so everything is together.
-- **Capture higher resolution images:** Before images where captured from the video feed. Now there will be a switch in camera modes when capturing photos meaning you get the maximum resoltuion and quality even when your video stream is set to low.
-- **Basic Edit mode in Media Gallery:** If you need to rotate or tweak your image after the fact, you can now do that with some basic edit options in the media gallery
-- **Fetching Metadata:** fetching sensor metadata is now possible.
-- **Removed feature - GPIO:** GPIO has been removed from this version as it needs more work done to get this feature right.
-
-## What is Picamera2 Library
-
-This project utilizes the Picamera2 Python library. Picamera2 is the libcamera-based replacement for Picamera which was a Python interface to the Raspberry Pi's legacy camera stack. 
-For more information about Picamera2, visit [Picamera2 GitHub Repository](https://github.com/raspberrypi/picamera2).
-
-## Author
-
-- **James Mitchell**
-
-## Getting Started
-
-Note: Please also see [Compatibility](#compatibilty) below
-
-### Preinstalls / Dependencies
-
-As of September 2024 the Bookworm version of Raspberry Pi OS (Desktop) has the required dependencies preinstalled, so you can skip to **Installation** below. If you are using the Lite version you will need to install the following:
-- [flask](https://flask.palletsprojects.com/en/3.0.x/installation/#install-flask)
-- [Picamera2](https://github.com/raspberrypi/picamera2)
-
-### Installation
-
-1. Update Raspberry Pi OS: 
 ```bash
 sudo apt update && sudo apt upgrade -y
+sudo apt install -y coturn python3-picamera2 python3-pip python3-venv openssl pipewire pipewire-pulse wireplumber
 ```
-2. Clone the repository to your Raspberry Pi:
+
+### MediaMTX
+
+MediaMTX is the WebRTC/RTSP streaming server. This project is tested against **v1.16.2** — use this version to ensure compatibility:
+
 ```bash
-git clone https://github.com/j-josi/CamUI-WebRTC.git.git
+wget https://github.com/bluenviron/mediamtx/releases/download/v1.16.2/mediamtx_v1.16.2_linux_arm64v8.tar.gz
+tar -xzf mediamtx_v1.16.2_linux_arm64v8.tar.gz
+sudo mv mediamtx /usr/local/bin/mediamtx
+sudo chmod +x /usr/local/bin/mediamtx
 ```
-3. Enter the directory: 
+
+## Installation
+
+### 1. Clone the repository
+
 ```bash
-cd picamera2-WebUI
+git clone https://github.com/j-josi/CamUI-WebRTC.git /home/pi/CamUI-WebRTC
+cd /home/pi/CamUI-WebRTC
 ```
-4. Run the application and access the web interface through your browser.
+
+### 2. Create Python virtual environment
+
 ```bash
-python app.py
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
 ```
-5. From your broswer, on a device connected to the same network, goto the following address: 'http://**Your IP**:8080/'
 
-## Running as a service 
+### 3. Configure MediaMTX
 
-- Run the following command and note down the location for python which python should look like "/usr/bin/python" `which python`
-- Goto the following directory `cd /etc/systemd/system/`
-- Create and edit the following file `sudo nano picamera2-webui.service`
-- Paste this into the file, in the line "ExecStart" the 1st part should be the result of your "which python" command we did at the start (if its the same then its all good) the 2nd path is the location of the cloned repo with the app.py
-  
+Copy the bundled MediaMTX configuration to the system location:
+
 ```bash
-[Unit]
-Description=CamUI Server
-After=network.target
-[Service]
-Type=simple
-ExecStart=/usr/bin/python /home/pi/CamUI/app.py
-Restart=always
-[Install]
-WantedBy=multi-user.target
+sudo cp config/mediamtx/mediamtx.yml /usr/local/etc/mediamtx.yml
 ```
-- Save the file
-- Run `sudo systemctl start picamera2-webui.service` to start the service 
-- Run the following to check the service is running `sudo systemctl status picamera2-webui.service`
-- Run the following to enable the service to its running on reboot `sudo systemctl enable picamera2-webui.service`
-  
-## Compatibilty
 
-- **Raspberry Pi OS / Debian**
+### 4. Configure coturn
 
-Please be aware that due to dependencies on newer versions of Picamera2 (see below) and Libcamera this project only works on Raspberry Pi OS Bookworm (or newer). Issues have been reported with older versions (e.g. Bullseye) not functioning due to libcamera no longer being updated on older versions of the Raspberry Pi OS. The recommendation, even on older Pi's, is to use Bookworm (or newer).
+Copy the bundled coturn configuration:
 
-- **Picamera2**
+```bash
+sudo cp config/coturn/turnserver.conf /etc/turnserver.conf
+```
 
-Please check [Picamera installation Requirements](https://github.com/raspberrypi/picamera2?tab=readme-ov-file#installation). Your operating system may not be compatible with Picamera2.
+Enable and start the coturn service:
 
-There has been some reported issues with the PiCamera2 on older Raspberry Pi's: ```OSError: [Errno 12] Cannot allocate memory``` https://github.com/raspberrypi/picamera2/issues/972#issuecomment-1980573868
+```bash
+sudo systemctl enable --now coturn
+```
 
-- **Hardware**
+### 5. Allow binding to port 80 without root
 
-Tested on Raspberry Pi Camera Module v3 which has focus settings. v1 is untested but if you see any bugs please post an issue. v2 and HQ has been tested settings like Auto focus that are unique to Camera Module v3 are filtered and removed when an older camera is used.
+The application runs as an unprivileged user but needs to bind to port 80. Configure the kernel to allow this:
 
-Raspberry Pi Compatibilty: 
+```bash
+echo "net.ipv4.ip_unprivileged_port_start=80" | sudo tee /etc/sysctl.d/99-unprivileged-ports.conf
+sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
+```
 
-- Pi 5 (8GB): Perfect
-- Pi 5 (4GB): Perfect
-- Pi 4 (4GB): Perfect
-- Pi 3B: Perfect
-- Pi Zero v2: Slower lower frame rate on feed but very useable
-- Pi Zero v1: Untested
-- Older Pi's (Model A, 2B etc): Untested but expected not to work well.
+### 6. Install systemd user services
 
-## Known issues 
+Copy the service files from the repo to the user systemd directory and enable them:
 
-- ScalerCrop is not working correctly
-- Saving config is currently optimal and will be reworked for the next release
-  
-## Copyright and license
+```bash
+mkdir -p ~/.config/systemd/user
+cp config/systemd/mediamtx.service ~/.config/systemd/user/mediamtx.service
+cp config/systemd/camui.service ~/.config/systemd/user/camui.service
+systemctl --user daemon-reload
+systemctl --user enable mediamtx camui
+```
 
-Code and documentation copyright 2024 the Picamera2 WebUI Authors. Code released under the MIT License. Docs released under Creative Commons.
+> **Note:** `~/.config/systemd/user/camui.service` contains hardcoded paths (e.g. `WorkingDirectory`, `ExecStart`, `--chdir`).
+> If you cloned the repo to a different location than `/home/pi/CamUI-WebRTC`, update those paths accordingly.
+
+### 7. Enable auto-start on boot (without login)
+
+By default, user systemd services only run when the user is logged in. Enable **lingering** so the services start at boot even without an active session (e.g. headless / SSH not connected):
+
+```bash
+sudo loginctl enable-linger pi
+```
+
+### 8. Start the services
+
+```bash
+systemctl --user start mediamtx camui
+```
+
+Check that both are running:
+
+```bash
+systemctl --user status mediamtx camui
+```
+
+## Accessing the WebUI
+
+Open a browser on any device on the same network and navigate to:
+
+```
+http://<hostname>.local
+http://<ip-address>
+```
+
+The hostname is the Raspberry Pi's hostname (e.g. `http://pi-cam.local`).
+
+## Service management
+
+| Command | Description |
+|---|---|
+| `systemctl --user status mediamtx camui` | Show status of both services |
+| `systemctl --user restart camui` | Restart the web application |
+| `systemctl --user restart mediamtx` | Restart the streaming server |
+| `systemctl --user stop camui mediamtx` | Stop both services |
+| `journalctl --user -u camui -f` | Follow live logs of the web app |
+| `journalctl --user -u mediamtx -f` | Follow live logs of MediaMTX |
+
+## Configuration files
+
+| File | Description |
+|---|---|
+| `system_settings.json` | Application settings (camera names, recording duration, theme, …) |
+| `config/mediamtx/mediamtx.yml` | MediaMTX streaming server configuration |
+| `config/coturn/turnserver.conf` | TURN server configuration for WebRTC relay |
+| `config/systemd/camui.service` | Systemd user service for the web application |
+| `config/systemd/mediamtx.service` | Systemd user service for MediaMTX |
+
+## Compatibility
+
+- **OS:** Raspberry Pi OS Bookworm (64-bit) or newer. Older releases (Bullseye) are not supported due to libcamera/PiCamera2 requirements.
+- **Hardware:** Raspberry Pi 4 and 5. Pi 3B works but at lower frame rates. Pi Zero 2W is supported at reduced performance.
+- **Camera:** Camera Module v2, v3, HQ. v1 is untested.
+
+## Development
+
+This project is developed with AI assistance. All contributors are expected to understand every line of code they submit — AI-generated or not. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guidelines, git workflow, and PR requirements.
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
