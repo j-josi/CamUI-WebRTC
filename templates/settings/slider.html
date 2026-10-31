@@ -137,6 +137,7 @@
         data-precision="{{ prec }}"
         data-default="{{ setting.get('default', 0) }}"
         {% if setting.get("group_leader") %}data-group-leader="{{ setting.group_leader }}"{% endif %}
+        oninput="onSliderInput('{{ setting.id }}', this)"
         onchange="onSliderChange('{{ setting.id }}', this)">
     <div class="input-group input-group-sm" style="width:130px; flex-shrink:0;">
         <button type="button"

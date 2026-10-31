@@ -1296,6 +1296,50 @@ function _stepPrecision(stepStr) {
     return dot === -1 ? 0 : String(stepStr).length - dot - 1;
 }
 
+// Called from slider oninput (fires on every drag tick).
+// Updates the number input and label for live visual feedback — no server call.
+function onSliderInput(settingId, sliderEl) {
+    const step   = parseFloat(sliderEl.step);
+    const min    = parseFloat(sliderEl.min);
+    const max    = parseFloat(sliderEl.max);
+    const prec   = _stepPrecision(sliderEl.step);
+    const newDom = parseFloat(sliderEl.value);
+
+    let previewVal = (!isNaN(step) && step > 0)
+        ? parseFloat((Math.round((newDom - min) / step) * step + min).toFixed(prec))
+        : newDom;
+    previewVal = Math.min(Math.max(previewVal, min), max);
+
+    const numberInput = document.getElementById(settingId + "_number");
+    if (numberInput) {
+        numberInput.value = previewVal;
+        _updateSpinnerButtons(numberInput);
+    }
+
+    const valueLabel = document.getElementById("current" + settingId);
+    const unitLabel  = document.getElementById(settingId + "_unit_label");
+    const conversionSwitch = document.getElementById(settingId + "_conversion");
+    const conversionActive = sliderEl.dataset.conversionAlwaysOn === "true" || conversionSwitch?.checked;
+    let displayValue = previewVal;
+    if (sliderEl.dataset.conversionEnabled === "true" && conversionActive) {
+        const factor = parseFloat(sliderEl.dataset.conversionFactor);
+        if (!isNaN(factor)) {
+            const seconds = previewVal / factor;
+            if (sliderEl.dataset.conversionDisplayFormat === "fraction") {
+                displayValue = seconds >= 1
+                    ? `${seconds.toFixed(3).replace(/\.?0+$/, '')} s`
+                    : `~1/${Math.round(1 / seconds)} s`;
+            } else {
+                displayValue = seconds.toFixed(6).replace(/\.?0+$/, '') || '0';
+            }
+        }
+    }
+    if (valueLabel) {
+        valueLabel.textContent = displayValue;
+        if (unitLabel) unitLabel.style.display = 'inline';
+    }
+}
+
 // Called from slider onchange.
 // The browser may carry an off-grid internal position (e.g. AnalogueGain min=1.123)
 // which causes every drag to be offset by the fractional remainder.
@@ -1437,13 +1481,33 @@ function syncSliderFromNumber(settingId, inputEl) {
     adjustSliderSetting(settingId, val);
 }
 
-// Step the number input by ±1 precision-unit, then sync to slider.
+// Step the number input by ±1 slider-step, snapping to the slider's step grid.
+// dir=+1: move to the next grid point above; dir=-1: move to the next below.
+// Example: value=30002, slider step=1000 → +1 gives 31000, -1 gives 30000.
 function stepNumberInput(settingId, dir) {
     const inputEl = document.getElementById(settingId + "_number");
     if (!inputEl) return;
-    const step = parseFloat(inputEl.step) || 1;
-    const val  = parseFloat(inputEl.value) || 0;
-    inputEl.value = parseFloat((val + dir * step).toFixed(10));
+    const slider = document.getElementById(settingId);
+    const step   = slider ? parseFloat(slider.step) : (parseFloat(inputEl.step) || 1);
+    const min    = parseFloat((slider || inputEl).min) || 0;
+    const max    = parseFloat((slider || inputEl).max);
+    const prec   = _stepPrecision(String(step));
+    const val    = parseFloat(inputEl.value) || 0;
+
+    // Small epsilon prevents floating-point rounding from pushing on-grid values
+    // one step too far (e.g. 31000/1000 = 30.999999... instead of 31.0).
+    let newVal;
+    if (dir > 0) {
+        newVal = parseFloat((Math.ceil((val - min) / step - 1e-9) * step + min).toFixed(prec));
+        if (newVal <= val) newVal = parseFloat((newVal + step).toFixed(prec));
+    } else {
+        newVal = parseFloat((Math.floor((val - min) / step + 1e-9) * step + min).toFixed(prec));
+        if (newVal >= val) newVal = parseFloat((newVal - step).toFixed(prec));
+    }
+
+    if (!isNaN(max)) newVal = Math.min(max, newVal);
+    newVal = Math.max(min, newVal);
+    inputEl.value = newVal;
     syncSliderFromNumber(settingId, inputEl);
 }
 
