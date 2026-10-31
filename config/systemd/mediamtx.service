@@ -1,0 +1,16 @@
+[Unit]
+Description=MediaMTX Streaming Server
+After=network-online.target pipewire.service pipewire-pulse.service wireplumber.service
+Wants=network-online.target
+Requires=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sh -c 'until ip route | grep -q "^default"; do sleep 1; done'
+ExecStartPre=/bin/sh -c 'until pactl info >/dev/null 2>&1; do sleep 1; done'
+ExecStart=/usr/local/bin/mediamtx /usr/local/etc/mediamtx.yml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

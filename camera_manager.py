@@ -7,6 +7,7 @@ import threading
 import time
 import logging
 import copy
+import socket
 from typing import Dict, List, Optional
 from picamera2 import Picamera2
 from camera import Camera
@@ -222,6 +223,7 @@ class CameraManager:
                 logger.error("Failed to start streaming for camera %s: %s", camera.camera_num, e)
 
         self._start_recording_watchdog()
+        self._start_stream_watchdog()
 
         threading.Thread(
             target=self._gallery.backfill_video_thumbnails,
@@ -594,6 +596,60 @@ class CameraManager:
                     logger.error("Storage watchdog error: %s", exc, exc_info=True)
 
         t = threading.Thread(target=_watchdog, daemon=True, name="storage-watchdog")
+        t.start()
+
+    def _start_stream_watchdog(self):
+        """
+        Background thread that verifies each camera's RTSP stream is actually
+        publishing to mediamtx. At cold boot, PulseAudio is sometimes not fully
+        ready when start_streaming() is first called, causing a silent failure
+        (no Python exception, but mediamtx never receives the stream). This
+        watchdog detects that case and restarts the stream.
+
+        Stream health is checked via a minimal RTSP DESCRIBE request on port 8554.
+        mediamtx responds 200 OK when a publisher is active, 404/503 otherwise.
+        This requires no mediamtx API and works regardless of audio hardware.
+        """
+        CHECK_INTERVAL = 30  # seconds between checks
+
+        def _rtsp_published(path: str) -> bool:
+            try:
+                with socket.create_connection(("127.0.0.1", 8554), timeout=2) as sock:
+                    req = (
+                        f"DESCRIBE rtsp://127.0.0.1:8554/{path} RTSP/1.0\r\n"
+                        f"CSeq: 1\r\n"
+                        f"User-Agent: stream-watchdog\r\n\r\n"
+                    )
+                    sock.sendall(req.encode())
+                    return b"200 OK" in sock.recv(512)
+            except Exception:
+                return False
+
+        def _watchdog():
+            time.sleep(CHECK_INTERVAL)
+            while True:
+                for cam_num, camera in list(self.cameras.items()):
+                    if not camera.states.get("is_video_streaming"):
+                        continue
+                    if camera.states.get("is_video_recording"):
+                        continue
+                    path = f"cam{cam_num}"
+                    if not _rtsp_published(path):
+                        logger.warning(
+                            "Stream watchdog: %s not published to mediamtx — restarting stream", path
+                        )
+                        try:
+                            camera.stop_streaming()
+                        except Exception as exc:
+                            logger.debug("Stream watchdog stop error: %s", exc)
+                        time.sleep(1)
+                        try:
+                            camera.start_streaming()
+                        except Exception as exc:
+                            logger.error("Stream watchdog restart failed for %s: %s", path, exc)
+                time.sleep(CHECK_INTERVAL)
+
+        t = threading.Thread(target=_watchdog, daemon=True, name="stream-watchdog")
         t.start()
 
     def generate_media_filename(self, cam_num: int, extension: str, timestamp: str) -> str:
