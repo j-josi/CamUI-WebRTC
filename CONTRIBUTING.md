@@ -36,7 +36,11 @@ chore: bump gunicorn to 23.0.0
 
 - Open PRs against `main`.
 - Use the PR template — fill in all sections honestly.
-- Run `python test_filename_gen.py` before submitting; all cases must pass.
+- Run all tests before submitting; all cases must pass:
+  ```bash
+  python tests/test_filename_gen.py
+  python tests/test_system_settings.py
+  ```
 - Keep PRs focused: one logical change per PR.
 
 ## Reporting bugs

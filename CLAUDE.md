@@ -58,16 +58,85 @@ No linter or formatter config is currently set up.
   venv/bin/pip show <pkg> | grep "^Version:"
   ```
 - When downloading an external JS library into `static/`, document it in `THIRD_PARTY.md` (version, path, source URL, license, download date).
+- When adding a data file generated from an external source (e.g. `static/data/`), document it in `THIRD_PARTY.md` (data file path, source URL, license, generation script if any, date). If a generation script exists, reference it under `scripts/`. Do this in the same commit as the data file.
+
+## i18n
+
+All UI text must be translatable. The system is fully client-side after page load.
+
+**Translation files** live in `static/i18n/`, one JSON file per language. Keys are dot-notation strings grouped by feature area (e.g. `"camera_controls.title"`, `"settings.tab_appearance"`). When adding new keys, add them to **all existing language files** in the same commit — never leave a language file incomplete.
+
+**HTML attributes:**
+- `data-i18n="key"` — sets `textContent`
+- `data-i18n-html="key"` — sets `innerHTML` (for markup inside the label)
+- `data-i18n-placeholder="key"` — sets the `placeholder` attribute on inputs
+- `data-i18n-title="key"` — sets the `title` attribute (native browser tooltip)
+
+**JS-side lookup:** `window.t('key')` returns the translated string, or `undefined` if the key is missing (does not throw). For interpolation, pass a substitution object: `window.t('key', { name: 'foo' })` — placeholders use `{name}` syntax in the JSON values.
+
+**Dynamically injected HTML** (e.g. elements created with `innerHTML` or `appendChild`) is not auto-translated. Call `applyI18n(rootElement)` on the injected subtree after inserting it into the DOM.
+
+**Bootstrap tooltips** that need translation use `data-i18n-tooltip="key"` (custom attribute, not a standard Bootstrap attribute) and are initialised in JS after `applyI18n()` runs — the JS reads the attribute, calls `window.t()`, sets `title`, and then calls `new bootstrap.Tooltip(el)`.
+
+## Desktop / Mobile
+
+The UI is a **single responsive layout** built on Bootstrap 5.3.3 — there are no separate mobile templates. Use Bootstrap's grid and utility classes as the primary tool for responsive behaviour; add custom `@media` queries only when Bootstrap's breakpoints alone are insufficient.
+
+**Interaction model:** The camera page is primarily designed for desktop use (mouse/hover). Where controls rely on hover or mousemove (e.g. the video overlay), this is intentional — do not replace that behaviour, but also do not introduce new hover-only interactions on elements that are expected to be fully usable on touch devices. When a new UI element must work on both, handle mouse and touch explicitly rather than relying on hover alone.
+
+**Platform quirks:** iOS Safari does not support the standard Fullscreen API for `<video>` elements. The codebase already contains an iOS detection guard and falls back to the vendor-specific API — preserve this whenever fullscreen logic is touched.
+
+**Layout duplication:** When an element must appear in a structurally different position on mobile vs. desktop (not just a size change), it is acceptable to render it twice in the DOM and toggle visibility with Bootstrap display utilities (`d-none d-md-flex` etc.). Do not abuse this pattern for purely aesthetic differences that CSS alone can handle.
+
+## WebSocket sync for camera parameters
+
+Every camera parameter that can be changed via the WebUI must be kept in sync across all connected clients via WebSocket. This includes both camera controls/configs and pure UI-only state.
+
+**Camera controls and configs** (ExposureTime, AnalogueGain, hflip, etc.) are synced automatically: any change goes through `updateSettingFromElement` → `set_camera_setting` socket event → server applies → `handle_camera_setting_changed` → `camera_state` broadcast to all clients in the room.
+
+**UI-only state** (switches and toggles that affect how a parameter is presented or constrained, but are not themselves camera parameters — e.g. the anti-flicker switch) must be synced explicitly:
+- Client emits `set_ui_state` with `{ camera_num, key, value }`.
+- Server stores it in `_camera_ui_states[camera_num][key]` and re-broadcasts as `ui_state` to all other clients in the room (`skip_sid=request.sid`).
+- `_build_camera_state` includes `_camera_ui_states` under `state["ui_state"]`, so late-joining clients receive the current state on connect.
+- `applyStateToUI` in `camera.html` handles `state.ui_state` by calling `applyUiState`.
+- When applying a received ui_state, always pass `skipServerUpdate=true` to the handler to avoid feedback loops.
+
+Key naming convention for UI state keys: `{settingId}_{uiElement}` (e.g. `ExposureTime_antiflicker`).
 
 ## Testing
 
-`test_filename_gen.py` tests `generate_media_filename()` with stub cameras. Run it before any PR:
+Test files live in `tests/`. Run all tests before any PR:
 
 ```bash
-python test_filename_gen.py
+python tests/test_filename_gen.py
+python tests/test_system_settings.py
 ```
 
-All 7 cases must pass. There are no other automated tests currently.
+| File | What it covers |
+|---|---|
+| `tests/test_filename_gen.py` | `CameraManager.generate_media_filename()` — naming, camera suffixes, collision counter |
+| `tests/test_system_settings.py` | `SystemSettings` — first run, load, unknown-key filtering, scalar/dict updates, persistence, `max_recording_duration_s` |
+
+Both use `unittest` and exit non-zero on failure. `tests/test_filename_gen.py` stubs `picamera2`, `camera`, and `media_gallery` via `sys.modules` so it runs without camera hardware. Each test file adds the repo root to `sys.path` so modules can be imported regardless of working directory.
+
+### When to add tests
+
+Add or extend a test file whenever new code meets **all** of the following criteria:
+
+1. **Pure logic** — the function/method produces a deterministic output from its inputs, with no dependency on hardware (camera, GPIO, PulseAudio), live network sockets, or the filesystem beyond what a `tempfile` can provide.
+2. **Non-trivial branching** — the code contains conditional logic, a collision-resolution loop, a merge strategy, or similar behaviour where an off-by-one or edge-case mistake would be silent and hard to spot in manual testing.
+3. **Reachable without the full app** — the module can be imported in isolation (possibly with lightweight `sys.modules` stubs for hardware-bound imports, as done in `test_filename_gen.py`).
+
+Typical candidates: filename generation, settings persistence, file-index/filter logic, fMP4/HLS parsing utilities, i18n interpolation helpers. Not candidates: anything that calls into PiCamera2, MediaMTX, WebSockets, or the browser.
+
+### When to update existing tests
+
+- **Code added to a tested module** — if the change adds a new branch or edge case to a function that already has tests, add a corresponding test case.
+- **Code changed in a tested module** — if the behaviour of a tested function changes (different output for the same input, new parameter, renamed method), update the affected test cases to match. Never leave a test that asserts stale behaviour.
+- **Code deleted from a tested module** — remove every test case that references the deleted function, method, or behaviour. A test that imports a name that no longer exists is a broken test, not a passing one.
+- **Module renamed or moved** — update the import in the test file; do not leave a dead import.
+
+Most of the application logic (PiCamera2, WebRTC, streaming, WebSockets) is tightly coupled to hardware and cannot be meaningfully unit-tested. When in doubt whether something warrants a test, apply the three criteria above rather than defaulting to "add a test" or "skip it".
 
 ## Git workflow
 
@@ -82,6 +151,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit format, PR requ
 ## Do not
 
 - Do not add Python packages without updating `requirements.txt`.
-- Do not bundle JS libraries without updating `THIRD_PARTY.md`.
+- Do not bundle JS libraries or external data files without updating `THIRD_PARTY.md`.
 - Do not run more than one gunicorn worker — it breaks camera access.
 - Do not commit generated or runtime files (`camera.sock`, `camera_server.log`, `static/gallery/`).
