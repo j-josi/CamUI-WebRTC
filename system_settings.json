@@ -4,6 +4,8 @@
   "default_language": "en",
   "live_view_title": "TrainCam",
   "live_view_hide_title": true,
+  "mains_frequency": 50,
+  "mains_country": "Switzerland",
   "camera_names": {
     "0": "Cam0",
     "1": "Test1"

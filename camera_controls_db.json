@@ -188,6 +188,7 @@
               "min": 1,
               "max": 66666,
               "default": 19000,
+              "antiflicker": true,
               "hr": true,
               "conversion": {
                 "enabled": true,

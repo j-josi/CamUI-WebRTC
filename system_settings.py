@@ -12,12 +12,15 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 DEFAULTS: dict = {
-    "max_recording_duration_min": 90,   # stop video recording automatically after 90 minutes -> playback time of .mp4 file is max. 90 minutes 
+    "max_recording_duration_min": 90,   # stop video recording automatically after 90 minutes -> playback time of .mp4 file is max. 90 minutes
     "theme": "light",                   # global default theme for new clients ("light" | "dark")
     "default_language": "en",           # global default language for new clients ("en" | "de")
     "live_view_title": "",              # global heading shown above the video feed (hostname if empty)
     "live_view_hide_title": False,      # hide the heading entirely
+    "mains_frequency": 50,             # AC mains frequency in Hz (50 or 60); used for anti-flicker exposure
+    "mains_country": "United Kingdom",  # country/territory selected in settings UI; used to derive mains_frequency
     "camera_names": {},                 # {str(camera_num): str}  — tab name per camera object
     "camera_audio_devices": {},         # {str(camera_num): str}  — audio source name ("" = none)
     "audio_source_settings": {},        # {device_name: {"volume": 100}}  — global per PulseAudio source

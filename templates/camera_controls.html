@@ -1299,16 +1299,25 @@ function _stepPrecision(stepStr) {
 // Called from slider oninput (fires on every drag tick).
 // Updates the number input and label for live visual feedback — no server call.
 function onSliderInput(settingId, sliderEl) {
-    const step   = parseFloat(sliderEl.step);
     const min    = parseFloat(sliderEl.min);
     const max    = parseFloat(sliderEl.max);
-    const prec   = _stepPrecision(sliderEl.step);
     const newDom = parseFloat(sliderEl.value);
 
-    let previewVal = (!isNaN(step) && step > 0)
-        ? parseFloat((Math.round((newDom - min) / step) * step + min).toFixed(prec))
-        : newDom;
-    previewVal = Math.min(Math.max(previewVal, min), max);
+    let previewVal;
+    if (sliderEl.dataset.antiflickerActive === "true") {
+        // Anti-flicker: snap to nearest multiple of flickerStep (grid base 0)
+        const flickerStep = parseFloat(sliderEl.dataset.antiflickerStep);
+        const firstStep   = parseFloat(sliderEl.dataset.antiflickerFirst);
+        previewVal = Math.max(firstStep, Math.round(newDom / flickerStep) * flickerStep);
+        previewVal = Math.min(max, previewVal);
+    } else {
+        const step = parseFloat(sliderEl.step);
+        const prec = _stepPrecision(sliderEl.step);
+        previewVal = (!isNaN(step) && step > 0)
+            ? parseFloat((Math.round((newDom - min) / step) * step + min).toFixed(prec))
+            : newDom;
+        previewVal = Math.min(Math.max(previewVal, min), max);
+    }
 
     const numberInput = document.getElementById(settingId + "_number");
     if (numberInput) {
@@ -1347,11 +1356,25 @@ function onSliderInput(settingId, sliderEl) {
 // from the difference between the browser's DOM value and that baseline.
 // This allows free multi-step drags while staying on-grid.
 function onSliderChange(settingId, sliderEl) {
-    const step   = parseFloat(sliderEl.step);
     const min    = parseFloat(sliderEl.min);
     const max    = parseFloat(sliderEl.max);
-    const prec   = _stepPrecision(sliderEl.step);
     const newDom = parseFloat(sliderEl.value);
+
+    // Anti-flicker: step="any" so browser provides a continuous position.
+    // Snap independently of slider.min (grid base is 0, not min).
+    if (sliderEl.dataset.antiflickerActive === "true") {
+        const flickerStep = parseFloat(sliderEl.dataset.antiflickerStep);
+        const firstStep   = parseFloat(sliderEl.dataset.antiflickerFirst);
+        let newVal = Math.max(firstStep, Math.round(newDom / flickerStep) * flickerStep);
+        newVal = Math.min(max, newVal);
+        _sliderLastValue[settingId] = newVal;
+        sliderEl.value = newVal;
+        adjustSliderSetting(settingId, newVal);
+        return;
+    }
+
+    const step = parseFloat(sliderEl.step);
+    const prec = _stepPrecision(sliderEl.step);
 
     // Initialise baseline on first interaction (snap to grid relative to min)
     if (_sliderLastValue[settingId] === undefined) {
@@ -1466,6 +1489,16 @@ function syncSliderFromNumber(settingId, inputEl) {
     const clamped = val < min ? "min" : val > max ? "max" : null;
     val = Math.min(Math.max(val, min), max);
     val = parseFloat(val.toFixed(precision));
+
+    // When anti-flicker is active, snap typed value to the flicker-period grid
+    // (grid base is 0, not slider.min)
+    if (slider.dataset.antiflickerActive === "true") {
+        const flickerStep = parseFloat(slider.dataset.antiflickerStep);
+        const firstStep   = parseFloat(slider.dataset.antiflickerFirst);
+        val = Math.max(firstStep, Math.round(val / flickerStep) * flickerStep);
+        val = Math.min(max, val);
+    }
+
     inputEl.value = val;
     _updateSpinnerButtons(inputEl);
 
@@ -1481,6 +1514,63 @@ function syncSliderFromNumber(settingId, inputEl) {
     adjustSliderSetting(settingId, val);
 }
 
+// Toggle anti-flicker mode for a slider.
+// When enabled, constrains ExposureTime to multiples of the LED flicker period:
+//   50 Hz mains → 100 Hz flicker → 10 000 µs steps
+//   60 Hz mains → 120 Hz flicker →  8 333 µs steps
+//
+// skipServerUpdate=true is used when this is called in response to an incoming
+// ui_state WebSocket event — in that case we only update the local UI without
+// sending the value back to the server (avoids feedback loops / value conflicts).
+function toggleAntiflicker(settingId, enabled, skipServerUpdate) {
+    const slider  = document.getElementById(settingId);
+    const inputEl = document.getElementById(settingId + "_number");
+    if (!slider) return;
+
+    const flickerStep = (typeof MAINS_FREQUENCY !== 'undefined' && MAINS_FREQUENCY === 60) ? 8333 : 10000;
+
+    if (enabled) {
+        const origMin   = parseFloat(slider.dataset.originalMin) || 0;
+        const firstStep = Math.ceil(origMin / flickerStep) * flickerStep || flickerStep;
+        const max       = parseFloat(slider.max);
+
+        slider.dataset.antiflickerActive  = "true";
+        slider.dataset.antiflickerStep    = String(flickerStep);
+        slider.dataset.antiflickerFirst   = String(firstStep);
+        // step="any" keeps slider.min unchanged so the thumb position for a
+        // given value is identical before and after toggling the switch.
+        // All grid snapping is handled entirely in JS.
+        slider.step = "any";
+
+        const val     = parseFloat(inputEl ? inputEl.value : slider.value) || 0;
+        const snapped = Math.min(Math.max(Math.round(val / flickerStep) * flickerStep, firstStep), max);
+
+        slider.value = snapped;
+        if (inputEl) inputEl.value = snapped;
+        _sliderLastValue[settingId] = snapped;
+        _updateSpinnerButtons(inputEl);
+
+        if (!skipServerUpdate) {
+            adjustSliderSetting(settingId, snapped);
+            socket.emit("set_ui_state", { camera_num: cameraNum, key: settingId + "_antiflicker", value: true });
+        }
+    } else {
+        delete slider.dataset.antiflickerActive;
+        delete slider.dataset.antiflickerStep;
+        delete slider.dataset.antiflickerFirst;
+        slider.step = slider.dataset.originalStep;
+        // Restore slider thumb to the current value under the original step grid
+        const cur = parseFloat(inputEl ? inputEl.value : slider.value);
+        if (!isNaN(cur)) slider.value = cur;
+        _sliderLastValue[settingId] = undefined;
+        _updateSpinnerButtons(inputEl);
+
+        if (!skipServerUpdate) {
+            socket.emit("set_ui_state", { camera_num: cameraNum, key: settingId + "_antiflicker", value: false });
+        }
+    }
+}
+
 // Step the number input by ±1 slider-step, snapping to the slider's step grid.
 // dir=+1: move to the next grid point above; dir=-1: move to the next below.
 // Example: value=30002, slider step=1000 → +1 gives 31000, -1 gives 30000.
@@ -1488,25 +1578,41 @@ function stepNumberInput(settingId, dir) {
     const inputEl = document.getElementById(settingId + "_number");
     if (!inputEl) return;
     const slider = document.getElementById(settingId);
-    const step   = slider ? parseFloat(slider.step) : (parseFloat(inputEl.step) || 1);
-    const min    = parseFloat((slider || inputEl).min) || 0;
     const max    = parseFloat((slider || inputEl).max);
-    const prec   = _stepPrecision(String(step));
     const val    = parseFloat(inputEl.value) || 0;
 
-    // Small epsilon prevents floating-point rounding from pushing on-grid values
-    // one step too far (e.g. 31000/1000 = 30.999999... instead of 31.0).
     let newVal;
-    if (dir > 0) {
-        newVal = parseFloat((Math.ceil((val - min) / step - 1e-9) * step + min).toFixed(prec));
-        if (newVal <= val) newVal = parseFloat((newVal + step).toFixed(prec));
+
+    if (slider && slider.dataset.antiflickerActive === "true") {
+        // Anti-flicker: grid base is 0, not slider.min
+        const flickerStep = parseFloat(slider.dataset.antiflickerStep);
+        const firstStep   = parseFloat(slider.dataset.antiflickerFirst);
+        if (dir > 0) {
+            newVal = Math.ceil(val / flickerStep - 1e-9) * flickerStep;
+            if (newVal <= val) newVal += flickerStep;
+        } else {
+            newVal = Math.floor(val / flickerStep + 1e-9) * flickerStep;
+            if (newVal >= val) newVal -= flickerStep;
+        }
+        if (!isNaN(max)) newVal = Math.min(max, newVal);
+        newVal = Math.max(firstStep, newVal);
     } else {
-        newVal = parseFloat((Math.floor((val - min) / step + 1e-9) * step + min).toFixed(prec));
-        if (newVal >= val) newVal = parseFloat((newVal - step).toFixed(prec));
+        const step = slider ? parseFloat(slider.step) : (parseFloat(inputEl.step) || 1);
+        const min  = parseFloat((slider || inputEl).min) || 0;
+        const prec = _stepPrecision(String(step));
+        // Small epsilon prevents floating-point rounding from pushing on-grid values
+        // one step too far (e.g. 31000/1000 = 30.999999... instead of 31.0).
+        if (dir > 0) {
+            newVal = parseFloat((Math.ceil((val - min) / step - 1e-9) * step + min).toFixed(prec));
+            if (newVal <= val) newVal = parseFloat((newVal + step).toFixed(prec));
+        } else {
+            newVal = parseFloat((Math.floor((val - min) / step + 1e-9) * step + min).toFixed(prec));
+            if (newVal >= val) newVal = parseFloat((newVal - step).toFixed(prec));
+        }
+        if (!isNaN(max)) newVal = Math.min(max, newVal);
+        newVal = Math.max(min, newVal);
     }
 
-    if (!isNaN(max)) newVal = Math.min(max, newVal);
-    newVal = Math.max(min, newVal);
     inputEl.value = newVal;
     syncSliderFromNumber(settingId, inputEl);
 }

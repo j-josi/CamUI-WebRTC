@@ -306,6 +306,10 @@ def _generate_timestamp() -> str:
         timestamp = DEFAULT_EPOCH + timedelta(seconds=elapsed)
     return timestamp.strftime("%Y-%m-%d_%H-%M-%S")
 
+# Per-camera UI-only state (e.g. anti-flicker switch) that is not part of
+# camera controls/configs but must be synced across all clients in a room.
+_camera_ui_states: dict = {}  # {camera_num: {key: value}}
+
 def _build_camera_state(camera_num: int) -> dict:
     """Build a camera state dict that includes current settings and per-param button states."""
     camera = camera_manager.get_camera(camera_num)
@@ -320,6 +324,7 @@ def _build_camera_state(camera_num: int) -> dict:
         "default_title": _hostname,
         "camera_name": camera.name,
     }
+    state["ui_state"] = dict(_camera_ui_states.get(camera_num, {}))
     return state
 
 def handle_camera_setting_changed(camera, state_name):
@@ -485,6 +490,22 @@ def handle_leave_camera_room(data):
     room = f"camera_{camera_num}"
     leave_room(room)
     logger.info("Client %s left room %s", request.sid, room)
+
+@socketio.on("set_ui_state")
+def handle_set_ui_state(data):
+    """Store a UI-only state change (e.g. anti-flicker switch) and broadcast
+    it to all other clients in the same camera room."""
+    camera_num = data.get("camera_num")
+    key        = data.get("key")
+    value      = data.get("value")
+    if camera_num is None or key is None:
+        return
+    if camera_num not in _camera_ui_states:
+        _camera_ui_states[camera_num] = {}
+    _camera_ui_states[camera_num][key] = value
+    room = f"camera_{camera_num}"
+    socketio.emit("ui_state", {"camera_num": camera_num, "key": key, "value": value},
+                  room=room, skip_sid=request.sid)
 
 @socketio.on("client_time_response")
 def handle_client_time_response(data):
@@ -990,6 +1011,9 @@ def update_system_settings():
                 {"camera_num": cam_num, "display": display_payload},
                 room=f"camera_{cam_num}"
             )
+    # Broadcast mains frequency changes to all camera pages (anti-flicker re-snap)
+    if "mains_frequency" in data:
+        socketio.emit("mains_frequency_changed", {"freq": updated.get("mains_frequency")})
     # Broadcast camera name changes to all clients (real Camera.name is set by update_system_settings in camera_server)
     if "camera_names" in data:
         names_payload = {}
@@ -1066,6 +1090,7 @@ def camera():
             camera_display = cam_display,
             camera_names = camera_names,
             auto_stop_notification = _auto_stop_pending.get(camera_num),
+            mains_frequency = sys_settings.get("mains_frequency", 50),
         )
     except Exception as e:
         logging.error(f"Error loading camera view: {e}")

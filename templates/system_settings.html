@@ -119,6 +119,40 @@
       </div>
       {% endif %}
 
+      <!-- Mains Frequency -->
+      <div class="mb-5">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.mains_freq_title">Mains Frequency</h2>
+        <p class="text-muted small" data-i18n="settings.mains_freq_desc">Used to calculate flicker-free exposure times for LED lighting. Select your country to set the correct power grid frequency.</p>
+        <div style="max-width: 360px;">
+          <label for="mainsCountryInput" class="form-label small" data-i18n="settings.mains_freq_country_label">Country</label>
+          <div class="position-relative">
+            <input type="text" class="form-control" id="mainsCountryInput"
+                   autocomplete="off"
+                   data-i18n-placeholder="settings.mains_freq_country_placeholder"
+                   placeholder="Search country…"
+                   oninput="_mainsCountryFilter()"
+                   onfocus="_mainsCountryFilter()"
+                   onblur="_mainsCountryBlur()"
+                   onkeydown="_mainsCountryKey(event)">
+            <ul id="mainsCountryList"
+                class="list-group position-absolute w-100 shadow-sm d-none"
+                style="z-index:1000; max-height:220px; overflow-y:auto; top:100%;">
+            </ul>
+          </div>
+          <div id="mainsFreqResult" class="mt-2 small text-muted d-none">
+            <i class="bi bi-lightning-charge-fill me-1"></i>
+            <span id="mainsFreqResultText"></span>
+          </div>
+          <!-- Hidden radio buttons — these carry the actual value used by save/load/snapshot/revert logic -->
+          <div class="d-none">
+            <input type="radio" name="mainsFrequency" id="mainsFreq50" value="50">
+            <input type="radio" name="mainsFrequency" id="mainsFreq60" value="60">
+          </div>
+          <!-- Hidden input keeping the selected country name -->
+          <input type="hidden" id="mainsCountryValue">
+        </div>
+      </div>
+
       <div class="mb-2">
         <button class="btn btn-primary btn-sm" onclick="saveAppearanceTab()" data-i18n="general.save">Save</button>
         <div id="appearanceMsg" class="mt-2 small d-none"></div>
@@ -639,6 +673,8 @@
       snap.lang      = document.querySelector('input[name="defaultLang"]:checked')?.value ?? '';
       snap.showTitle = document.getElementById('liveViewHideTitle')?.checked ?? false;
       snap.title     = document.getElementById('liveViewTitle')?.value ?? '';
+      snap.mainsFreq    = document.querySelector('input[name="mainsFrequency"]:checked')?.value ?? '';
+      snap.mainsCountry = document.getElementById('mainsCountryValue')?.value ?? '';
       document.querySelectorAll('.camera-name-input').forEach(input => {
         snap['cam_' + input.dataset.camNum] = input.value;
       });
@@ -678,6 +714,9 @@
       add(window.t('settings.lang_title')                || 'Language',          snap.lang,      lang,      fmtLang);
       add(window.t('settings.liveview_show_title')       || 'Show as title',     snap.showTitle, showTitle, fmtBool);
       add(window.t('settings.liveview_page_title_label') || 'Name',              snap.title,     title,     v => v || '(hostname)');
+      const mainsFreq    = document.querySelector('input[name="mainsFrequency"]:checked')?.value ?? '';
+      const mainsCountry = document.getElementById('mainsCountryValue')?.value ?? '';
+      add(window.t('settings.mains_freq_title') || 'Mains Frequency', snap.mainsCountry || snap.mainsFreq, mainsCountry || mainsFreq, v => v ? (v.length <= 3 ? `${v} Hz` : v) : '');
       document.querySelectorAll('.camera-name-input').forEach(input => {
         const n = input.dataset.camNum;
         add(`Cam${n} – ${window.t('settings.camera_name_label') || 'Name'}`, snap['cam_' + n], input.value, v => v || `Cam${n}`);
@@ -744,6 +783,9 @@
       const titleEl   = document.getElementById('liveViewTitle');
       if (showTitle) showTitle.checked = snap.showTitle ?? false;
       if (titleEl)   { titleEl.value = snap.title ?? ''; titleEl.disabled = !(snap.showTitle ?? false); }
+      const mainsRadio = document.querySelector(`input[name="mainsFrequency"][value="${snap.mainsFreq}"]`);
+      if (mainsRadio) mainsRadio.checked = true;
+      _mainsCountrySet(snap.mainsCountry ?? '', snap.mainsFreq ? parseInt(snap.mainsFreq, 10) : null, true);
       document.querySelectorAll('.camera-name-input').forEach(input => {
         const n = input.dataset.camNum;
         if (snap['cam_' + n] != null) input.value = snap['cam_' + n];
@@ -853,6 +895,9 @@
     if (language) payload.default_language = language;
     payload.live_view_title = title;
     payload.live_view_hide_title = hide_title;
+    const mainsFreqVal = parseInt(document.querySelector('input[name="mainsFrequency"]:checked')?.value ?? '0', 10);
+    if (mainsFreqVal === 50 || mainsFreqVal === 60) payload.mains_frequency = mainsFreqVal;
+    payload.mains_country = document.getElementById('mainsCountryValue')?.value ?? '';
     const nameInputs = document.querySelectorAll('.camera-name-input');
     if (nameInputs.length > 0) {
       if (!_validateCameraNames()) {
@@ -1008,6 +1053,112 @@
   }
 
 
+  // ── Mains frequency country picker ──────────────────────────────────
+  let _mainsCountries = [];   // [{country, freq}] loaded from JSON
+  let _mainsActiveIdx = -1;   // keyboard-highlighted row in dropdown
+
+  (function _loadMainsData() {
+    fetch('/static/data/mains_frequency.json')
+      .then(r => r.json())
+      .then(data => { _mainsCountries = data; })
+      .catch(() => {});
+  })();
+
+  function _mainsCountryFilter() {
+    const query = (document.getElementById('mainsCountryInput')?.value ?? '').trim().toLowerCase();
+    const list  = document.getElementById('mainsCountryList');
+    if (!list) return;
+    const matches = query.length === 0
+      ? _mainsCountries
+      : _mainsCountries.filter(c => c.countryOrTerritory.toLowerCase().includes(query));
+    list.innerHTML = '';
+    _mainsActiveIdx = -1;
+    if (matches.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'list-group-item list-group-item-action disabled small text-muted';
+      li.setAttribute('data-i18n', 'settings.mains_freq_country_no_results');
+      li.textContent = window.t('settings.mains_freq_country_no_results') || 'No matching country found.';
+      list.appendChild(li);
+    } else {
+      matches.forEach((c, i) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center small py-1 px-2';
+        li.dataset.idx = i;
+        li.innerHTML = `<span>${c.countryOrTerritory}</span><span class="badge bg-secondary ms-2">${c.freq} Hz</span>`;
+        li.addEventListener('mousedown', e => {
+          e.preventDefault();
+          _mainsCountrySelect(c);
+        });
+        list.appendChild(li);
+      });
+    }
+    list.classList.remove('d-none');
+  }
+
+  function _mainsCountryBlur() {
+    setTimeout(() => {
+      document.getElementById('mainsCountryList')?.classList.add('d-none');
+    }, 150);
+  }
+
+  function _mainsCountryKey(e) {
+    const list  = document.getElementById('mainsCountryList');
+    const items = list ? Array.from(list.querySelectorAll('.list-group-item:not(.disabled)')) : [];
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      _mainsActiveIdx = Math.min(_mainsActiveIdx + 1, items.length - 1);
+      _mainsHighlight(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      _mainsActiveIdx = Math.max(_mainsActiveIdx - 1, 0);
+      _mainsHighlight(items);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (_mainsActiveIdx >= 0 && items[_mainsActiveIdx]) {
+        items[_mainsActiveIdx].dispatchEvent(new MouseEvent('mousedown'));
+      }
+    } else if (e.key === 'Escape') {
+      list?.classList.add('d-none');
+    }
+  }
+
+  function _mainsHighlight(items) {
+    items.forEach((el, i) => el.classList.toggle('active', i === _mainsActiveIdx));
+    if (_mainsActiveIdx >= 0) items[_mainsActiveIdx]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function _mainsCountrySelect(c) {
+    _mainsCountrySet(c.countryOrTerritory, c.freq, false);
+    document.getElementById('mainsCountryList')?.classList.add('d-none');
+  }
+
+  function _mainsCountrySet(country, freq, silent) {
+    const input      = document.getElementById('mainsCountryInput');
+    const hidden     = document.getElementById('mainsCountryValue');
+    const resultEl   = document.getElementById('mainsFreqResult');
+    const resultText = document.getElementById('mainsFreqResultText');
+    if (input)  input.value  = country;
+    if (hidden) hidden.value = country;
+    // Update hidden radio so save/snapshot/revert logic works
+    if (freq) {
+      const radio = document.querySelector(`input[name="mainsFrequency"][value="${freq}"]`);
+      if (radio) radio.checked = true;
+    }
+    if (resultEl && resultText) {
+      if (country && freq) {
+        const tpl = window.t('settings.mains_freq_result') || 'Power grid frequency: {freq} Hz';
+        resultText.textContent = tpl.replace('{freq}', freq);
+        resultEl.classList.remove('d-none');
+      } else {
+        resultEl.classList.add('d-none');
+      }
+    }
+    if (!silent) {
+      // Trigger dirty tracking (same as a user input event)
+      document.getElementById('tab-appearance')?.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   // ── Camera module modal ──────────────────────────────────────────────
   let currentAction = null;
 
@@ -1051,6 +1202,10 @@
       const hideTitle = !!data.live_view_hide_title;
       document.getElementById('liveViewHideTitle').checked = !hideTitle;
       document.getElementById('liveViewTitle').disabled = hideTitle;
+      // Mains frequency + country picker
+      const mainsFreqRadio = document.querySelector(`input[name="mainsFrequency"][value="${data.mains_frequency ?? 50}"]`);
+      if (mainsFreqRadio) mainsFreqRadio.checked = true;
+      _mainsCountrySet(data.mains_country ?? '', data.mains_frequency ?? 50, true);
       // Mic assignments
       const audioSourceSettings = data.audio_source_settings || {};
       const cameraAudioDelaySettings = data.camera_audio_delay_settings || {};

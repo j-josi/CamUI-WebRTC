@@ -136,6 +136,7 @@
 
         data-precision="{{ prec }}"
         data-default="{{ setting.get('default', 0) }}"
+        data-original-min="{{ slider_min }}"
         {% if setting.get("group_leader") %}data-group-leader="{{ setting.group_leader }}"{% endif %}
         oninput="onSliderInput('{{ setting.id }}', this)"
         onchange="onSliderChange('{{ setting.id }}', this)">
@@ -205,6 +206,16 @@
     <small class="text-muted">
         {{ setting.validation_text.replace("{min}", slider_min|string).replace("{max}", slider_max|string) }}
     </small>
+    {% endif %}
+
+    {% if setting.get("antiflicker") %}
+    <div class="form-check form-switch mt-2">
+        <input class="form-check-input" type="checkbox"
+               id="{{ setting.id }}_antiflicker"
+               onchange="toggleAntiflicker('{{ setting.id }}', this.checked)">
+        <label class="form-check-label" for="{{ setting.id }}_antiflicker"
+               data-i18n="controls.antiflicker_label">Anti-flicker (LED)</label>
+    </div>
     {% endif %}
 
     {% if setting.get("trigger_af_button") %}

@@ -228,6 +228,7 @@ input[type=number] { -moz-appearance: textfield; }
 // -------------------------------------------------------
 const cameraNum = JSON.parse('{{ camera.Num | tojson }}');
 const defaultCameraTitle = {{ hostname | tojson }};
+let MAINS_FREQUENCY = {{ mains_frequency | tojson }};
 const video = document.getElementById("videoFeed");
 const videoControls = document.getElementById("videoControls");
 const videoContainer = document.getElementById("videoFeedContainer");
@@ -430,6 +431,24 @@ function applyStateToUI(state) {
     if (state.display) {
         applyDisplay(state.display);
     }
+
+    // UI-only state (e.g. anti-flicker switches) — not part of camera controls
+    if (state.ui_state) {
+        applyUiState(state.ui_state);
+    }
+}
+
+function applyUiState(uiState) {
+    for (const [key, value] of Object.entries(uiState)) {
+        if (key.endsWith("_antiflicker")) {
+            const settingId = key.slice(0, -"_antiflicker".length);
+            const checkbox  = document.getElementById(key);
+            if (checkbox && checkbox.checked !== Boolean(value)) {
+                checkbox.checked = Boolean(value);
+                toggleAntiflicker(settingId, Boolean(value), /*skipServerUpdate=*/true);
+            }
+        }
+    }
 }
 
 // -------------------------------------------------------
@@ -494,6 +513,23 @@ function applyDisplay(display) {
     const hideInput = document.getElementById("cameraHideTitleInput");
     if (hideInput) hideInput.checked = !!display.hide_title;
 }
+
+socket.on("ui_state", payload => {
+    if (payload.camera_num !== cameraNum) return;
+    applyUiState({ [payload.key]: payload.value });
+});
+
+socket.on("mains_frequency_changed", payload => {
+    MAINS_FREQUENCY = payload.freq;
+    // Re-apply anti-flicker for every slider that currently has it active,
+    // so the exposure time snaps to the new frequency's grid.
+    document.querySelectorAll('[data-antiflicker-active="true"]').forEach(slider => {
+        const settingId = slider.id;
+        toggleAntiflicker(settingId, true, /*skipServerUpdate=*/true);
+        const newVal = parseFloat(slider.value);
+        if (!isNaN(newVal)) adjustSliderSetting(settingId, newVal);
+    });
+});
 
 socket.on("param_states_changed", payload => {
     if (payload.camera_num !== cameraNum) return;
