@@ -8,6 +8,13 @@
     height: clamp(50px, 5vw, 150px);
     width: auto;
   }
+  /* Hide native spinners on audio delay inputs — replaced by custom ▲▼ buttons */
+  .mic-delay, .mic-stream-delay, .mic-delay-unified { -moz-appearance: textfield; }
+  .mic-delay::-webkit-inner-spin-button, .mic-delay::-webkit-outer-spin-button,
+  .mic-stream-delay::-webkit-inner-spin-button, .mic-stream-delay::-webkit-outer-spin-button,
+  .mic-delay-unified::-webkit-inner-spin-button, .mic-delay-unified::-webkit-outer-spin-button {
+    -webkit-appearance: none; margin: 0;
+  }
 </style>
 
 <div class="container-fluid px-4 py-4">
@@ -206,7 +213,8 @@
             </select>
             <!-- Per-microphone audio settings (hidden when no mic is selected) -->
             <div class="mic-audio-settings d-none mt-2" id="micAudioSettings_{{ cam_info.Num }}">
-              <div class="d-flex flex-column flex-md-row gap-3 align-items-start">
+              <div class="d-flex flex-column gap-3">
+                <!-- Volume -->
                 <div>
                   <label class="form-label small mb-1" for="micVolume_{{ cam_info.Num }}">
                     <span data-i18n="settings.mic_volume_label">Volume</span>
@@ -224,41 +232,180 @@
                     <span id="micVolumeLabel_{{ cam_info.Num }}" class="small text-muted" style="min-width: 3.5em">100%</span>
                   </div>
                 </div>
+                <!-- Audio Delay Mode: Radio 1 – Linked -->
                 <div>
-                  <label class="form-label small mb-1" for="micDelay_{{ cam_info.Num }}">
-                    <span data-i18n="settings.mic_delay_label">Recording delay (ms)</span>
-                    <i class="bi bi-info-circle ms-1 text-muted"
-                       data-bs-toggle="tooltip" data-bs-placement="top"
-                       data-i18n-tooltip="settings.mic_delay_tooltip"
-                       title=""></i>
-                  </label>
-                  <input type="number" class="form-control form-control-sm mic-delay"
-                         id="micDelay_{{ cam_info.Num }}"
-                         data-cam-num="{{ cam_info.Num }}"
-                         min="0" max="5000" step="1" value="0"
-                         style="width: 90px;">
-                  <small id="micDelayError_{{ cam_info.Num }}"
-                         class="text-danger d-block"
-                         style="visibility:hidden;font-size:0.75em;line-height:1.4"
-                         data-i18n="settings.mic_delay_range_error">0–5000 ms</small>
+                  <div class="form-check">
+                    <input class="form-check-input mic-delay-mode" type="radio"
+                           id="micDelayModeLinked_{{ cam_info.Num }}"
+                           name="micDelayMode_{{ cam_info.Num }}"
+                           data-cam-num="{{ cam_info.Num }}"
+                           value="linked" checked>
+                    <span class="d-inline-flex align-items-center gap-2">
+                      <label class="form-check-label small" for="micDelayModeLinked_{{ cam_info.Num }}"
+                             data-i18n="settings.mic_delay_mode_linked">Same delay for recording (.mp4) and live stream</label>
+                      <i class="bi bi-info-circle text-muted"
+                         data-bs-toggle="tooltip" data-bs-placement="top"
+                         data-i18n-tooltip="settings.mic_delay_unified_tooltip"
+                         title=""></i>
+                      <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                              id="micDelayUnifiedReset_{{ cam_info.Num }}"
+                              data-i18n-title="settings.mic_delay_reset_tooltip"
+                              title=""
+                              onclick="_resetDelayField({{ cam_info.Num }}, 'unified')"
+                              disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                      </button>
+                    </span>
+                  </div>
+                  <div class="ps-4 mt-1" id="micDelayUnifiedArea_{{ cam_info.Num }}">
+                    <div class="d-flex align-items-center gap-1">
+                      <input type="number" class="form-control form-control-sm mic-delay-unified"
+                             id="micDelayUnified_{{ cam_info.Num }}"
+                             data-cam-num="{{ cam_info.Num }}"
+                             min="-5000" max="0" step="1" value="0"
+                             style="width: 80px;">
+                      <div class="d-flex flex-column" style="gap:1px; height:calc(1.3125rem + 0.5rem + 2px);">
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                id="micDelayUnifiedUp_{{ cam_info.Num }}"
+                                onclick="_stepDelayField({{ cam_info.Num }}, 'unified', 1)"
+                                style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;"
+                                disabled>
+                          <i class="bi bi-caret-up-fill" style="font-size:0.6rem;"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                id="micDelayUnifiedDn_{{ cam_info.Num }}"
+                                onclick="_stepDelayField({{ cam_info.Num }}, 'unified', -1)"
+                                style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;">
+                          <i class="bi bi-caret-down-fill" style="font-size:0.6rem;"></i>
+                        </button>
+                      </div>
+                      <span class="small text-muted">ms</span>
+                    </div>
+                    <small id="micDelayUnifiedError_{{ cam_info.Num }}"
+                           class="text-danger d-block"
+                           style="visibility:hidden;font-size:0.75em;line-height:1.4"
+                           data-i18n="settings.mic_delay_range_error">−5000–0 ms</small>
+                    <div id="micDelayUnifiedWarning_{{ cam_info.Num }}"
+                         class="d-none mt-1"
+                         style="font-size:0.78em;line-height:1.4">
+                      <strong class="text-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i><span data-i18n="settings.mic_stream_delay_warning">A non-zero value adds a fixed delay to the entire live stream.</span>
+                      </strong>
+                    </div>
+                  </div>
                 </div>
+                <!-- Audio Delay Mode: Radio 2 – Independent -->
                 <div>
-                  <label class="form-label small mb-1" for="micStreamDelay_{{ cam_info.Num }}">
-                    <span data-i18n="settings.mic_stream_delay_label">Stream delay (ms)</span>
-                    <i class="bi bi-info-circle ms-1 text-muted"
-                       data-bs-toggle="tooltip" data-bs-placement="top"
-                       data-i18n-tooltip="settings.mic_stream_delay_tooltip"
-                       title=""></i>
-                  </label>
-                  <input type="number" class="form-control form-control-sm mic-stream-delay"
-                         id="micStreamDelay_{{ cam_info.Num }}"
-                         data-cam-num="{{ cam_info.Num }}"
-                         min="0" max="5000" step="1" value="0"
-                         style="width: 90px;">
-                  <small id="micStreamDelayError_{{ cam_info.Num }}"
-                         class="text-danger d-block"
-                         style="visibility:hidden;font-size:0.75em;line-height:1.4"
-                         data-i18n="settings.mic_delay_range_error">0–5000 ms</small>
+                  <div class="form-check">
+                    <input class="form-check-input mic-delay-mode" type="radio"
+                           id="micDelayModeIndep_{{ cam_info.Num }}"
+                           name="micDelayMode_{{ cam_info.Num }}"
+                           data-cam-num="{{ cam_info.Num }}"
+                           value="independent">
+                    <label class="form-check-label small" for="micDelayModeIndep_{{ cam_info.Num }}"
+                           data-i18n="settings.mic_delay_mode_independent">Independent delays for recording (.mp4) and live stream</label>
+                  </div>
+                  <div class="ps-4 mt-1 opacity-50" id="micDelayIndividual_{{ cam_info.Num }}">
+                    <div>
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <label class="form-label small mb-0" for="micDelay_{{ cam_info.Num }}"
+                               data-i18n="settings.mic_delay_label">Audio Delay – Recording</label>
+                        <i class="bi bi-info-circle text-muted"
+                           data-bs-toggle="tooltip" data-bs-placement="top"
+                           data-i18n-tooltip="settings.mic_delay_tooltip"
+                           title=""></i>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                id="micDelayReset_{{ cam_info.Num }}"
+                                data-i18n-title="settings.mic_delay_reset_tooltip"
+                                title=""
+                                onclick="_resetDelayField({{ cam_info.Num }}, 'recording')"
+                                disabled>
+                          <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control form-control-sm mic-delay"
+                               id="micDelay_{{ cam_info.Num }}"
+                               data-cam-num="{{ cam_info.Num }}"
+                               min="-5000" max="0" step="1" value="0"
+                               style="width: 80px;" disabled>
+                        <div class="d-flex flex-column" style="gap:1px; height:calc(1.3125rem + 0.5rem + 2px);">
+                          <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                  id="micDelayUp_{{ cam_info.Num }}"
+                                  onclick="_stepDelayField({{ cam_info.Num }}, 'recording', 1)"
+                                  style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;"
+                                  disabled>
+                            <i class="bi bi-caret-up-fill" style="font-size:0.6rem;"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                  id="micDelayDn_{{ cam_info.Num }}"
+                                  onclick="_stepDelayField({{ cam_info.Num }}, 'recording', -1)"
+                                  style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;"
+                                  disabled>
+                            <i class="bi bi-caret-down-fill" style="font-size:0.6rem;"></i>
+                          </button>
+                        </div>
+                        <span class="small text-muted">ms</span>
+                      </div>
+                      <small id="micDelayError_{{ cam_info.Num }}"
+                             class="text-danger d-block"
+                             style="visibility:hidden;font-size:0.75em;line-height:1.4"
+                             data-i18n="settings.mic_delay_range_error">−5000–0 ms</small>
+                    </div>
+                    <div class="mt-2">
+                      <div class="d-flex align-items-center gap-2 mb-1">
+                        <label class="form-label small mb-0" for="micStreamDelay_{{ cam_info.Num }}"
+                               data-i18n="settings.mic_stream_delay_label">Audio Delay – Stream</label>
+                        <i class="bi bi-info-circle text-muted"
+                           data-bs-toggle="tooltip" data-bs-placement="top"
+                           data-i18n-tooltip="settings.mic_stream_delay_tooltip"
+                           title=""></i>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                id="micStreamDelayReset_{{ cam_info.Num }}"
+                                data-i18n-title="settings.mic_delay_reset_tooltip"
+                                title=""
+                                onclick="_resetDelayField({{ cam_info.Num }}, 'stream')"
+                                disabled>
+                          <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                      </div>
+                      <div class="d-flex align-items-center gap-1">
+                        <input type="number" class="form-control form-control-sm mic-stream-delay"
+                               id="micStreamDelay_{{ cam_info.Num }}"
+                               data-cam-num="{{ cam_info.Num }}"
+                               min="-5000" max="0" step="1" value="0"
+                               style="width: 80px;" disabled>
+                        <div class="d-flex flex-column" style="gap:1px; height:calc(1.3125rem + 0.5rem + 2px);">
+                          <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                  id="micStreamDelayUp_{{ cam_info.Num }}"
+                                  onclick="_stepDelayField({{ cam_info.Num }}, 'stream', 1)"
+                                  style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;"
+                                  disabled>
+                            <i class="bi bi-caret-up-fill" style="font-size:0.6rem;"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                                  id="micStreamDelayDn_{{ cam_info.Num }}"
+                                  onclick="_stepDelayField({{ cam_info.Num }}, 'stream', -1)"
+                                  style="flex:1; min-height:0; display:flex; align-items:center; justify-content:center;"
+                                  disabled>
+                            <i class="bi bi-caret-down-fill" style="font-size:0.6rem;"></i>
+                          </button>
+                        </div>
+                        <span class="small text-muted">ms</span>
+                      </div>
+                      <small id="micStreamDelayError_{{ cam_info.Num }}"
+                             class="text-danger d-block"
+                             style="visibility:hidden;font-size:0.75em;line-height:1.4"
+                             data-i18n="settings.mic_delay_range_error">−5000–0 ms</small>
+                      <div id="micStreamDelayWarning_{{ cam_info.Num }}"
+                           class="d-none mt-1"
+                           style="font-size:0.78em;line-height:1.4">
+                        <strong class="text-warning">
+                          <i class="bi bi-exclamation-triangle-fill me-1"></i><span data-i18n="settings.mic_stream_delay_warning">A non-zero value adds a fixed delay to the entire live stream.</span>
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -685,9 +832,14 @@
         const n = sel.dataset.camNum;
         snap['mic_' + n] = sel.value;
         if (sel.value) {
-          snap['vol_'   + n] = document.getElementById('micVolume_'      + n)?.value ?? '';
-          snap['delay_' + n] = document.getElementById('micDelay_'       + n)?.value ?? '';
-          snap['sdel_'  + n] = document.getElementById('micStreamDelay_' + n)?.value ?? '';
+          snap['vol_'   + n] = document.getElementById('micVolume_' + n)?.value ?? '';
+          const eff = _getEffectiveDelayValues(n);
+          snap['delay_' + n] = String(eff.delay_ms);
+          snap['sdel_'  + n] = String(eff.stream_delay_ms);
+          snap['udel_'  + n] = document.getElementById('micDelayUnified_'    + n)?.value ?? '';
+          snap['recdel_'+ n] = document.getElementById('micDelay_'           + n)?.value ?? '';
+          snap['strdel_'+ n] = document.getElementById('micStreamDelay_'     + n)?.value ?? '';
+          snap['indep_' + n] = _isDelayIndependent(n);
         }
       });
     }
@@ -736,8 +888,10 @@
           const delay = document.getElementById('micDelay_'       + n)?.value ?? '';
           const sdel  = document.getElementById('micStreamDelay_' + n)?.value ?? '';
           add(`Cam${n} – ${window.t('settings.mic_volume_label')       || 'Volume'}`,          snap['vol_'   + n], vol,   v => v + ' %');
-          add(`Cam${n} – ${window.t('settings.mic_delay_label')        || 'Recording delay'}`, snap['delay_' + n], delay, v => v + ' ms');
-          add(`Cam${n} – ${window.t('settings.mic_stream_delay_label') || 'Stream delay'}`,    snap['sdel_'  + n], sdel,  v => v + ' ms');
+          const fmtDelay = v => { const n = parseInt(v); return (n > 0 ? '−' : '') + Math.abs(n || 0) + ' ms'; };
+          const curEff = _getEffectiveDelayValues(n);
+          add(`Cam${n} – ${window.t('settings.mic_delay_label')        || 'Audio Delay – Recording'}`, snap['delay_' + n], String(curEff.delay_ms),        fmtDelay);
+          add(`Cam${n} – ${window.t('settings.mic_stream_delay_label') || 'Audio Delay – Stream'}`,    snap['sdel_'  + n], String(curEff.stream_delay_ms),  fmtDelay);
         }
       });
     }
@@ -797,20 +951,20 @@
       document.querySelectorAll('.mic-select').forEach(sel => {
         const n = sel.dataset.camNum;
         sel.value = snap['mic_' + n] ?? '';
-        const vol   = document.getElementById('micVolume_'      + n);
-        const delay = document.getElementById('micDelay_'       + n);
-        const sdel  = document.getElementById('micStreamDelay_' + n);
-        const lbl   = document.getElementById('micVolumeLabel_' + n);
-        if (vol   && snap['vol_'   + n] != null) { vol.value   = snap['vol_'   + n]; if (lbl) lbl.textContent = vol.value + '%'; }
-        if (delay && snap['delay_' + n] != null)   delay.value = snap['delay_' + n];
-        if (sdel  && snap['sdel_'  + n] != null)   sdel.value  = snap['sdel_'  + n];
-        // Clear any validation errors on delay fields
-        [delay, sdel].forEach(el => { if (el) { el.classList.remove('is-invalid'); } });
-        const errDelay = document.getElementById('micDelayError_'       + n);
-        const errSdel  = document.getElementById('micStreamDelayError_' + n);
-        if (errDelay) errDelay.style.visibility = 'hidden';
-        if (errSdel)  errSdel.style.visibility  = 'hidden';
-        // Sync audio settings panel visibility
+        const vol = document.getElementById('micVolume_' + n);
+        const lbl = document.getElementById('micVolumeLabel_' + n);
+        if (vol && snap['vol_' + n] != null) { vol.value = snap['vol_' + n]; if (lbl) lbl.textContent = vol.value + '%'; }
+        const udel  = document.getElementById('micDelayUnified_' + n);
+        const delay = document.getElementById('micDelay_'        + n);
+        const sdel  = document.getElementById('micStreamDelay_'  + n);
+        if (udel  && snap['udel_'  + n] != null) udel.value  = snap['udel_'  + n];
+        if (delay && snap['recdel_'+ n] != null) delay.value = snap['recdel_'+ n];
+        if (sdel  && snap['strdel_'+ n] != null) sdel.value  = snap['strdel_'+ n];
+        if (snap['indep_' + n] != null) _setDelayMode(n, snap['indep_' + n]);
+        _applyDelayIndependentMode(n, snap['indep_' + n] ?? false, false);
+        _updateStreamDelayWarning(n);
+        _updateAllDelayResetBtns(n);
+        _updateAllDelayStepBtns(n);
         const settingsDiv = document.getElementById('micAudioSettings_' + n);
         if (settingsDiv) settingsDiv.classList.toggle('d-none', !sel.value);
       });
@@ -917,9 +1071,9 @@
   }
 
   function saveCameraAudioTab() {
-    document.querySelectorAll('.mic-delay, .mic-stream-delay').forEach(_validateDelayField);
+    document.querySelectorAll('.mic-delay-unified, .mic-delay, .mic-stream-delay').forEach(el => { if (!el.disabled) _validateDelayField(el); });
     _updateMicSaveBtn();
-    if (document.querySelectorAll('.mic-delay.is-invalid, .mic-stream-delay.is-invalid').length > 0)
+    if ([...document.querySelectorAll('.mic-delay-unified.is-invalid, .mic-delay.is-invalid, .mic-stream-delay.is-invalid')].some(el => !el.disabled))
       return Promise.reject(new Error('validation'));
     const minutes = parseInt(document.getElementById('maxRecordingDuration').value, 10);
     if (isNaN(minutes) || minutes < 1 || minutes > 600) {
@@ -932,16 +1086,10 @@
       assignments[camNum] = device;
       if (device) {
         const vol = document.getElementById('micVolume_' + camNum);
-        const del = document.getElementById('micDelay_' + camNum);
-        const sdl = document.getElementById('micStreamDelay_' + camNum);
         const volume = vol ? parseInt(vol.value, 10) : 100;
-        const delayMs = del ? parseInt(del.value, 10) : 0;
-        const streamDelayMs = sdl ? parseInt(sdl.value, 10) : 0;
         audioSourceSettings[device] = { volume: isNaN(volume) ? 100 : Math.min(200, Math.max(0, volume)) };
-        cameraAudioDelaySettings[camNum] = {
-          delay_ms: isNaN(delayMs) ? 0 : Math.min(5000, Math.max(0, delayMs)),
-          stream_delay_ms: isNaN(streamDelayMs) ? 0 : Math.min(5000, Math.max(0, streamDelayMs)),
-        };
+        const { delay_ms, stream_delay_ms } = _getEffectiveDelayValues(camNum);
+        cameraAudioDelaySettings[camNum] = { delay_ms, stream_delay_ms };
       }
     });
     return fetch('/api/system_settings', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -981,25 +1129,170 @@
     const volLabel = document.getElementById('micVolumeLabel_' + camNum);
     if (volInput) volInput.value = volume;
     if (volLabel) volLabel.textContent = volume + '%';
-    const delayInput = document.getElementById('micDelay_' + camNum);
-    const streamDelayInput = document.getElementById('micStreamDelay_' + camNum);
-    if (delayInput) delayInput.value = delayMs;
-    if (streamDelayInput) streamDelayInput.value = streamDelayMs;
+    const uniInput = document.getElementById('micDelayUnified_' + camNum);
+    const recInput = document.getElementById('micDelay_'        + camNum);
+    const strInput = document.getElementById('micStreamDelay_'  + camNum);
+    const isIndep  = delayMs !== streamDelayMs;
+    if (uniInput) uniInput.value = -delayMs;
+    if (recInput) recInput.value = -delayMs;
+    if (strInput) strInput.value = -streamDelayMs;
+    _setDelayMode(camNum, isIndep);
+    _applyDelayIndependentMode(camNum, isIndep, false);
+    _updateStreamDelayWarning(camNum);
+    _updateAllDelayResetBtns(camNum);
+    _updateAllDelayStepBtns(camNum);
+  }
+
+  function _updateStreamDelayWarning(camNum) {
+    const isIndep = _isDelayIndependent(camNum);
+    const uniWarning = document.getElementById('micDelayUnifiedWarning_' + camNum);
+    const strWarning = document.getElementById('micStreamDelayWarning_'  + camNum);
+    let uniMag = 0, strMag = 0;
+    if (isIndep) {
+      strMag = _parseDelayMagnitude(document.getElementById('micStreamDelay_' + camNum)?.value);
+    } else {
+      uniMag = _parseDelayMagnitude(document.getElementById('micDelayUnified_' + camNum)?.value);
+    }
+    if (uniWarning) uniWarning.classList.toggle('d-none', uniMag === 0);
+    if (strWarning) strWarning.classList.toggle('d-none', strMag === 0);
+  }
+
+  function _updateDelayResetBtn(camNum, type) {
+    const btnId   = { unified: 'micDelayUnifiedReset_', recording: 'micDelayReset_', stream: 'micStreamDelayReset_' }[type];
+    const fieldId = { unified: 'micDelayUnified_',      recording: 'micDelay_',      stream: 'micStreamDelay_'      }[type];
+    const btn   = document.getElementById(btnId   + camNum);
+    const field = document.getElementById(fieldId + camNum);
+    if (!btn || !field) return;
+    const active = _parseDelayMagnitude(field.value) !== 0 && !field.disabled;
+    btn.disabled = !active;
+    btn.classList.toggle('btn-warning',          active);
+    btn.classList.toggle('btn-outline-secondary', !active);
+  }
+
+  function _updateAllDelayResetBtns(camNum) {
+    ['unified', 'recording', 'stream'].forEach(t => _updateDelayResetBtn(camNum, t));
+  }
+
+  function _updateDelayStepBtns(camNum, type) {
+    const fieldId = { unified: 'micDelayUnified_',   recording: 'micDelay_',      stream: 'micStreamDelay_'      }[type];
+    const upId    = { unified: 'micDelayUnifiedUp_',  recording: 'micDelayUp_',    stream: 'micStreamDelayUp_'    }[type];
+    const dnId    = { unified: 'micDelayUnifiedDn_',  recording: 'micDelayDn_',    stream: 'micStreamDelayDn_'    }[type];
+    const field = document.getElementById(fieldId + camNum);
+    const upBtn = document.getElementById(upId    + camNum);
+    const dnBtn = document.getElementById(dnId    + camNum);
+    if (!field || !upBtn || !dnBtn) return;
+    const val = parseInt(field.value, 10);
+    const dis = field.disabled;
+    upBtn.disabled = dis || isNaN(val) || val >= 0;
+    dnBtn.disabled = dis || isNaN(val) || val <= -5000;
+  }
+
+  function _updateAllDelayStepBtns(camNum) {
+    ['unified', 'recording', 'stream'].forEach(t => _updateDelayStepBtns(camNum, t));
+  }
+
+  function _stepDelayField(camNum, type, dir) {
+    const ids = { unified: 'micDelayUnified_', recording: 'micDelay_', stream: 'micStreamDelay_' };
+    const el  = document.getElementById(ids[type] + camNum);
+    if (!el || el.disabled) return;
+    const val = parseInt(el.value, 10);
+    if (isNaN(val)) return;
+    el.value = Math.min(0, Math.max(-5000, val + dir));
+    _validateDelayField(el);
+    _updateStreamDelayWarning(camNum);
+    _updateAllDelayStepBtns(camNum);
+    _updateAllDelayResetBtns(camNum);
+    _updateMicSaveBtn();
+  }
+
+  function _resetDelayField(camNum, type) {
+    const ids = { unified: 'micDelayUnified_', recording: 'micDelay_', stream: 'micStreamDelay_' };
+    const el  = document.getElementById(ids[type] + camNum);
+    if (el) { el.value = 0; _validateDelayField(el); }
+    _updateAllDelayResetBtns(camNum);
+    _updateAllDelayStepBtns(camNum);
+    _updateStreamDelayWarning(camNum);
+    _updateMicSaveBtn();
+  }
+
+  function _isDelayIndependent(camNum) {
+    return document.getElementById('micDelayModeIndep_' + camNum)?.checked ?? false;
+  }
+
+  function _setDelayMode(camNum, isIndependent) {
+    const linked = document.getElementById('micDelayModeLinked_' + camNum);
+    const indep  = document.getElementById('micDelayModeIndep_'  + camNum);
+    if (linked) linked.checked = !isIndependent;
+    if (indep)  indep.checked  =  isIndependent;
   }
 
   function _validateDelayField(input) {
     const val = parseInt(input.value, 10);
-    const valid = !isNaN(val) && val >= 0 && val <= 5000;
+    const valid = !isNaN(val) && val >= -5000 && val <= 0;
     input.classList.toggle('is-invalid', !valid);
-    const isStream = input.classList.contains('mic-stream-delay');
-    const errEl = document.getElementById((isStream ? 'micStreamDelayError_' : 'micDelayError_') + input.dataset.camNum);
+    let errId;
+    if      (input.classList.contains('mic-delay-unified'))  errId = 'micDelayUnifiedError_';
+    else if (input.classList.contains('mic-stream-delay'))   errId = 'micStreamDelayError_';
+    else                                                     errId = 'micDelayError_';
+    const errEl = document.getElementById(errId + input.dataset.camNum);
     if (errEl) errEl.style.visibility = valid ? 'hidden' : 'visible';
     return valid;
   }
 
   function _updateMicSaveBtn() {
     const btn = document.getElementById('saveCameraAudioBtn');
-    if (btn) btn.disabled = document.querySelectorAll('.mic-delay.is-invalid, .mic-stream-delay.is-invalid').length > 0;
+    if (!btn) return;
+    btn.disabled = [...document.querySelectorAll('.mic-delay-unified.is-invalid, .mic-delay.is-invalid, .mic-stream-delay.is-invalid')]
+      .some(el => !el.disabled);
+  }
+
+  function _parseDelayMagnitude(str) {
+    const n = Math.abs(parseInt(str, 10));
+    return isNaN(n) ? 0 : Math.min(5000, n);
+  }
+
+  function _getEffectiveDelayValues(camNum) {
+    if (_isDelayIndependent(camNum)) {
+      return {
+        delay_ms:        _parseDelayMagnitude(document.getElementById('micDelay_'       + camNum)?.value),
+        stream_delay_ms: _parseDelayMagnitude(document.getElementById('micStreamDelay_' + camNum)?.value),
+      };
+    }
+    const v = _parseDelayMagnitude(document.getElementById('micDelayUnified_' + camNum)?.value);
+    return { delay_ms: v, stream_delay_ms: v };
+  }
+
+  function _applyDelayIndependentMode(camNum, isIndependent, copyValues) {
+    const uniInput   = document.getElementById('micDelayUnified_'    + camNum);
+    const recInput   = document.getElementById('micDelay_'           + camNum);
+    const strInput   = document.getElementById('micStreamDelay_'     + camNum);
+    const uniArea    = document.getElementById('micDelayUnifiedArea_' + camNum);
+    const individDiv = document.getElementById('micDelayIndividual_'  + camNum);
+    if (isIndependent) {
+      if (copyValues && uniInput && recInput && strInput) {
+        recInput.value = uniInput.value;
+        strInput.value = uniInput.value;
+      }
+      if (uniInput) { uniInput.disabled = true; uniInput.classList.remove('is-invalid'); }
+      const errUni = document.getElementById('micDelayUnifiedError_' + camNum);
+      if (errUni) errUni.style.visibility = 'hidden';
+      if (uniArea)    uniArea.classList.add('opacity-50');
+      if (recInput)   recInput.disabled = false;
+      if (strInput)   strInput.disabled = false;
+      if (copyValues && recInput) _validateDelayField(recInput);
+      if (copyValues && strInput) _validateDelayField(strInput);
+      if (individDiv) individDiv.classList.remove('opacity-50');
+    } else {
+      if (uniInput) uniInput.disabled = false;
+      if (uniArea)  uniArea.classList.remove('opacity-50');
+      if (recInput) { recInput.disabled = true; recInput.classList.remove('is-invalid'); }
+      if (strInput) { strInput.disabled = true; strInput.classList.remove('is-invalid'); }
+      [document.getElementById('micDelayError_' + camNum), document.getElementById('micStreamDelayError_' + camNum)]
+        .forEach(el => { if (el) el.style.visibility = 'hidden'; });
+      if (individDiv) individDiv.classList.add('opacity-50');
+    }
+    _updateAllDelayResetBtns(camNum);
+    _updateAllDelayStepBtns(camNum);
   }
 
   document.addEventListener('input', function(e) {
@@ -1016,8 +1309,25 @@
         }
       });
     }
-    if (e.target.classList.contains('mic-delay') || e.target.classList.contains('mic-stream-delay')) {
-      _validateDelayField(e.target);
+    if (e.target.classList.contains('mic-delay') || e.target.classList.contains('mic-stream-delay') || e.target.classList.contains('mic-delay-unified')) {
+      if (!e.target.disabled) _validateDelayField(e.target);
+      _updateStreamDelayWarning(e.target.dataset.camNum);
+      _updateAllDelayResetBtns(e.target.dataset.camNum);
+      _updateAllDelayStepBtns(e.target.dataset.camNum);
+      _updateMicSaveBtn();
+    }
+  });
+
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('mic-delay-mode')) {
+      const camNum = e.target.dataset.camNum;
+      const isIndep = e.target.value === 'independent';
+      _applyDelayIndependentMode(camNum, isIndep, false);
+      _updateStreamDelayWarning(camNum);
+      if (!isIndep) {
+        const uni = document.getElementById('micDelayUnified_' + camNum);
+        if (uni) _validateDelayField(uni);
+      }
       _updateMicSaveBtn();
     }
   });
