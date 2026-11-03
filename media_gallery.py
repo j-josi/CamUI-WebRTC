@@ -8,6 +8,8 @@ from typing import List, Tuple, Optional, Dict, Any
 
 from PIL import Image, ImageOps, ImageEnhance
 
+import validation
+
 ####################
 # MediaGallery Class
 ####################
@@ -515,6 +517,13 @@ class MediaGallery:
         """Apply edits to an image and save it based on user selection."""
         image_path = os.path.join(self.upload_folder, filename)
         logger.debug(f"Applying edits to {filename}: {edits}")
+
+        if save_option == "new_file":
+            problem = validation.validate_image_filename(new_filename)
+            if problem:
+                return False, problem
+            if os.path.splitext(new_filename)[1].lower() != os.path.splitext(filename)[1].lower():
+                return False, "Value must keep the original file extension"
 
         if not os.path.exists(image_path):
             return False, "Original image not found."

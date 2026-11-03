@@ -157,6 +157,7 @@
             max="{{ slider_max }}"
             step="{{ num_step }}"
             value="{{ num_initial }}"
+            data-iv="decimal"{% if setting.unit %} data-iv-unit="{{ setting.unit }}"{% endif %}
             style="-moz-appearance:textfield; min-width:0;"
             onchange="syncSliderFromNumber('{{ setting.id }}', this)">
         <button type="button"

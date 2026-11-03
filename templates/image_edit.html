@@ -41,7 +41,9 @@
             <div class="modal-body">
                 <p>Choose how to save the image:</p>
                 <div class="input-group mb-3">
-                    <input type="text" id="newFilename" class="form-control" placeholder="Enter new filename" 
+                    <input type="text" id="newFilename" class="form-control" placeholder="Enter new filename"
+                           data-iv="text" data-iv-required="true" data-iv-maxlen="100"
+                           data-iv-forbidden='\/:*?"&lt;&gt;|' data-iv-no-leading="." data-iv-no-edge-space="true"
                            value="{{ filename.rsplit('.', 1)[0] }}_edited">
                     <span class="input-group-text">.{{ filename.rsplit('.', 1)[1] }}</span>
                 </div>
@@ -49,7 +51,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" onclick="saveImage(true)">Replace</button>
-                <button type="button" class="btn btn-success" onclick="saveImage(false)">Save as New</button>
+                <button type="button" class="btn btn-success" data-iv-guard="#saveImageModal .modal-body" onclick="saveImage(false)">Save as New</button>
             </div>
         </div>
     </div>
@@ -134,6 +136,10 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(response => response.json())
         .then(data => {
             showAlert(data.message, data.success ? "success" : "danger");
+            // Backend refused the file name -> show the reason under the input as well
+            if (!data.success && saveOption === "new_file" && /^Value must/.test(data.message || "")) {
+                InputValidation.showError(filenameInput, data.message);
+            }
             if (data.success) {
                 setTimeout(() => {
                     location.href = "/media_gallery";  

@@ -76,7 +76,21 @@ All UI text must be translatable. The system is fully client-side after page loa
 
 **Dynamically injected HTML** (e.g. elements created with `innerHTML` or `appendChild`) is not auto-translated. Call `applyI18n(rootElement)` on the injected subtree after inserting it into the DOM.
 
+**Wording of UI text:** Sentence case for labels, titles and radio options (`Audio delay – recording`, not `Audio Delay – Recording`); use an en dash with spaces (` – `) to separate a topic from its qualifier. Inline validation messages always start with `Value must …` and live under `validation.*`.
+
 **Bootstrap tooltips** that need translation use `data-i18n-tooltip="key"` (custom attribute, not a standard Bootstrap attribute) and are initialised in JS after `applyI18n()` runs — the JS reads the attribute, calls `window.t()`, sets `title`, and then calls `new bootstrap.Tooltip(el)`.
+
+## Input validation
+
+Every user-editable value (text fields, number fields, slider number boxes) is checked in several stages:
+
+1. **Keystroke filter** (JS) — only characters that can be part of a valid value can be typed/pasted. The character count is also limited to what the range allows (`-5000…0` → max. 5 characters), and for ranges allowing only values ≤ 0 a `-` is prepended automatically to non-zero numbers.
+2. **Inline message** (JS) — an invalid value shows `Value must be in range between {min} and {max} {unit}` (or another `Value must …` sentence) directly below the field. Texts live in `static/i18n/*.json` under `validation.*`.
+3. **Save-button guard** (JS) — a save button is only enabled while all active fields it saves are valid.
+4. **Backend check** (`validation.py`) — every endpoint/socket handler that stores a value validates value *and* unit/range first and refuses invalid input (HTTP 400 `{error, field}` or the `setting_rejected` socket event).
+5. **Visible failure** (JS) — a backend rejection is shown under the matching field (`InputValidation.showError`).
+
+Frontend: `static/js/input_validation.js` is configured with `data-iv*` attributes on the `<input>` (see the header comment there) and `data-iv-guard="<selector>"` on the save button. Backend limits in `validation.py` must match the `data-iv-*` attributes in the templates. When adding a new input, wire all five stages and extend `tests/test_validation.py`.
 
 ## Desktop / Mobile
 
@@ -87,6 +101,30 @@ The UI is a **single responsive layout** built on Bootstrap 5.3.3 — there are 
 **Platform quirks:** iOS Safari does not support the standard Fullscreen API for `<video>` elements. The codebase already contains an iOS detection guard and falls back to the vendor-specific API — preserve this whenever fullscreen logic is touched.
 
 **Layout duplication:** When an element must appear in a structurally different position on mobile vs. desktop (not just a size change), it is acceptable to render it twice in the DOM and toggle visibility with Bootstrap display utilities (`d-none d-md-flex` etc.). Do not abuse this pattern for purely aesthetic differences that CSS alone can handle.
+
+## UI / UX conventions for settings controls
+
+Reference implementation: the audio delay block in `templates/system_settings.html` (Settings → Recording & Audio). New settings controls follow the same patterns so the UI stays uniform.
+
+**Option groups (radio buttons)**
+- Radio options that belong together are wrapped in one `role="radiogroup"` container with a group title (small, semibold, sentence case, e.g. `Audio delay`) above the first option, referenced via `aria-labelledby`.
+- Option labels are full sentences starting with a verb (`Use same audio delay for …`, `Use independent audio delays for …`). The label contains only the text — no icons or buttons.
+- The configuration belonging to an option sits directly below its radio button, indented (`ps-4 mt-1`).
+- The configuration of the inactive option stays visible but dimmed (`opacity-50`) and its inputs/buttons are `disabled`. Switching the option only toggles this state; it never discards values.
+
+**Value fields (number with unit)**
+- Layout per field: one row (`.setting-row` inside a `.setting-grid`, CSS in `system_settings.html`). Left column `.setting-label`: label (`form-label small mb-0`) followed by the info icon (`bi-info-circle text-muted` with `data-i18n-tooltip`). Right column `.setting-control`: input row, then the inline error row (→ optional warning). All rows of one grid share the label column, so the longest title decides where the inputs start; below `md` the label stacks above the control. Info icon always follows the field title, never a radio label. Rows belonging to a radio option get `ps-4` on the label.
+- *Input row* (`d-flex align-items-center gap-2`): an `input-group input-group-sm` (~160 px) with a `−` button, the centred input (`form-control`) and a `+` button – the same pattern as the camera sliders – then the unit as `small text-muted` directly after the group, then the reset button. The buttons change the value by 1 per click and repeat while held, accelerating (`_spinStart`/`_spinStop` in `system_settings.html`); use pointer events so touch and mouse fire exactly once.
+- *−/+ buttons* are disabled at the range limits; the *reset button* is `btn-outline-secondary` + `disabled` while the value equals the default and `btn-warning` + enabled otherwise.
+- *Error row* directly under the input: `small text-danger`, space is reserved (`visibility:hidden` instead of `d-none`) so the layout does not jump. Wording and stages: see "Input validation".
+- An additional range slider (e.g. volume) goes on its own line below the input row and error row (same width as the −/+ group), never in front of the input, so all inputs stay aligned.
+- Warnings about side effects (e.g. fixed delay on the live stream) appear below the error row in `text-warning`, only while they apply.
+
+**Save and unsaved changes**
+- A tab has one Save button; it is disabled while any active field is invalid (`data-iv-guard`).
+- Every setting of a tab must be part of its snapshot, so leaving the tab with unsaved edits opens the "Unsaved Changes" dialog.
+- That dialog lists one line per change: `Cam0 – Audio delay: recording (0 ms → −2 ms)`. The label is `<scope> – <label with " – " replaced by ": ">`, followed by `(old → new)`. Changing only an option (radio) also creates a line, showing the option labels as old/new value. A dialog with an empty list is a bug.
+- Settings that are not camera/profile parameters but only change presentation follow the "WebSocket sync" rules above.
 
 ## WebSocket sync for camera parameters
 
@@ -110,11 +148,13 @@ Test files live in `tests/`. Run all tests before any PR:
 ```bash
 python tests/test_filename_gen.py
 python tests/test_system_settings.py
+python tests/test_validation.py
 ```
 
 | File | What it covers |
 |---|---|
 | `tests/test_filename_gen.py` | `CameraManager.generate_media_filename()` — naming, camera suffixes, collision counter |
+| `tests/test_validation.py` | `validation.py` — range/unit checks, camera/profile/file names, system-settings payload |
 | `tests/test_system_settings.py` | `SystemSettings` — first run, load, unknown-key filtering, scalar/dict updates, persistence, `max_recording_duration_s` |
 
 Both use `unittest` and exit non-zero on failure. `tests/test_filename_gen.py` stubs `picamera2`, `camera`, and `media_gallery` via `sys.modules` so it runs without camera hardware. Each test file adds the repo root to `sys.path` so modules can be imported regardless of working directory.
@@ -153,4 +193,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit format, PR requ
 - Do not add Python packages without updating `requirements.txt`.
 - Do not bundle JS libraries or external data files without updating `THIRD_PARTY.md`.
 - Do not run more than one gunicorn worker — it breaks camera access.
+- Do not add a user-editable input without all five validation stages (see "Input validation").
+- Do not invent a new layout for option groups or value fields; reuse the patterns in "UI / UX conventions for settings controls".
 - Do not commit generated or runtime files (`camera.sock`, `camera_server.log`, `static/gallery/`).

@@ -233,6 +233,9 @@ class CameraProxy:
     def stop_recording(self) -> bool:
         return self._rpc("stop_recording")
 
+    def validate_control_value(self, name, value):
+        return self._rpc("validate_control_value", name, value)
+
     def set_control(self, name, value=None):
         return self._rpc("set_control", name, value)
 

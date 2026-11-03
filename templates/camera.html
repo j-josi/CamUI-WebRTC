@@ -29,11 +29,13 @@
 
 <div class="mx-4">
 
-  <div class="row flex-nowrap-xl">
-    <div class="col-12 col-xl pb-2">
+  <div class="row flex-xl-nowrap">
+    <div class="col-12 col-xl pb-2" style="min-width:0;">
 
+      <!-- text-truncate: a long device name is cut off with "…" instead of pushing the camera settings out -->
       <h2 id="cameraTitle"
-          class="pb-2 mb-4 border-bottom{% if camera_display.hide_title %} d-none{% endif %}">
+          title="{{ camera_display.title or hostname }}"
+          class="pb-2 mb-4 border-bottom text-truncate{% if camera_display.hide_title %} d-none{% endif %}">
           {{ camera_display.title or hostname }}
       </h2>
 
@@ -504,6 +506,7 @@ function applyDisplay(display) {
     const titleEl = document.getElementById("cameraTitle");
     if (titleEl) {
         titleEl.textContent = display.title || display.default_title || defaultCameraTitle;
+        titleEl.title = titleEl.textContent;
         titleEl.classList.toggle("d-none", !!display.hide_title);
     }
     syncVideoSize();
@@ -918,6 +921,15 @@ socket.on("storage_error", (data) => {
     const key = data.type ? _errorMsgMap[data.type] : null;
     const msg = (key && window.t(key)) || data.message;
     showToast(`<i class="bi bi-hdd-x flex-shrink-0"></i><span>${msg}</span>`, "danger");
+});
+
+// Backend refused a camera setting (value/unit check failed): show the reason inline
+// under the matching number field (the generic "error" toast is emitted as well).
+socket.on("setting_rejected", (data) => {
+    if (data.camera_num !== cameraNum) return;
+    const settingId = String(data.path || "").split(".").slice(1).join(".");
+    const input = document.getElementById(settingId + "_number") || document.getElementById(settingId);
+    if (input && input.dataset && input.dataset.iv) InputValidation.showError(input, data.message);
 });
 
 socket.on("error", (data) => {

@@ -13,6 +13,7 @@ from picamera2 import Picamera2
 from camera import Camera
 from media_gallery import MediaGallery
 from system_settings import SystemSettings
+import validation
 
 logger = logging.getLogger(__name__)
 
@@ -850,20 +851,8 @@ class CameraManager:
 
     @staticmethod
     def _validate_profile_base_name(name: str) -> str | None:
-        """Return an error message if name is not a valid Linux filename component, else None."""
-        if not name or not name.strip():
-            return "Profile name cannot be empty."
-        if name != name.strip():
-            return "Profile name cannot have leading or trailing whitespace."
-        if '/' in name:
-            return "Profile name cannot contain '/'"
-        if '\0' in name:
-            return "Profile name cannot contain or null bytes ('\0')."
-        if name.startswith('.'):
-            return "Profile name cannot start with '.'."
-        if len(name) > 30:
-            return "Profile name is too long (max 30 characters)."
-        return None
+        """Return an error message if name is not a valid profile name, else None."""
+        return validation.validate_profile_name(name)
 
     def save_profile(self, camera_num: int, base_name: str, confirm_overwrite: bool = False) -> dict:
         """

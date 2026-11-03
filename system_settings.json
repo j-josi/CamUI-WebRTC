@@ -2,8 +2,8 @@
   "max_recording_duration_min": 120,
   "theme": "dark",
   "default_language": "en",
-  "live_view_title": "TrainCam",
-  "live_view_hide_title": true,
+  "live_view_title": "CamUI-WebRTC",
+  "live_view_hide_title": false,
   "mains_frequency": 50,
   "mains_country": "Switzerland",
   "camera_names": {

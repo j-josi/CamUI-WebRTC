@@ -205,10 +205,13 @@
                     <input type="text"
                            class="form-control mb-2"
                            id="saveConfigFile"
+                           data-iv="text" data-iv-required="true" data-iv-maxlen="30"
+                           data-iv-forbidden="/" data-iv-no-leading="." data-iv-no-edge-space="true"
                            placeholder="Enter profile name"
                            data-i18n-placeholder="camera_controls.profiles_name_placeholder"
                            value="{{ active_profile.name if active_profile else '' }}">
                     <button class="btn btn-primary"
+                            data-iv-guard="#saveProfile"
                             onclick="saveProfile({{ camera.Num }})"
                             data-i18n="camera_controls.profiles_save_btn">Save</button>
                 </div>
@@ -427,13 +430,15 @@
                 <input type="text"
                        class="form-control"
                        id="noProfileModalInput"
+                       data-iv="text" data-iv-required="true" data-iv-maxlen="30"
+                       data-iv-forbidden="/" data-iv-no-leading="." data-iv-no-edge-space="true"
                        placeholder="Enter profile name"
                        data-i18n-placeholder="camera_controls.profiles_name_placeholder">
                 <div id="noProfileModalAlert" class="alert d-none mt-2"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-i18n="camera_controls.reset_modal_cancel">Cancel</button>
-                <button type="button" class="btn btn-primary" id="noProfileModalSaveBtn" data-i18n="camera_controls.no_profile_modal_save_btn">Create &amp; Save</button>
+                <button type="button" class="btn btn-primary" id="noProfileModalSaveBtn" data-iv-guard="#noProfileModal .modal-body" data-i18n="camera_controls.no_profile_modal_save_btn">Create &amp; Save</button>
             </div>
         </div>
     </div>
@@ -572,6 +577,7 @@ function saveGroup(ids, dataType) {
     if (!document.getElementById("saveConfigFile")?.value.trim()) {
         const modal = new bootstrap.Modal(document.getElementById("noProfileModal"));
         document.getElementById("noProfileModalInput").value = "";
+        InputValidation.reset(document.getElementById("noProfileModalInput"));
         document.getElementById("noProfileModalAlert").className = "alert d-none mt-2";
         modal.show();
         return;
@@ -812,10 +818,7 @@ function saveProfile(cameraNum) {
     const filename = document.getElementById("saveConfigFile").value;
     const alertBox = document.getElementById("profileAlert");
 
-    if (!filename) {
-        showAlert(alertBox, "danger", window.t('camera_controls.profiles_please_enter_filename') || "Please enter a filename.");
-        return;
-    }
+    if (!InputValidation.validate(document.getElementById("saveConfigFile"))) return;
 
     doSaveProfile(cameraNum, filename);
 }
@@ -832,12 +835,13 @@ function confirmOverwriteProfile() {
 function doSaveProfile(cameraNum, filename, { skipProfileListUpdate = false, confirmOverwrite = false } = {}) {
     const alertBox = document.getElementById("profileAlert");
 
+    let httpStatus = 200;
     return fetch(`/save_profile_${cameraNum}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename, confirm_overwrite: confirmOverwrite })
     })
-    .then(response => response.json())
+    .then(response => { httpStatus = response.status; return response.json(); })
     .then(data => {
         if (data.overwrite_required) {
             _pendingSaveProfile = { cameraNum, filename, skipProfileListUpdate };
@@ -853,6 +857,10 @@ function doSaveProfile(cameraNum, filename, { skipProfileListUpdate = false, con
             if (!skipProfileListUpdate) updateProfileList();
         } else {
             showAlert(alertBox, "danger", data.error || "Failed to save profile.");
+            // Backend refused the name (validation error) -> show it under the input
+            if (httpStatus === 400 && data.error) {
+                InputValidation.showError(document.getElementById("saveConfigFile"), data.error);
+            }
         }
     })
     .catch(error => {
@@ -1478,6 +1486,8 @@ function adjustSliderSetting(settingId, value) {
 function syncSliderFromNumber(settingId, inputEl) {
     const slider = document.getElementById(settingId);
     if (!slider) return;
+    // Invalid value: show the inline message and do NOT apply it (no silent clamping)
+    if (!InputValidation.validate(inputEl)) return;
     let val = parseFloat(inputEl.value);
     if (isNaN(val)) return;
     const min  = parseFloat(slider.min);
@@ -1486,7 +1496,6 @@ function syncSliderFromNumber(settingId, inputEl) {
     const prec = _stepPrecision(slider.step);
     const precision = parseInt(slider.dataset.precision ?? "3", 10);
 
-    const clamped = val < min ? "min" : val > max ? "max" : null;
     val = Math.min(Math.max(val, min), max);
     val = parseFloat(val.toFixed(precision));
 
@@ -1501,9 +1510,6 @@ function syncSliderFromNumber(settingId, inputEl) {
 
     inputEl.value = val;
     _updateSpinnerButtons(inputEl);
-
-    // Show inline clamp feedback if value was out of range
-    _showClampFeedback(inputEl, clamped, min, max, precision);
 
     // Snap slider thumb to nearest step so next drag starts on-grid
     const snapped = !isNaN(step) && step > 0
@@ -1639,6 +1645,7 @@ function stopSpinHold() {
 // Enable/disable +/- buttons based on current value vs min/max.
 function _updateSpinnerButtons(inputEl) {
     if (!inputEl) return;
+    InputValidation.validate(inputEl);   // programmatic value changes clear stale error messages
     const val = parseFloat(inputEl.value);
     const min = parseFloat(inputEl.min);
     const max = parseFloat(inputEl.max);
@@ -1647,34 +1654,6 @@ function _updateSpinnerButtons(inputEl) {
     const btnUp   = document.getElementById(id + "_btn_up");
     if (btnDown) btnDown.disabled = !isNaN(min) && val <= min;
     if (btnUp)   btnUp.disabled   = !isNaN(max) && val >= max;
-}
-
-const _clampTimers = {};
-function _showClampFeedback(inputEl, clamped, min, max, precision) {
-    const feedbackId = inputEl.id + "_clamp_feedback";
-    clearTimeout(_clampTimers[inputEl.id]);
-
-    // Remove any existing feedback
-    document.getElementById(feedbackId)?.remove();
-    inputEl.classList.remove("is-invalid");
-
-    if (!clamped) return;
-
-    const limit = clamped === "min" ? min : max;
-    const label = clamped === "min" ? "Minimum" : "Maximum";
-
-    inputEl.classList.add("is-invalid");
-    const msg = document.createElement("div");
-    msg.id = feedbackId;
-    msg.className = "invalid-feedback d-block";
-    msg.style.fontSize = "0.75rem";
-    msg.textContent = `${label}: ${parseFloat(limit.toFixed(precision))}`;
-    inputEl.closest("div")?.after(msg);
-
-    _clampTimers[inputEl.id] = setTimeout(() => {
-        msg.remove();
-        inputEl.classList.remove("is-invalid");
-    }, 2000);
 }
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -1853,6 +1832,7 @@ function updateProfileList() {
                 saveInput.value = activeProfile
                     ? (activeProfile.name || activeProfile.filename.replace(/\.json$/, ""))
                     : "";
+                InputValidation.reset(saveInput);
             }
         })
         .catch(error => console.error("Error fetching profiles:", error));
@@ -1880,15 +1860,11 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("noProfileModalSaveBtn").addEventListener("click", function () {
         const input    = document.getElementById("noProfileModalInput");
         const alertEl  = document.getElementById("noProfileModalAlert");
-        const filename = input.value.trim();
+        const filename = input.value;
 
         alertEl.className = "alert d-none mt-2";
 
-        if (!filename) {
-            alertEl.textContent = window.t("camera_controls.profiles_please_enter_filename") || "Please enter a filename.";
-            alertEl.className = "alert alert-danger mt-2";
-            return;
-        }
+        if (!InputValidation.validate(input)) return;
 
         fetch(`/save_profile_${camera_num}`, {
             method: "POST",
@@ -1903,8 +1879,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
             if (data.error) {
-                alertEl.textContent = data.error;
-                alertEl.className = "alert alert-danger mt-2";
+                InputValidation.showError(input, data.error);
                 return;
             }
             // Success: server returns {message: "..."}

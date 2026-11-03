@@ -21,6 +21,8 @@ from picamera2.encoders import H264Encoder
 from picamera2.outputs import PyavOutput
 from libcamera import Transform, controls
 
+import validation
+
 # =========================
 # Logging
 # =========================
@@ -251,6 +253,17 @@ class Camera:
             ctrl for ctrl, parent in self._auto_controller_map.items()
             if controls_state.get(parent, True)   # True = auto when unknown
         }
+
+    def validate_control_value(self, name: str, value: Any) -> Optional[str]:
+        """Return an error message if value is outside the hardware range of control `name`, else None."""
+        meta = self.picam2.camera_controls.get(name) if self.picam2 else None
+        if not meta:
+            return None
+        try:
+            min_val, max_val, _default = meta
+        except (TypeError, ValueError):
+            return None
+        return validation.validate_control_value(value, min_val, max_val)
 
     def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values based on libcamera metadata."""

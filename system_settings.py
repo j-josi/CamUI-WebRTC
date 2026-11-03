@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULTS: dict = {
-    "max_recording_duration_min": 90,   # stop video recording automatically after 90 minutes -> playback time of .mp4 file is max. 90 minutes
+    "max_recording_duration_min": 120,  # stop video recording automatically after 120 minutes -> playback time of .mp4 file is max. 120 minutes
     "theme": "light",                   # global default theme for new clients ("light" | "dark")
     "default_language": "en",           # global default language for new clients ("en" | "de")
     "live_view_title": "",              # global heading shown above the video feed (hostname if empty)

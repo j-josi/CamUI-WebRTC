@@ -199,6 +199,7 @@ else:
 ####################
 from camera_client import CameraManagerClient, connect_with_retry
 from media_gallery import MediaGallery
+import validation
 from fmp4 import VirtualFaststartMP4, get_fmp4_info, get_exact_video_duration
 
 ####################
@@ -602,6 +603,18 @@ def handle_stop_recording(data):
     if not success:
         emit("error", {"message": "Failed to stop recording"})
 
+def _reject_camera_setting(camera_num, path, message):
+    """Tell the requesting client (inline + toast) that a value was refused."""
+    logger.warning("Rejected camera setting %s on camera %s: %s", path, camera_num, message)
+    emit("setting_rejected", {"camera_num": camera_num, "path": path, "message": message})
+    emit("error", {"message": message})
+    # Re-sync the requesting client's UI with the authoritative state
+    emit("param_states_changed", {
+        "camera_num": camera_num,
+        "param_states": camera_manager.get_param_states(camera_num),
+    })
+
+
 @socketio.on("set_camera_setting")
 def handle_set_camera_setting(data):
     """
@@ -650,6 +663,10 @@ def handle_set_camera_setting(data):
     # CONTROLS (live changeable via set_control)
     # =====================================================
     if source.startswith("control"):
+        problem = camera.validate_control_value(name, value)
+        if problem:
+            _reject_camera_setting(camera_num, path, problem)
+            return
         changed = camera.set_control(name, value)
 
     # =====================================================
@@ -664,7 +681,7 @@ def handle_set_camera_setting(data):
             coerced = bool(value) if isinstance(value, bool) else int(value)
             changed = camera.set_config(name, coerced)
         except (ValueError, TypeError):
-            emit("error", {"message": f"Invalid value for config '{name}'"})
+            _reject_camera_setting(camera_num, path, f"Invalid value for config '{name}'")
             return
 
         if changed:
@@ -681,7 +698,7 @@ def handle_set_camera_setting(data):
             coerced = bool(value) if isinstance(value, bool) else int(value)
             changed = camera.set_config(name, coerced)
         except (ValueError, TypeError):
-            emit("error", {"message": f"Invalid value for config '{name}'"})
+            _reject_camera_setting(camera_num, path, f"Invalid value for config '{name}'")
             return
 
         if changed:
@@ -968,31 +985,16 @@ def get_system_settings():
     # and already present in settings — no proxy access needed here.
     return jsonify(settings)
 
-_CAMERA_NAME_FORBIDDEN = re.compile(r'[\\/:*?"<>| .,]')
-
 @app.route('/api/system_settings', methods=['POST'])
 def update_system_settings():
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    if "camera_names" in data:
-        names = data["camera_names"]
-        if not isinstance(names, dict):
-            return jsonify({"error": "Invalid camera_names format"}), 400
-        seen = set()
-        for cam_key, name in names.items():
-            name = str(name)
-            if not name:
-                return jsonify({"error": "Camera name must not be empty"}), 400
-            if len(name) > 20:
-                return jsonify({"error": f"Camera name '{name}' exceeds 20 characters"}), 400
-            if _CAMERA_NAME_FORBIDDEN.search(name):
-                return jsonify({"error": f"Camera name '{name}' contains invalid characters"}), 400
-            normalized = name.strip().lower()
-            if normalized in seen:
-                return jsonify({"error": f"Duplicate camera name '{name}'"}), 400
-            seen.add(normalized)
+    problem = validation.validate_system_settings(data)
+    if problem:
+        field, message = problem
+        return jsonify({"error": message, "field": field}), 400
 
     updated = camera_manager.update_system_settings(data)
     # Broadcast live-view title changes to all camera rooms
@@ -1249,6 +1251,12 @@ def save_param():
 
     if camera_num is None or not param_type or not param_id:
         return jsonify({"error": "Missing required fields"}), 400
+
+    if param_type == "controls":
+        camera = camera_manager.get_camera(camera_num)
+        problem = camera.validate_control_value(param_id, value) if camera else None
+        if problem:
+            return jsonify({"error": problem}), 400
 
     success = camera_manager.save_param(camera_num, param_type, param_id, value)
     if success:
