@@ -1,28 +1,13 @@
-# ---------------------------------------------
-# Base-Image
-# ---------------------------------------------
-FROM dtcooper/raspberrypi-os:bookworm
-LABEL maintainer="souri-t"
+FROM debian:bookworm
+LABEL maintainer="Jonas Josi"
 
-# ---------------------------------------------
-# Add raspberry pi repositories (with certificates)
-# ---------------------------------------------
-RUN apt update -y \
-    && apt install -y --no-install-recommends curl gnupg ca-certificates \
-    && update-ca-certificates \
-    && curl -fsSL https://archive.raspberrypi.org/debian/raspberrypi.gpg.key \
-        | gpg --dearmor -o /etc/apt/trusted.gpg.d/raspberrypi.gpg \
-    && echo "deb http://archive.raspberrypi.org/debian bookworm main" \
-        > /etc/apt/sources.list.d/raspi.list \
-    && apt update -y
-
-# ---------------------------------------------
-# Install apt pakages (git, vim, libcamera, picamera2 and ffmpeg)
-# ---------------------------------------------
-RUN apt upgrade -y \
-    && apt install -y --no-install-recommends \
-        git \
-        vim \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        gnupg curl ca-certificates \
+    && curl -fsSL https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
+       | gpg --dearmor -o /usr/share/keyrings/raspberrypi-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.gpg] http://archive.raspberrypi.com/debian/ bookworm main" \
+       > /etc/apt/sources.list.d/raspi.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
         python3-picamera2 \
         libcamera-apps \
@@ -35,34 +20,23 @@ RUN apt upgrade -y \
         libfmt-dev \
         libdrm-dev \
         ffmpeg \
-    && apt clean \
+        pulseaudio-utils \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ---------------------------------------------
-# Set work dir
-# ---------------------------------------------
 WORKDIR /app
 
-# ---------------------------------------------
-# Copy Code of CamUI application
-# ---------------------------------------------
 COPY static /app/static
 COPY templates /app/templates
 COPY requirements.txt /app/
 COPY *.py /app/
 COPY *.json /app/
 
-# ---------------------------------------------
-# Install pip pakages
-# ---------------------------------------------
 RUN pip install --break-system-packages --no-cache-dir -r requirements.txt
 
-# ---------------------------------------------
-# Run/start gunicorn on container start
-# ---------------------------------------------
 CMD ["gunicorn", \
-     "app:app", \
+     "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", \
      "--workers", "1", \
-     "--threads", "8", \
-     "--bind", "0.0.0.0:8080", \
-     "--timeout", "0"]
+     "--bind", "0.0.0.0:80", \
+     "--chdir", "/app", \
+     "app:app"]

@@ -1,0 +1,8 @@
+venv/
+static/gallery/
+*.sock
+*.log
+__pycache__/
+.git/
+docker/
+tests/

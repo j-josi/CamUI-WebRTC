@@ -1,32 +1,62 @@
 services:
-  camui:
-    container_name: camui
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-    privileged: true
-    restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - mediamtx
-    env_file: .env
-    environment:
-      - PULSE_SERVER=unix:/run/user/${UID}/pulse/native
-      - XDG_RUNTIME_DIR=/run/user/${UID}
-    volumes:
-      - /run/udev:/run/udev:ro   # Zugriff auf Kamera-Devices
-      - /dev:/dev
-      - ../static/gallery:/app/static/gallery
 
-      # 🔊 Audio (ESSENTIELL)
-      - /run/user/${UID}:/run/user/${UID}
-    # ports:
-    #   - "80:8080"   # Flask
-    # command: /usr/bin/python3 /app/app.py
+  # ----------------------------------------------------------------
+  # MediaMTX — RTSP / WebRTC / HLS / RTMP streaming server
+  # ----------------------------------------------------------------
   mediamtx:
-    image: bluenviron/mediamtx:1-ffmpeg-rpi
+    image: bluenviron/mediamtx:1-ffmpeg-rpi@sha256:186f767f20769e6b2a35b9c99af90ad23da3e8431013255a140fbb66e71b0c1d
     container_name: mediamtx
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./../mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - ../config/mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --tries=1 --timeout=2 http://127.0.0.1:8888/ 2>/dev/null; test $? -ne 4"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # ----------------------------------------------------------------
+  # coturn — local TURN server for WebRTC ICE relay
+  # ----------------------------------------------------------------
+  coturn:
+    image: coturn/coturn:alpine@sha256:c29135c08565810d37053f384584392b7c24b69570fc81a721b878d6fe63e04e
+    container_name: coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ../config/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 3478"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 3s
+
+  # ----------------------------------------------------------------
+  # CamUI — Flask app (gunicorn + GeventWebSocketWorker)
+  # Requires mediamtx and coturn to be healthy before starting.
+  # PulseAudio/PipeWire stays on the host; the socket is mounted in.
+  # ----------------------------------------------------------------
+  camui:
+    container_name: camui
+    image: ghcr.io/j-josi/camui-webrtc:latest
+    privileged: true
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      mediamtx:
+        condition: service_healthy
+      coturn:
+        condition: service_healthy
+    environment:
+      - PULSE_SERVER=unix:/run/user/${PUID:-1000}/pulse/native
+      - XDG_RUNTIME_DIR=/run/user/${PUID:-1000}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - /run/udev:/run/udev:ro
+      - /dev:/dev
+      - ../static/gallery:/app/static/gallery
+      - /run/user/${PUID:-1000}/pulse:/run/user/${PUID:-1000}/pulse:ro
