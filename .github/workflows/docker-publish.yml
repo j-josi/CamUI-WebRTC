@@ -10,9 +10,20 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write      # OIDC token for build provenance attestation
+      attestations: write  # push attestation to ghcr.io
+      security-events: write # upload SARIF to GitHub Security tab
 
     steps:
       - uses: actions/checkout@v4
+
+      # Uncomment + add DOCKERHUB_USERNAME / DOCKERHUB_TOKEN secrets to also push to Docker Hub:
+      # - name: Log in to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: docker.io
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to ghcr.io
         uses: docker/login-action@v3
@@ -26,12 +37,17 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/camui-webrtc
+          # To also push to Docker Hub, replace the line above with:
+          # images: |
+          #   ghcr.io/${{ github.repository_owner }}/camui-webrtc
+          #   docker.io/jjosi/camui-webrtc
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -39,3 +55,26 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          sbom: true
+          provenance: mode=max
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/camui-webrtc
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Security scan (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/camui-webrtc@${{ steps.build.outputs.digest }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif

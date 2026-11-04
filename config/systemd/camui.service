@@ -1,12 +1,13 @@
 [Unit]
 Description=CamUI-WebRTC Application
 After=network.target mediamtx.service pipewire.service pipewire-pulse.service wireplumber.service
-Requires=mediamtx.service pipewire.service pipewire-pulse.service wireplumber.service
+Requires=mediamtx.service
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
 
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/CamUI-WebRTC
-ExecStartPre=/bin/sh -c 'until pactl info >/dev/null 2>&1; do sleep 1; done'
+ExecStartPre=/bin/sh -c 'systemctl --user is-active --quiet pipewire-pulse.service || exit 0; until pactl info >/dev/null 2>&1; do sleep 1; done'
 ExecStartPre=/bin/sh -c 'until ss -tln 2>/dev/null | grep -q ":8554 "; do sleep 1; done'
 ExecStart=/home/pi/CamUI-WebRTC/venv/bin/gunicorn \
 	--worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker \

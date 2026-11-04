@@ -6,7 +6,7 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:1-ffmpeg-rpi@sha256:186f767f20769e6b2a35b9c99af90ad23da3e8431013255a140fbb66e71b0c1d
     container_name: mediamtx
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-on-failure}
     network_mode: host
     volumes:
       - ../config/mediamtx/mediamtx.yml:/mediamtx.yml:ro
@@ -19,11 +19,18 @@ services:
 
   # ----------------------------------------------------------------
   # coturn — local TURN server for WebRTC ICE relay
+  #
+  # Optional, but recommended for maximum browser compatibility: Firefox hides
+  # its local IP behind an mDNS (.local) name that MediaMTX cannot resolve, so
+  # the live stream only connects when relayed through this TURN server.
+  # Only disable it if you do not need Firefox support (and possibly other
+  # browsers). To disable: remove this service and the coturn entry under
+  # depends_on of camui, and remove webrtcICEServers2 from mediamtx.yml.
   # ----------------------------------------------------------------
   coturn:
     image: coturn/coturn:alpine@sha256:c29135c08565810d37053f384584392b7c24b69570fc81a721b878d6fe63e04e
     container_name: coturn
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-on-failure}
     network_mode: host
     volumes:
       - ../config/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
@@ -45,7 +52,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     privileged: true
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-on-failure}
     network_mode: host
     depends_on:
       mediamtx:
@@ -56,6 +63,8 @@ services:
       - PULSE_SERVER=unix:/run/user/${PUID:-1000}/pulse/native
       - XDG_RUNTIME_DIR=/run/user/${PUID:-1000}
       - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - LIBCAMERA_LOG_LEVELS=${LIBCAMERA_LOG_LEVELS:-*:ERROR}
     volumes:
       - /run/udev:/run/udev:ro
       - /dev:/dev

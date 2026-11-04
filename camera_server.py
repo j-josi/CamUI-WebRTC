@@ -257,10 +257,14 @@ def main():
     parser.add_argument("--log-level", default="INFO")
     args = parser.parse_args()
 
+    _log_level = getattr(logging, args.log_level.upper(), logging.INFO)
     logging.basicConfig(
-        level=getattr(logging, args.log_level.upper(), logging.INFO),
+        level=_log_level,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
+    if _log_level >= logging.WARNING:
+        logging.getLogger('picamera2').setLevel(logging.WARNING)
+        logging.getLogger('picamera2.picamera2').setLevel(logging.WARNING)
 
     base_dir = args.base_dir or os.path.dirname(os.path.abspath(__file__))
     if base_dir not in sys.path:

@@ -34,9 +34,11 @@ COPY *.json /app/
 
 RUN pip install --break-system-packages --no-cache-dir -r requirements.txt
 
-CMD ["gunicorn", \
-     "--worker-class", "geventwebsocket.gunicorn.workers.GeventWebSocketWorker", \
-     "--workers", "1", \
-     "--bind", "0.0.0.0:80", \
-     "--chdir", "/app", \
-     "app:app"]
+CMD exec gunicorn \
+    --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
+    --workers 1 \
+    --bind 0.0.0.0:80 \
+    --chdir /app \
+    --graceful-timeout 5 \
+    --log-level ${LOG_LEVEL:-error} \
+    app:app
