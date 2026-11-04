@@ -67,7 +67,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 # Initialize Logging
 ####################
 logging.basicConfig(
-    level=logging.DEBUG,  # Options: DEBUG | INFO | WARNING | ERROR | CRITICAL
+    level=getattr(logging, os.environ.get("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG),
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -372,12 +372,15 @@ def _stop_all_active_recordings():
 # Start camera server subprocess (if not already running) and connect
 ####################
 _CAMERA_SOCKET = os.path.join(current_dir, 'camera.sock')
+_camera_proc = None
+
 
 def _ensure_camera_server():
     """
     Start camera_server.py as a subprocess if the socket is not yet available.
     Uses a simple connect-probe so that an externally started server is reused.
     """
+    global _camera_proc
     import socket as _socket
     probe = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
     try:
@@ -406,16 +409,29 @@ def _ensure_camera_server():
             log_file.flush()
 
     _log_file = open(log_path, 'a')
-    _proc = subprocess.Popen(
+    _camera_proc = subprocess.Popen(
         [_sys.executable, script,
          '--socket', _CAMERA_SOCKET,
          '--base-dir', current_dir,
-         '--log-level', 'INFO'],
+         '--log-level', os.environ.get('LOG_LEVEL', 'DEBUG')],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         close_fds=True,
     )
-    _threading.Thread(target=_tee_output, args=(_proc.stdout, _log_file), daemon=True).start()
+    _threading.Thread(target=_tee_output, args=(_camera_proc.stdout, _log_file), daemon=True).start()
+
+
+import atexit as _atexit
+
+@_atexit.register
+def _shutdown_camera_server():
+    if _camera_proc and _camera_proc.poll() is None:
+        _camera_proc.terminate()
+        try:
+            _camera_proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            _camera_proc.kill()
+
 
 _ensure_camera_server()
 
