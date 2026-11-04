@@ -4,41 +4,69 @@ A lightweight web interface for the Raspberry Pi camera module with WebRTC live 
 
 ## Requirements
 
-- Raspberry Pi 4 or 5
-- Raspberry Pi OS Bookworm (64-bit) or newer
-- Raspberry Pi Camera Module (v2, v3, or HQ)
-- Python 3.11+
+- **Hardware:** Raspberry Pi 4 or 5 (Pi 3B works at lower frame rates, Pi Zero 2W at reduced performance)
+- **OS:** Raspberry Pi OS Bookworm (64-bit) or newer — older releases (Bullseye) are not supported due to libcamera/PiCamera2 requirements
+- **Camera:** Raspberry Pi Camera Module v2, v3 or HQ (v1 is untested)
+- **Python:** 3.11+
 
 ## Prerequisites
 
-### Audio support (optional)
+### PipeWire
 
-Both installation methods require PipeWire running as a systemd user service to enable microphone input for recording and live stream audio. The camera and live stream work without audio if no microphone is connected.
+> **Skip this section** only if you plan to never use this project with a microphone connected to your Raspberry Pi (audio in recordings and live stream)
 
-Raspberry Pi OS Bookworm ships with PipeWire pre-installed. Check whether it is already running:
+PipeWire running as a systemd user service enables microphone input for recording and live stream audio. Without it, the camera and live stream still work, just without audio.
+
+**1. Install PipeWire (if missing).** Raspberry Pi OS Bookworm ships with PipeWire pre-installed. Check whether it is already running:
 
 ```bash
 systemctl --user status pipewire
 ```
 
-If active, nothing to do. If not installed:
+If it shows `active (running)`, continue with step 2. Otherwise install and start it:
 
 ```bash
 sudo apt install -y pipewire pipewire-pulse wireplumber
 systemctl --user enable --now pipewire pipewire-pulse wireplumber
-sudo loginctl enable-linger pi
 ```
 
-The last command (`enable-linger`) ensures PipeWire starts at boot even without an active login session.
+**2. Enable lingering (only if CamUI should start automatically on boot).**
 
-### Docker (Docker Compose installation only)
+```bash
+sudo loginctl enable-linger $USER
+```
+
+PipeWire runs as a systemd *user* service, which normally only runs while that user is logged in. This command makes the user's services start at boot and keep running without a login session. Without it, a CamUI that starts automatically on boot (see [Autostart on boot](#autostart-on-boot-docker-compose) for Docker Compose, step 8 of the manual installation for systemd) has no audio in the live stream and recordings until someone logs in. If you always start CamUI manually while logged in, you can skip this step.
+
+### Docker & Docker Compose 
+
+> **Skip this section** if either of the following applies:
+> - You install via the manual (systemd) method and do not plan to modify the code. Docker is only required for the Docker Compose installation and for local development (`make run`, `make dev`).
+> - Docker and Docker Compose are already installed and your user may run docker commands without `sudo`. Check with the command below: if docker and docker compose is already installed and the current user is able to run docker commands.
+>
+> ```bash
+> docker compose version && docker ps
+> ```
+>
+> **Skip ahead** if the output shows a Docker Compose version line (e.g. `Docker Compose version v2.x.x`) followed by the `docker ps` table header (`CONTAINER ID   IMAGE   COMMAND ...`), with or without running containers below it.
+>
+> **Do not skip** if you see one of these errors, and follow the steps below instead:
+> - `docker: command not found` — Docker is not installed
+> - `docker: 'compose' is not a docker command` — the Compose plugin is missing
+> - `permission denied while trying to connect to the docker API` — Docker is installed, but your user is not (yet) in the `docker` group; if you just added it, reboot first
+
+Install Docker and add your user to the `docker` group, which allows running docker commands without `sudo`. Docker Compose v2 is included as the `docker compose` plugin — no separate installation needed.
 
 ```bash
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 ```
 
-Log out and back in (or run `newgrp docker`) so the group membership takes effect. Docker Compose v2 is included as the `docker compose` plugin — no separate installation needed.
+Reboot the Raspberry Pi so that the group membership takes effect:
+
+```bash
+sudo reboot
+```
 
 ---
 
@@ -48,6 +76,14 @@ Choose one of two methods:
 
 - **[Docker Compose](#installation-docker-compose)** — recommended; no manual dependency installation, all services run as containers, pre-built image pulled automatically
 - **[Manual (systemd)](#installation-manual-systemd)** — install directly on the host, managed as systemd user services; requires installing all dependencies manually
+
+### About coturn (recommended)
+
+Both methods set up **coturn**, a local TURN server for the WebRTC live stream. It is optional, but recommended to ensure maximum browser compatibility:
+
+- **Why:** Firefox hides its local IP address behind a random `.local` name that MediaMTX cannot resolve, so the live stream fails to connect. coturn relays the stream around this problem. Other browsers have not been verified without coturn.
+- **Disable it only** if you do not need Firefox support (and possibly other browsers). The only gain is one service less to run; browsers that connect directly do not use the relay anyway.
+- **How to disable:** for Docker Compose, remove the `coturn` service and the `coturn` entry under `depends_on` of `camui` in `docker/docker-compose.yml`. For the manual installation, run `sudo systemctl disable --now coturn`. In both cases also remove the `webrtcICEServers2` entry from `config/mediamtx/mediamtx.yml`. (Disabling has not been tested.)
 
 ---
 
@@ -93,7 +129,17 @@ Check that all containers are running:
 docker compose ps
 ```
 
-The stack restarts automatically on boot because all services are configured with `restart: unless-stopped`.
+By default the stack does not start on boot — start it manually with `docker compose up -d` and stop it with `docker compose down`. If a container crashes while the stack is running, it is restarted automatically.
+
+#### Autostart on boot (Docker Compose)
+
+To start the stack automatically whenever the Raspberry Pi boots, set the restart policy in `docker/.env`:
+
+```
+RESTART_POLICY=unless-stopped
+```
+
+and apply it with `docker compose up -d`. For audio after a reboot, also enable lingering (see [PipeWire](#pipewire), step 2). To go back to manual start, set `RESTART_POLICY=on-failure` (the default) and run `docker compose up -d` again.
 
 ### Docker Compose service management
 
@@ -139,9 +185,11 @@ cd /home/pi/CamUI-WebRTC
 ### 2. Create Python virtual environment
 
 ```bash
-python3 -m venv venv
+python3 -m venv --system-site-packages venv
 venv/bin/pip install -r requirements.txt
 ```
+
+`--system-site-packages` is required so the venv can use the apt-installed `python3-picamera2` (installed in the dependencies step above).
 
 ### 3. Configure MediaMTX
 
@@ -159,11 +207,13 @@ Copy the bundled coturn configuration:
 sudo cp config/coturn/turnserver.conf /etc/turnserver.conf
 ```
 
-Enable and start the coturn service:
+Restart the coturn service so it picks up the configuration:
 
 ```bash
-sudo systemctl enable --now coturn
+sudo systemctl restart coturn
 ```
+
+> **Note:** installing the `coturn` package enables it at boot and starts it automatically. If you do not want coturn to start on boot, run `sudo systemctl disable coturn` (see also step 8).
 
 ### 5. Allow binding to port 80 without root
 
@@ -176,28 +226,19 @@ sudo sysctl -w net.ipv4.ip_unprivileged_port_start=80
 
 ### 6. Install systemd user services
 
-Copy the service files from the repo to the user systemd directory and enable them:
+Copy the service files from the repo to the user systemd directory:
 
 ```bash
 mkdir -p ~/.config/systemd/user
 cp config/systemd/mediamtx.service ~/.config/systemd/user/mediamtx.service
 cp config/systemd/camui.service ~/.config/systemd/user/camui.service
 systemctl --user daemon-reload
-systemctl --user enable mediamtx camui
 ```
 
 > **Note:** `~/.config/systemd/user/camui.service` contains hardcoded paths (e.g. `WorkingDirectory`, `ExecStart`, `--chdir`).
 > If you cloned the repo to a different location than `/home/pi/CamUI-WebRTC`, update those paths accordingly.
 
-### 7. Enable auto-start on boot (without login)
-
-By default, user systemd services only run when the user is logged in. Enable **lingering** so the services start at boot even without an active session (e.g. headless / SSH not connected):
-
-```bash
-sudo loginctl enable-linger pi
-```
-
-### 8. Start the services
+### 7. Start the services
 
 ```bash
 systemctl --user start mediamtx camui
@@ -208,6 +249,20 @@ Check that both are running:
 ```bash
 systemctl --user status mediamtx camui
 ```
+
+The services do not start on boot by default. After a reboot, start them again with the command above (and `sudo systemctl start coturn` if coturn is not running).
+
+### 8. Autostart on boot (optional)
+
+Skip this step if you prefer to start CamUI manually (and run `sudo systemctl disable coturn`, see step 4). To start everything automatically whenever the Raspberry Pi boots:
+
+```bash
+sudo systemctl enable coturn
+systemctl --user enable mediamtx camui
+sudo loginctl enable-linger $USER
+```
+
+The last command (lingering) is needed because user services otherwise only run while the user is logged in — see [PipeWire](#pipewire), step 2. To undo, replace `enable` with `disable` (and `disable-linger` for the last command).
 
 ### Systemd service management
 
@@ -233,22 +288,6 @@ http://<ip-address>
 
 The hostname is the Raspberry Pi's hostname (e.g. `http://pi-cam.local`).
 
-## Configuration files
-
-| File | Description |
-|---|---|
-| `system_settings.json` | Application settings (camera names, recording duration, theme, …) |
-| `config/mediamtx/mediamtx.yml` | MediaMTX streaming server configuration |
-| `config/coturn/turnserver.conf` | TURN server configuration for WebRTC relay |
-| `config/systemd/camui.service` | Systemd user service for the web application (manual install only) |
-| `config/systemd/mediamtx.service` | Systemd user service for MediaMTX (manual install only) |
-
-## Compatibility
-
-- **OS:** Raspberry Pi OS Bookworm (64-bit) or newer. Older releases (Bullseye) are not supported due to libcamera/PiCamera2 requirements.
-- **Hardware:** Raspberry Pi 4 and 5. Pi 3B works but at lower frame rates. Pi Zero 2W is supported at reduced performance.
-- **Camera:** Camera Module v2, v3, HQ. v1 is untested.
-
 ---
 
 ## Contributing
@@ -258,34 +297,58 @@ Contributions are welcome.
 ### How to contribute
 
 1. Fork the repository on GitHub
-2. Clone your fork and make code changes
-3. [Test your changes locally on a Raspberry Pi](#testing-changes-locally-with-docker)
-4. Open a pull request — the maintainer reviews and merges
-5. On merge to `main`, GitHub Actions automatically builds and publishes a new Docker image to ghcr.io
+2. Clone your fork and create a branch from `main` for your change (e.g. `feat/<short-description>` or `fix/<short-description>`) — do not commit directly to `main`
+3. Make your code changes
+4. Before opening a pull request, verify both:
+   - **Behaviour:** your change works as intended when [run on a Raspberry Pi](#testing-changes-locally)
+   - **Tests:** all unit tests pass (`make test`); add or update tests if your change touches tested logic
+5. Open a pull request from your branch against `main` of this repository — the maintainer reviews and merges
+6. Wait for the review of a maintainer. Once your pull request is acctepted and merged, your change is included in the next release.
 
-### Testing changes locally with Docker
+### Testing changes locally
 
-A standalone `docker-compose.dev.yml` is provided for local development. It is fully self-contained and builds the CamUI image from local source, tagged as `camui-webrtc:dev` — completely separate from the published `ghcr.io` image.
+All commands are run from the repository root. Run `make` to list all targets.
 
-```bash
-cd docker
-docker compose -f docker-compose.dev.yml up -d --build
-```
+Only one instance can use the camera at a time. Before testing, stop any running CamUI deployment (`docker compose down` in `docker/`, or `systemctl --user stop camui mediamtx`).
 
-Check logs:
-
-```bash
-docker compose -f docker-compose.dev.yml logs -f camui
-```
-
-To switch back to the published image:
+#### Option A: run directly on the host (fast iteration)
 
 ```bash
-docker compose -f docker-compose.dev.yml down
-docker compose up -d
+make run
 ```
 
-No cleanup needed — `camui-webrtc:dev` and `ghcr.io/j-josi/camui-webrtc:latest` are separate images and do not interfere.
+Starts the `mediamtx` and `coturn` containers and runs CamUI with gunicorn directly on the host. Code changes reload automatically. Ctrl+C stops gunicorn and both containers.
+
+Requires the dependencies of the [manual installation](#installation-manual-systemd) (steps "Dependencies", "Clone" and "Create Python virtual environment"). The MediaMTX binary, the systemd services and the host coturn are not needed — Docker must be installed (see [Prerequisites](#docker)).
+
+#### Option B: run in Docker (closest to a release)
+
+```bash
+make dev
+```
+
+Builds the CamUI image from local source (tagged `camui-webrtc:dev`, separate from the published `ghcr.io` image), starts the full stack and follows the logs. Ctrl+C stops all containers. Requires only Docker.
+
+To switch back to the published image afterwards: `cd docker && docker compose up -d`.
+
+#### Log level
+
+Both targets accept `LOG=<level>` (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`, case-insensitive):
+
+```bash
+make run LOG=info
+make dev LOG=warning
+```
+
+Default: `ERROR` for `make run`, `DEBUG` for `make dev`.
+
+#### Unit tests
+
+```bash
+make test
+```
+
+Runs the hardware-independent unit tests in `tests/`.
 
 ### Code guidelines
 
