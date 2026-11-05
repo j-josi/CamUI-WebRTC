@@ -151,12 +151,11 @@
         <button type="button"
                 class="btn btn-outline-secondary btn-sm px-1"
                 id="{{ setting.id }}_btn_down"
-                onmousedown="startSpinHold('{{ setting.id }}', -1)"
-                onmouseup="stopSpinHold()"
-                onmouseleave="stopSpinHold()"
-                ontouchstart="startSpinHold('{{ setting.id }}', -1)"
-                ontouchend="stopSpinHold()"
-                style="line-height:1;">&#8722;</button>
+                onpointerdown="startSpinHold('{{ setting.id }}', -1)"
+                onpointerup="stopSpinHold()"
+                onpointerleave="stopSpinHold()"
+                onpointercancel="stopSpinHold()"
+                style="line-height:1; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;">&#8722;</button>
         <input type="number"
             class="form-control form-control-sm text-center"
             id="{{ setting.id }}_number"
@@ -170,12 +169,11 @@
         <button type="button"
                 class="btn btn-outline-secondary btn-sm px-1"
                 id="{{ setting.id }}_btn_up"
-                onmousedown="startSpinHold('{{ setting.id }}', +1)"
-                onmouseup="stopSpinHold()"
-                onmouseleave="stopSpinHold()"
-                ontouchstart="startSpinHold('{{ setting.id }}', +1)"
-                ontouchend="stopSpinHold()"
-                style="line-height:1;">&#43;</button>
+                onpointerdown="startSpinHold('{{ setting.id }}', +1)"
+                onpointerup="stopSpinHold()"
+                onpointerleave="stopSpinHold()"
+                onpointercancel="stopSpinHold()"
+                style="line-height:1; touch-action:manipulation; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;">&#43;</button>
     </div>
     {% if setting.unit %}
     {% set unit_desc = settings.units[setting.unit] if settings.units is defined and setting.unit in settings.units else None %}
