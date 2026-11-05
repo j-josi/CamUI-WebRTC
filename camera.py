@@ -263,7 +263,27 @@ class Camera:
             min_val, max_val, _default = meta
         except (TypeError, ValueError):
             return None
-        return validation.validate_control_value(value, min_val, max_val)
+        return validation.validate_control_value(
+            value, min_val, max_val, precision=self._control_precision(name)
+        )
+
+    def _control_precision(self, name: str) -> int:
+        """Display precision (decimals) of control `name` from the controls DB (default 3)."""
+        def _find(settings):
+            for setting in settings or []:
+                if isinstance(setting, dict):
+                    if setting.get("id") == name and "precision" in setting:
+                        return setting["precision"]
+                    found = _find(setting.get("childsettings"))
+                    if found is not None:
+                        return found
+            return None
+
+        for section in (self.ui_settings or {}).get("sections", []):
+            found = _find(section.get("settings"))
+            if isinstance(found, int):
+                return found
+        return 3
 
     def _coerce_control_value(self, name: str, value: Any) -> Any:
         """Convert incoming control values based on libcamera metadata."""
@@ -970,6 +990,10 @@ class Camera:
                 if source == "controls":
                     if setting_id in picamera2_controls:
                         min_val, max_val, default_val = picamera2_controls[setting_id]
+                        # Round limits inwards to the display precision (e.g. AnalogueGain
+                        # min 1.1228070259… -> 1.123) so the UI value is never out of range.
+                        min_val, max_val = validation.effective_range(
+                            min_val, max_val, setting.get("precision", 3))
 
                         setting["min"] = min_val
                         setting["max"] = max_val
@@ -1021,6 +1045,8 @@ class Camera:
 
                             if child_id in picamera2_controls:
                                 min_val, max_val, default_val = picamera2_controls[child_id]
+                                min_val, max_val = validation.effective_range(
+                                    min_val, max_val, child.get("precision", 3))
 
                                 child["min"] = min_val
                                 child["max"] = max_val

@@ -1304,6 +1304,19 @@ function _stepPrecision(stepStr) {
     return dot === -1 ? 0 : String(stepStr).length - dot - 1;
 }
 
+// Effective value limits of a slider setting. The range element keeps a clean step grid
+// (bounds rounded outwards, e.g. AnalogueGain min 1.1), while the number input carries the
+// real limits (hardware limits rounded inwards to the display precision, e.g. 1.123).
+// Grid maths uses slider.min; every clamp uses these limits.
+function _effBounds(settingId, sliderEl) {
+    const num = document.getElementById(settingId + "_number");
+    const src = num || sliderEl;
+    let lo = parseFloat(src.min), hi = parseFloat(src.max);
+    if (isNaN(lo)) lo = parseFloat(sliderEl.min);
+    if (isNaN(hi)) hi = parseFloat(sliderEl.max);
+    return [lo, hi];
+}
+
 // Called from slider oninput (fires on every drag tick).
 // Updates the number input and label for live visual feedback — no server call.
 function onSliderInput(settingId, sliderEl) {
@@ -1324,7 +1337,8 @@ function onSliderInput(settingId, sliderEl) {
         previewVal = (!isNaN(step) && step > 0)
             ? parseFloat((Math.round((newDom - min) / step) * step + min).toFixed(prec))
             : newDom;
-        previewVal = Math.min(Math.max(previewVal, min), max);
+        const [effMin, effMax] = _effBounds(settingId, sliderEl);
+        previewVal = Math.min(Math.max(previewVal, effMin), effMax);
     }
 
     const numberInput = document.getElementById(settingId + "_number");
@@ -1395,7 +1409,8 @@ function onSliderChange(settingId, sliderEl) {
     // How many steps did the user drag? Based on DOM position vs our snapped baseline.
     const steps  = Math.round((newDom - last) / step);
     let newVal   = parseFloat((last + steps * step).toFixed(prec));
-    newVal       = Math.min(Math.max(newVal, min), max);
+    const [effMin, effMax] = _effBounds(settingId, sliderEl);
+    newVal       = Math.min(Math.max(newVal, effMin), effMax);
 
     _sliderLastValue[settingId] = newVal;
     sliderEl.value = newVal;
@@ -1407,6 +1422,11 @@ function adjustSliderSetting(settingId, value) {
     const slider = document.getElementById(settingId);
     const precision = slider ? parseInt(slider.dataset.precision ?? "3", 10) : 3;
     value = parseFloat(parseFloat(value).toFixed(precision));
+    if (slider) {
+        const [effMin, effMax] = _effBounds(settingId, slider);
+        if (!isNaN(effMin)) value = Math.max(value, effMin);
+        if (!isNaN(effMax)) value = Math.min(value, effMax);
+    }
     // Store snapped baseline so onSliderChange always starts on-grid.
     // Off-grid hardware values (e.g. AnalogueGain = 1.123) are snapped here
     // so that subsequent drags compute integer step counts correctly.
@@ -1496,7 +1516,8 @@ function syncSliderFromNumber(settingId, inputEl) {
     const prec = _stepPrecision(slider.step);
     const precision = parseInt(slider.dataset.precision ?? "3", 10);
 
-    val = Math.min(Math.max(val, min), max);
+    const [effMin, effMax] = _effBounds(settingId, slider);
+    val = Math.min(Math.max(val, effMin), effMax);
     val = parseFloat(val.toFixed(precision));
 
     // When anti-flicker is active, snap typed value to the flicker-period grid
@@ -1615,8 +1636,10 @@ function stepNumberInput(settingId, dir) {
             newVal = parseFloat((Math.floor((val - min) / step + 1e-9) * step + min).toFixed(prec));
             if (newVal >= val) newVal = parseFloat((newVal - step).toFixed(prec));
         }
-        if (!isNaN(max)) newVal = Math.min(max, newVal);
-        newVal = Math.max(min, newVal);
+        // Clamp to the effective limits (not the grid-aligned slider bounds).
+        const effMin = parseFloat(inputEl.min), effMax = parseFloat(inputEl.max);
+        if (!isNaN(effMax)) newVal = Math.min(effMax, newVal);
+        newVal = Math.max(isNaN(effMin) ? min : effMin, newVal);
     }
 
     inputEl.value = newVal;

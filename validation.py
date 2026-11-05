@@ -125,11 +125,38 @@ def validate_live_view_title(title: Any) -> Optional[str]:
 
 
 # ── Camera control values ────────────────────────────────────────────────────
-def validate_control_value(value: Any, min_val: Any, max_val: Any, unit: str = "") -> Optional[str]:
+def _round_bound(bound: Any, precision: int, up: bool) -> Any:
+    """Round a hardware limit inwards to ``precision`` decimals (min up, max down)."""
+    if not is_number(bound) or isinstance(bound, int) or float(bound).is_integer():
+        return bound
+    factor = 10 ** precision
+    # round(…, 9) removes float noise (e.g. 0.3 * 1000 = 300.00000000000006)
+    scaled = round(bound * factor, 9)
+    return (math.ceil(scaled) if up else math.floor(scaled)) / factor
+
+
+def effective_range(min_val: Any, max_val: Any, precision: int = 3) -> Tuple[Any, Any]:
+    """Hardware range rounded *inwards* to the control's display precision.
+
+    A hardware limit such as AnalogueGain min = 1.1228070259094238 becomes 1.123,
+    so the value shown in the UI (rounded to ``precision`` decimals) is never
+    outside the range and messages show readable limits. Integer limits and
+    non-numeric limits are returned unchanged.
+    """
+    return _round_bound(min_val, precision, True), _round_bound(max_val, precision, False)
+
+
+def validate_control_value(value: Any, min_val: Any, max_val: Any, unit: str = "",
+                           precision: Optional[int] = None) -> Optional[str]:
     """Validate a camera control value against the hardware range.
 
     Only plain numeric controls are range-checked; booleans, tuples/lists and
     controls without numeric limits are accepted unchanged.
+
+    With ``precision`` the message shows the limits rounded inwards to that many
+    decimals (see :func:`effective_range`), and a value is also accepted when it
+    lies inside that rounded range after being rounded to ``precision`` decimals
+    (the UI only ever displays/sends values at that precision).
     """
     for bound in (min_val, max_val):
         if bound is not None and not is_number(bound):
@@ -146,19 +173,22 @@ def validate_control_value(value: Any, min_val: Any, max_val: Any, unit: str = "
         except ValueError:
             value = None
     suffix = f" {unit}" if unit else ""
+    lo, hi = (min_val, max_val) if precision is None else effective_range(min_val, max_val, precision)
     if min_val is not None and max_val is not None:
-        message = msg_range(min_val, max_val, unit)
+        message = msg_range(lo, hi, unit)
     elif min_val is not None:
-        message = f"Value must be at least {_fmt_num(min_val)}{suffix}"
+        message = f"Value must be at least {_fmt_num(lo)}{suffix}"
     else:
-        message = f"Value must be at most {_fmt_num(max_val)}{suffix}"
+        message = f"Value must be at most {_fmt_num(hi)}{suffix}"
     if not is_number(value):
         return message
-    if min_val is not None and value < min_val:
-        return message
-    if max_val is not None and value > max_val:
-        return message
-    return None
+    if (min_val is None or value >= min_val) and (max_val is None or value <= max_val):
+        return None
+    if precision is not None:
+        rounded = round(value, precision)
+        if (lo is None or rounded >= lo) and (hi is None or rounded <= hi):
+            return None
+    return message
 
 
 # ── System settings payload ──────────────────────────────────────────────────

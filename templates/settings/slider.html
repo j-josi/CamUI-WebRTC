@@ -89,11 +89,18 @@
     {# Compute decimal places in step (e.g. 0.1 → 1, 0.01 → 2, 1 → 0) #}
     {% set step_str = setting.step | string %}
     {% if '.' in step_str %}{% set step_prec = step_str.split('.')[1] | length %}{% else %}{% set step_prec = 0 %}{% endif %}
-    {# Round min/max to step precision so browser step-grid starts on a clean value.
-       Hardware min values (e.g. AnalogueGain = 1.12480702...) are off-grid and cause
-       the browser to shift the entire valid-step grid, producing spurious warnings. #}
-    {% set slider_min = setting.min | round(step_prec) %}
-    {% set slider_max = setting.max | round(step_prec) %}
+    {# setting.min / setting.max are the *effective* limits: hardware limits rounded
+       inwards to the display precision (e.g. AnalogueGain 1.1228… -> 1.123), see
+       validation.effective_range(). They are used for the number input, the inline
+       range message and all clamping in JS.
+       The range slider itself keeps a clean step grid: its bounds are rounded
+       outwards to the step precision (1.123 -> 1.1), otherwise the browser would shift
+       the whole valid-step grid and produce spurious warnings. #}
+    {% set eff_min = setting.min | round(prec) %}
+    {% set eff_max = setting.max | round(prec) %}
+    {% set step_factor = 10 ** step_prec %}
+    {% set slider_min = ((setting.min * step_factor) | round(0, 'floor')) / step_factor %}
+    {% set slider_max = ((setting.max * step_factor) | round(0, 'ceil')) / step_factor %}
     {# Round initial value to precision so number input uses an on-grid base too. #}
     {% set num_initial = setting.get("value", setting.get("default")) | round(prec) %}
     <div class="d-flex align-items-center">
@@ -153,8 +160,8 @@
         <input type="number"
             class="form-control form-control-sm text-center"
             id="{{ setting.id }}_number"
-            min="{{ slider_min }}"
-            max="{{ slider_max }}"
+            min="{{ eff_min }}"
+            max="{{ eff_max }}"
             step="{{ num_step }}"
             value="{{ num_initial }}"
             data-iv="decimal"{% if setting.unit %} data-iv-unit="{{ setting.unit }}"{% endif %}
@@ -205,7 +212,7 @@
     <!-- Validation -->
     {% if setting.validation_text %}
     <small class="text-muted">
-        {{ setting.validation_text.replace("{min}", slider_min|string).replace("{max}", slider_max|string) }}
+        {{ setting.validation_text.replace("{min}", eff_min|string).replace("{max}", eff_max|string) }}
     </small>
     {% endif %}
 

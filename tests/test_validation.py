@@ -37,6 +37,34 @@ class TestRange(unittest.TestCase):
         self.assertIsNone(v.validate_control_value(5, None, None))
         self.assertIn("at least", v.validate_control_value(0, 1, None))
 
+    def test_effective_range(self):
+        # hardware limits are rounded inwards to the display precision
+        self.assertEqual(v.effective_range(1.1228070259094238, 16, 3), (1.123, 16))
+        self.assertEqual(v.effective_range(0.0009, 10.6666, 3), (0.001, 10.666))
+        self.assertEqual(v.effective_range(0.3, 0.7, 3), (0.3, 0.7))          # no float noise
+        self.assertEqual(v.effective_range(1.5, 9.5, 0), (2, 9))
+        self.assertEqual(v.effective_range(1, 16, 3), (1, 16))                # ints unchanged
+        self.assertEqual(v.effective_range(None, 16.0, 3), (None, 16.0))
+        self.assertEqual(v.effective_range((0, 1), "x", 3), ((0, 1), "x"))   # non-numeric ignored
+
+    def test_control_value_precision(self):
+        lo, hi = 1.1228070259094238, 16
+        # the value shown in the UI (min rounded up) and the exact hardware min are valid
+        self.assertIsNone(v.validate_control_value(1.123, lo, hi, precision=3))
+        self.assertIsNone(v.validate_control_value(lo, lo, hi, precision=3))
+        self.assertIsNone(v.validate_control_value(16, lo, hi, precision=3))
+        # below the rounded minimum / above the maximum is rejected
+        for bad in (1.1, 1.0, 1.122, 16.001):
+            self.assertIsNotNone(v.validate_control_value(bad, lo, hi, precision=3), bad)
+        # message shows the rounded limits, not the raw hardware value
+        self.assertEqual(v.validate_control_value(1.0, lo, hi, precision=3),
+                         "Value must be in range between 1.123 and 16")
+        # without precision the raw limits are used (backwards compatible)
+        self.assertIn("1.1228070259094238", v.validate_control_value(1.0, lo, hi))
+        # one-sided limits use the rounded bound too
+        self.assertEqual(v.validate_control_value(1.0, lo, None, precision=3),
+                         "Value must be at least 1.123")
+
 
 class TestText(unittest.TestCase):
     def test_camera_name(self):
