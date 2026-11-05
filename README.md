@@ -17,16 +17,17 @@ A lightweight web interface for the Raspberry Pi camera module with WebRTC live 
 
 PipeWire running as a systemd user service enables microphone input for recording and live stream audio. Without it, the camera and live stream still work, just without audio.
 
-**1. Install PipeWire (if missing).** Raspberry Pi OS Bookworm ships with PipeWire pre-installed. Check whether it is already running:
+**1. Install PipeWire and `pactl` (if missing).** Raspberry Pi OS ships with PipeWire, but the `pactl` command (package `pulseaudio-utils`) is not always installed. CamUI needs it to find the microphone – without it there is no audio. Check both:
 
 ```bash
 systemctl --user status pipewire
+pactl info
 ```
 
-If it shows `active (running)`, continue with step 2. Otherwise install and start it:
+If `pipewire` shows `active (running)` and `pactl info` prints server information (instead of `command not found`), continue with step 2. Otherwise install and start everything:
 
 ```bash
-sudo apt install -y pipewire pipewire-pulse wireplumber
+sudo apt install -y pipewire pipewire-pulse wireplumber pulseaudio-utils
 systemctl --user enable --now pipewire pipewire-pulse wireplumber
 ```
 
