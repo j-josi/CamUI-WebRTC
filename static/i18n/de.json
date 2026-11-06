@@ -158,12 +158,15 @@
       "buffer_count": "Anzahl der Bilder, die die Kamera im Speicher hält.",
       "sensor_output_size": "Auflösung, die der Sensor vor der Skalierung liefert.",
       "sensor_bit_depth": "Farbtiefe der Sensordaten.",
-      "main_size": "Stream für Live-Ansicht und Aufnahme.",
-      "lores_size": "Kleiner Zusatzstream, falls aktiviert.",
+      "main_size": "Primärer Videostream. Wird für den Live-Stream oder die Aufnahme verwendet – je nachdem, welche die höhere Auflösung hat.",
+      "lores_size": "Sekundärer Videostream. Wird für den Live-Stream oder die Aufnahme verwendet – je nachdem, welche die niedrigere Auflösung hat.",
       "raw_size": "Unverarbeitete Sensordaten, falls aktiviert.",
       "colour_space": "Farbstandard, der für das Bild verwendet wird.",
       "AeFlickerPeriod": "Dauer eines Flimmerzyklus in Mikrosekunden."
-    }
+    },
+    "in_use_for": "Aktuell zugewiesen an: {role}",
+    "role_streaming": "Live-Stream",
+    "role_recording": "Videoaufnahme"
   },
   "camera_controls": {
     "title": "Kamerasteuerung",

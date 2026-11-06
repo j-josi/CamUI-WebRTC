@@ -158,12 +158,15 @@
       "buffer_count": "Number of images the camera keeps in memory.",
       "sensor_output_size": "Resolution the sensor delivers before scaling.",
       "sensor_bit_depth": "Colour depth of the sensor data.",
-      "main_size": "Stream used for live view and recording.",
-      "lores_size": "Small extra stream, if enabled.",
+      "main_size": "Primary video stream. Used for the live stream or the recording – whichever has the higher resolution.",
+      "lores_size": "Secondary video stream. Used for the live stream or the recording – whichever has the lower resolution.",
       "raw_size": "Unprocessed sensor data, if enabled.",
       "colour_space": "Colour standard used for the image.",
       "AeFlickerPeriod": "Duration of one flicker cycle in microseconds."
-    }
+    },
+    "in_use_for": "Currently assigned to: {role}",
+    "role_streaming": "Live stream",
+    "role_recording": "Video recording"
   },
   "camera_controls": {
     "title": "Camera Settings",

@@ -143,6 +143,23 @@
     return rows;
   }
 
+  // Mark which job (live stream / video recording) the main and lores streams currently have,
+  // and whether that job is running right now.
+  function withStreamRoles(rows, d) {
+    const roles = d.stream_roles || {}, act = d.activity || {};
+    rows.forEach(r => {
+      const stream = r.key === "main.size" ? "main" : r.key === "lores.size" ? "lores" : null;
+      const role = stream && roles[stream];
+      if (role !== "recording" && role !== "streaming") return;
+      const on = !!act[role];
+      r.status = {
+        text: tr("params.in_use_for", "Currently assigned to: {role}", { role: tr("params.role_" + role, role) }),
+        color: on ? "#2ecc71" : "#ff4d4d",   // dot only: green = running, red = not running
+      };
+    });
+    return rows;
+  }
+
   // Controls: value is [min, max, default] -> "min – max · default d"
   function rowsFromControls(obj) {
     const rows = Object.keys(obj || {}).map(name => {
@@ -184,7 +201,7 @@
   const SECTIONS = {
     live: [
       { id: "metadata", source: "libcamera",  build: d => rowsFromObject(d.metadata, { hidden: HIDDEN_LIVE, order: LIVE_ORDER }) },
-      { id: "config",   source: "Picamera2",  build: d => rowsFromObject(d.configuration) },
+      { id: "config",   source: "Picamera2",  build: d => withStreamRoles(rowsFromObject(d.configuration), d) },
     ],
     fixed: [
       { id: "controls",   source: "libcamera", build: d => rowsFromControls(d.camera_controls) },
@@ -292,6 +309,15 @@
         h.style.lineHeight = "1.25";
         left.appendChild(h);
       }
+      if (r.status) {
+        const st = el("div");
+        st.style.fontSize = "0.68rem";
+        const dot = el("span", "", "●");
+        dot.style.color = r.status.color;
+        dot.className = "me-1";
+        st.append(dot, r.status.text);
+        left.appendChild(st);
+      }
       line.appendChild(left);
       if (r.lines) {
         row.appendChild(line);
@@ -397,6 +423,8 @@
         libcamera_camera_controls: d.camera_controls || {},
         libcamera_camera_properties: d.camera_properties || {},
         picamera2_sensor_modes: d.sensor_modes || [],
+        camui_stream_roles: d.stream_roles || {},
+        camui_activity: d.activity || {},
       }, null, 2);
       copyText(text).then(() => {
         copyBtn.innerHTML = '<i class="bi bi-check2"></i>';

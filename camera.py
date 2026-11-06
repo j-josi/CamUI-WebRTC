@@ -795,6 +795,13 @@ class Camera:
         and the active stream configuration. All values are JSON-serialisable.
         """
         result: Dict[str, Any] = {"metadata": {}, "configuration": {}}
+        # Which pipeline stream currently carries the live stream / the recording, and whether
+        # they are running (the larger resolution gets the "main" stream, see reconfigure).
+        result["stream_roles"] = {"main": self.main_stream, "lores": self.lores_stream}
+        result["activity"] = {
+            "streaming": bool(self.states.get("is_video_streaming")),
+            "recording": bool(self.states.get("is_video_recording")),
+        }
         try:
             if not getattr(self.picam2, "started", False):
                 return result
