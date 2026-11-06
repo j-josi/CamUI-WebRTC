@@ -4,6 +4,14 @@
 
 CamUI-WebRTC is a lightweight web interface for the Raspberry Pi camera module. It provides WebRTC live streaming, audio recording, media gallery, and multi-camera support. Built with Flask + gevent, PiCamera2, and MediaMTX as the WebRTC/RTSP server. Targets Raspberry Pi 4/5 running Raspberry Pi OS Bookworm (64-bit).
 
+## Priorities
+
+1. **Video recording has the highest priority.** A recording must always run with the full configured frame rate and complete audio, no matter what else the camera does. No feature (extra live stream variants, additional encoders, previews, analysis, work triggered from the UI) may lower the recording fps or stall the recording. If resources run short, the recording wins.
+2. **The live stream comes second.** Frame drops or a lowered live stream resolution for one or more clients are acceptable (and, if necessary, unavoidable).
+3. Everything else (UI, statistics, convenience features) comes after that.
+
+When changing the camera pipeline, encoders or streaming, check the effect on the recording: record for at least 30 s under the heaviest supported live stream setup and compare the frame rate of the file (`ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets:format=duration -of default=nw=1 <file>` → packets ÷ duration) with the configured fps. On the Raspberry Pi 4 at most 3 H.264 hardware encodes can run at the same time (recording included), and two 1080p encodes already come close to the limit.
+
 ## Commands
 
 **Setup:**
