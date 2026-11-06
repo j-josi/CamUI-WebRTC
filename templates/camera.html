@@ -24,8 +24,17 @@
   window.RTCPeerConnection.prototype = _Orig.prototype;
 }());
 </script>
+<style>
+  /* Round icon buttons of the video control bar: fixed square so the circle is never oval */
+  .video-ctrl-btn {
+    width: 2.75rem; height: 2.75rem; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .video-ctrl-btn > i { line-height: 1; }
+</style>
 <script type="text/javascript" src="{{ url_for('static', filename='js/reader.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/socketio/socket.io.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/camera_params.js') }}"></script>
 
 <div class="mx-4">
 
@@ -70,7 +79,7 @@
                     justify-content-between align-items-center
                     px-3 py-2
                     bg-dark bg-opacity-75 text-white shadow"
-            style="display:none;">
+            style="display:none; z-index:20;">
 
             <!-- Volume control: icon + slider -->
             <div id="volumeContainer" class="d-flex align-items-center gap-2">
@@ -91,21 +100,119 @@
                     style="width:100px; height:6px; display:none;">
             </div>
 
-          <!-- Fullscreen toggle button -->
-          <button id="fsBtn"
-                  class="btn btn-outline-light btn-sm rounded-circle">
-            <i class="bi bi-fullscreen fs-4"></i>
-          </button>
+          <!-- Right button group: settings (gear) + fullscreen -->
+          <div class="d-flex align-items-center gap-2">
+
+            <!-- Settings menu: opens upwards above the bar (like YouTube).
+                 Positioned relative to #videoControls (not to this group) so it sits
+                 entirely above the bar with a gap; right offset = the bar's px-3 padding.
+                 Slightly more opaque than the bar (0.85 vs 0.75) for legibility, plus blur. -->
+            <div id="videoSettingsMenu"
+                 class="position-absolute text-white rounded shadow py-2 px-3"
+                 style="display:none; bottom:100%; right:1rem; margin-bottom:0.75rem;
+                        white-space:nowrap; z-index:30;
+                        background:rgba(33,37,41,0.85);
+                        -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);">
+              <label class="d-flex align-items-center justify-content-between gap-4 mb-0"
+                     style="cursor:pointer;">
+                <span data-i18n="live_view.show_fps">Show FPS</span>
+                <span class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" role="switch" id="fpsToggle"
+                         style="cursor:pointer;">
+                </span>
+              </label>
+
+              {# Camera settings that can be offered here (Settings → General, per browser).
+                 Rows are hidden by default; JS reveals them (applyQuickSettingsVisibility). #}
+              {% for qid in ["streaming_resolution", "recording_resolution", "still_capture_resolution", "saveRAW"] %}
+                {% for section in settings.sections %}
+                  {% for setting in section.settings if setting.id == qid and setting.enabled %}
+              <div class="d-none mt-2" data-quick-row="{{ qid }}">
+                <label class="d-flex align-items-center justify-content-between gap-4 mb-0">
+                  <span data-i18n="controls.{{ qid }}.name">{{ setting.name }}</span>
+                  {% if setting.type == "switch" %}
+                  <span class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           data-quick-id="{{ qid }}" data-type="{{ 'configs' if setting.source == 'configs' else 'configs_no_picamera_restart' }}"
+                           style="cursor:pointer;"
+                           {% if setting.get("value", setting.get("default")) %}checked{% endif %}
+                           onchange="quickSettingChange(this)">
+                  </span>
+                  {% else %}
+                  <select class="form-select form-select-sm w-auto bg-dark text-white border-secondary"
+                          data-quick-id="{{ qid }}" data-type="{{ 'configs' if setting.source == 'configs' else 'configs_no_picamera_restart' }}"
+                          onchange="quickSettingChange(this)">
+                    {% for option in setting.options if option.enabled %}
+                    <option value="{{ option.value }}"
+                            {% if setting.get("value", setting.get("default"))|int == option.value|int %}selected{% endif %}>{{ option.label }}</option>
+                    {% endfor %}
+                  </select>
+                  {% endif %}
+                </label>
+              </div>
+                  {% endfor %}
+                {% endfor %}
+              {% endfor %}
+            </div>
+
+            <!-- Camera parameters panel toggle -->
+            <button id="paramsBtn" type="button"
+                    class="btn btn-outline-light btn-sm rounded-circle video-ctrl-btn"
+                    aria-pressed="false"
+                    data-i18n-title="live_view.parameters" title="Camera parameters">
+              <i class="bi bi-info-circle fs-4"></i>
+            </button>
+
+            <!-- Settings (gear) button -->
+            <button id="settingsBtn" type="button"
+                    class="btn btn-outline-light btn-sm rounded-circle video-ctrl-btn"
+                    aria-haspopup="true" aria-expanded="false"
+                    data-i18n-title="live_view.settings" title="Settings">
+              <i class="bi bi-gear fs-4"></i>
+            </button>
+
+            <!-- Fullscreen toggle button -->
+            <button id="fsBtn"
+                    class="btn btn-outline-light btn-sm rounded-circle video-ctrl-btn">
+              <i class="bi bi-fullscreen fs-4"></i>
+            </button>
+          </div>
         </div>
 
-        <!-- Recording indicator: shown while a video recording is active -->
-        <div id="recIndicator"
-             class="position-absolute top-0 end-0 m-2 px-2 py-1
-                    bg-dark bg-opacity-75 text-white rounded d-none"
-             style="font-size:0.85rem; pointer-events:none; user-select:none;">
-            <span id="recDot" style="color:#ff4444;">&#9679;</span>
-            <span class="ms-1 fw-semibold">REC</span>
-            <span id="recTimer" class="ms-2 font-monospace">00:00</span>
+        <!-- Camera parameters panel: full height on the left, translucent, toggled by #paramsBtn.
+             Stays open until toggled again (not tied to the auto-hiding control bar). -->
+        <div id="paramsPanel"
+             class="position-absolute top-0 start-0 bottom-0 text-white"
+             style="display:none; width:min(420px, 70%); z-index:5; font-size:0.78rem;
+                    background:rgba(33,37,41,0.6);
+                    -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);">
+          <!-- Copy all raw values as JSON (like the copy button of a GitHub code block) -->
+          <button id="paramsCopyBtn" type="button"
+                  class="btn btn-sm btn-outline-light position-absolute"
+                  style="top:0.5rem; right:1.25rem; z-index:1; line-height:1; padding:0.3rem 0.45rem;"
+                  data-i18n-title="live_view.parameters_copy" title="Copy to clipboard">
+            <i class="bi bi-clipboard"></i>
+          </button>
+          <!-- Content is built by static/js/camera_params.js -->
+          <div id="paramsContent" class="h-100 overflow-auto" style="padding:2.75rem 0.75rem 4.5rem 0.75rem;"></div>
+        </div>
+
+        <!-- Top-right status badges: effective FPS of this client + recording indicator -->
+        <div class="position-absolute top-0 end-0 m-2 d-flex align-items-start gap-2"
+             style="pointer-events:none; user-select:none; z-index:6;">
+            <!-- Frames per second actually presented by this browser (see startFpsMeter) -->
+            <div id="fpsIndicator"
+                 class="px-2 py-1 bg-dark bg-opacity-75 text-white rounded font-monospace d-none"
+                 style="font-size:0.85rem;"></div>
+
+            <!-- Recording indicator: shown while a video recording is active -->
+            <div id="recIndicator"
+                 class="px-2 py-1 bg-dark bg-opacity-75 text-white rounded d-none"
+                 style="font-size:0.85rem;">
+                <span id="recDot" style="color:#ff4444;">&#9679;</span>
+                <span class="ms-1 fw-semibold">REC</span>
+                <span id="recTimer" class="ms-2 font-monospace">00:00</span>
+            </div>
         </div>
 
         <!-- Autoplay blocked fallback: shown if browser prevents autoplay -->
@@ -323,6 +430,8 @@ function applyStateToUI(state) {
         }
     }
 
+    if (state.configs) syncQuickSettings(state.configs);
+
     // Live controls: ExposureTime, AnalogueGain, etc.
     if (state.controls) {
         for (const [key, value] of Object.entries(state.controls)) {
@@ -412,6 +521,8 @@ function applyStateToUI(state) {
         // recording or still capture — changing these requires a pipeline restart
         // which would interrupt the active recording or capture.
         const pipelineBusy = state.states.is_video_recording || state.states.is_capturing_still_image;
+        quickPipelineBusy = !!pipelineBusy;
+        updateQuickSettingsDisabled();
         if (pipelineBusy !== undefined) {
             document.querySelectorAll("[data-type='configs']").forEach(el => {
                 el.disabled = pipelineBusy;
@@ -685,6 +796,109 @@ function isLiveStreamVisible() {
     return overlay.style.display !== "flex";
 }
 video.addEventListener("playing", () => overlay.style.display = "none");
+
+// -------------------------------------------------------
+// FPS meter: frames per second actually presented by THIS browser
+// (not the frame rate of the stream in MediaMTX).
+//
+// Measurement runs whenever the video plays; the switch only shows/hides the badge, so the
+// value is available immediately when it is switched on. Every 250 ms a snapshot
+// {time, frames} is stored; FPS = frame delta over the last <= 1 s (5 snapshots, sliding window).
+// Frame counter: requestVideoFrameCallback().presentedFrames, else getVideoPlaybackQuality().
+// -------------------------------------------------------
+const fpsIndicator = document.getElementById("fpsIndicator");
+const fpsToggle = document.getElementById("fpsToggle");
+const FPS_STORAGE_KEY = "camui.showFps";
+const FPS_SAMPLE_MS = 250;
+const FPS_WINDOW_SNAPSHOTS = 5;     // 5 x 250 ms = 1 s window
+
+// Per-browser setting (default: off). localStorage may be unavailable (private mode etc.).
+let fpsEnabled = false;
+try { fpsEnabled = localStorage.getItem(FPS_STORAGE_KEY) === "1"; } catch (_) {}
+fpsToggle.checked = fpsEnabled;
+let _fpsTimer = null;
+let _fpsFrameCb = null;
+let _fpsPresented = null;   // latest presentedFrames from requestVideoFrameCallback (null = none yet)
+let _fpsSnaps = [];         // sliding window of {t, frames}
+let _fpsValue = null;       // latest computed FPS (null = not available yet)
+
+// Colour thresholds: smooth (>= 24 fps) white, choppy (15-23 fps) orange, very choppy (< 15 fps) red.
+const FPS_WARN_BELOW = 24;
+const FPS_CRITICAL_BELOW = 15;
+
+function _showFps(value) {
+    const fps = Math.round(value);
+    fpsIndicator.textContent = window.t('live_view.fps', { value: String(fps) }) || `${fps} fps`;
+    fpsIndicator.style.color = fps < FPS_CRITICAL_BELOW ? "#ff4444"
+                             : fps < FPS_WARN_BELOW     ? "#ff9f1a"
+                             : "";
+    fpsIndicator.classList.remove("d-none");
+}
+
+function _hideFpsBadge() {
+    fpsIndicator.classList.add("d-none");
+    fpsIndicator.style.color = "";
+}
+
+function stopFpsMeter() {
+    clearInterval(_fpsTimer);
+    _fpsTimer = null;
+    if (_fpsFrameCb !== null && video.cancelVideoFrameCallback) video.cancelVideoFrameCallback(_fpsFrameCb);
+    _fpsFrameCb = null;
+    _fpsPresented = null;
+    _fpsSnaps = [];
+    _fpsValue = null;
+}
+
+function startFpsMeter() {
+    stopFpsMeter();
+    const hasRvfc = typeof video.requestVideoFrameCallback === "function";
+    const hasQuality = typeof video.getVideoPlaybackQuality === "function";
+    if (!hasRvfc && !hasQuality) return;            // nothing to measure with: keep badge hidden
+
+    const readFrames = () => hasRvfc ? _fpsPresented : video.getVideoPlaybackQuality().totalVideoFrames;
+    if (hasRvfc) {
+        const onFrame = (_now, md) => {
+            // The very first frame provides the baseline snapshot immediately, so the first
+            // value is available after one sample interval (the counter does not start at 0).
+            if (_fpsPresented === null) _fpsSnaps.push({ t: performance.now(), frames: md.presentedFrames });
+            _fpsPresented = md.presentedFrames;
+            _fpsFrameCb = video.requestVideoFrameCallback(onFrame);
+        };
+        _fpsFrameCb = video.requestVideoFrameCallback(onFrame);
+    }
+
+    const sample = () => {
+        const frames = readFrames();
+        if (frames === null) return;                // no frame presented yet
+        const t = performance.now();
+        // Window distorted by a throttled background tab: start over.
+        if (_fpsSnaps.length && t - _fpsSnaps[_fpsSnaps.length - 1].t > 2000) _fpsSnaps = [];
+        _fpsSnaps.push({ t, frames });
+        while (_fpsSnaps.length > FPS_WINDOW_SNAPSHOTS) _fpsSnaps.shift();
+        if (_fpsSnaps.length < 2) return;
+        const first = _fpsSnaps[0], last = _fpsSnaps[_fpsSnaps.length - 1];
+        _fpsValue = (last.frames - first.frames) / ((last.t - first.t) / 1000);
+        if (fpsEnabled) _showFps(_fpsValue);
+    };
+    if (!hasRvfc) sample();                         // baseline right away (no per-frame callback)
+    _fpsTimer = setInterval(sample, FPS_SAMPLE_MS);
+}
+
+function _resetFpsMeter() {
+    stopFpsMeter();
+    _hideFpsBadge();
+}
+
+fpsToggle.addEventListener("change", () => {
+    fpsEnabled = fpsToggle.checked;
+    try { localStorage.setItem(FPS_STORAGE_KEY, fpsEnabled ? "1" : "0"); } catch (_) {}
+    if (!fpsEnabled) _hideFpsBadge();
+    else if (_fpsValue !== null) _showFps(_fpsValue);   // already measured: show immediately
+});
+
+video.addEventListener("playing", startFpsMeter);
+["pause", "emptied", "ended"].forEach(ev => video.addEventListener(ev, _resetFpsMeter));
 startBtn.addEventListener("click", () => {
   userHasInteracted = true;
   video.play().catch(() => {});
@@ -701,9 +915,125 @@ function showControlsTemporarily() {
   videoControls.style.display = "flex";
   clearTimeout(hideControlsTimeout);
   hideControlsTimeout = setTimeout(() => {
-    if (!mouseOverControls) videoControls.style.display = "none";
+    // The bar stays visible while the settings menu is open.
+    if (!mouseOverControls && !isSettingsMenuOpen()) videoControls.style.display = "none";
   }, 2000);
 }
+
+// -------------------------------------------------------
+// Settings (gear) menu: opens upwards; closes on outside click / Escape
+// -------------------------------------------------------
+const settingsBtn  = document.getElementById("settingsBtn");
+const settingsMenu = document.getElementById("videoSettingsMenu");
+
+function isSettingsMenuOpen() {
+  return settingsMenu.style.display !== "none";
+}
+
+function setSettingsMenuOpen(open) {
+  settingsMenu.style.display = open ? "block" : "none";
+  settingsBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (!open) showControlsTemporarily();   // restart the auto-hide timer
+}
+
+settingsBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  setSettingsMenuOpen(!isSettingsMenuOpen());
+  showControlsTemporarily();
+});
+document.addEventListener("click", e => {
+  if (isSettingsMenuOpen() && !settingsMenu.contains(e.target)) setSettingsMenuOpen(false);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && isSettingsMenuOpen()) setSettingsMenuOpen(false);
+});
+// Mouse leaves the player: close the menu so the bar can auto-hide again (desktop only;
+// touch devices have no mouseleave and close it by tapping outside).
+videoContainer.addEventListener("mouseleave", () => {
+  // Keep the menu open while one of its dropdowns has focus (its native popup lies outside the player).
+  if (isSettingsMenuOpen() && !settingsMenu.contains(document.activeElement)) setSettingsMenuOpen(false);
+});
+
+// -------------------------------------------------------
+// Camera parameters panel (static/js/camera_params.js)
+// -------------------------------------------------------
+CameraParams.init({ socket, cameraNum, onUserAction: showControlsTemporarily });
+
+// -------------------------------------------------------
+// Quick settings in the gear menu (resolutions, Save RAW).
+// Which ones are offered is a per-browser preference (Settings → General,
+// static/js/quick_settings.js): off / menu + Camera Settings column / menu only.
+// A change here applies live exactly like the column controls (set_camera_setting);
+// it is NOT saved to the camera profile.
+// -------------------------------------------------------
+let _quickConfigs = {};   // last configs confirmed by the server
+
+function applyQuickSettingsVisibility() {
+  QuickSettings.ids.forEach(id => {
+    const mode = QuickSettings.get(id);
+    const row = document.querySelector(`[data-quick-row="${id}"]`);
+    if (row) row.classList.toggle("d-none", mode === "off");
+    const block = document.querySelector(`[data-quick-setting="${id}"]`);
+    if (block) block.classList.toggle("d-none", mode === "menu");
+  });
+  // Hide an accordion section completely once all its settings were moved to the menu.
+  document.querySelectorAll("#settingsAccordion .accordion-item").forEach(item => {
+    const body = item.querySelector(":scope > .accordion-collapse > .accordion-body");
+    if (!body || !body.querySelector(":scope > [data-quick-setting]")) return;
+    const hasVisible = [...body.children].some(
+      k => !(k.hasAttribute("data-quick-setting") && k.classList.contains("d-none")));
+    item.classList.toggle("d-none", !hasVisible);
+  });
+}
+
+// Mirror the server-side values into the menu controls (also reverts a refused change).
+function syncQuickSettings(configs) {
+  if (configs) Object.assign(_quickConfigs, configs);
+  QuickSettings.ids.forEach(id => {
+    const el = document.querySelector(`[data-quick-id="${id}"]`);
+    if (!el || !(id in _quickConfigs)) return;
+    const v = _quickConfigs[id];
+    if (el.type === "checkbox") el.checked = Boolean(v);
+    else el.value = String(v);
+  });
+}
+
+function quickSettingChange(el) {
+  const id = el.dataset.quickId;
+  const value = el.type === "checkbox" ? el.checked : el.value;
+  socket.emit("set_camera_setting", {
+    camera_num: cameraNum,
+    path: `${el.dataset.type}.${id}`,
+    value: value
+  });
+  showControlsTemporarily();
+}
+
+// Pipeline settings (live stream / recording resolution) cannot change while recording or
+// capturing a photo. Disable the control AND dim its whole row, so it is visibly unavailable.
+let quickPipelineBusy = false;
+function updateQuickSettingsDisabled() {
+  const busy = isRecording || quickPipelineBusy;
+  const hint = window.t("live_view.quick_unavailable") || "Not available while recording or taking a photo";
+  ["recording_resolution", "streaming_resolution"].forEach(id => {
+    const el = document.querySelector(`[data-quick-id="${id}"]`);
+    if (!el) return;
+    el.disabled = busy;
+    el.style.cursor = busy ? "not-allowed" : "";
+    const row = el.closest("[data-quick-row]");
+    if (row) {
+      row.classList.toggle("opacity-50", busy);
+      row.style.cursor = busy ? "not-allowed" : "";
+      if (busy) row.title = hint; else row.removeAttribute("title");
+    }
+  });
+}
+
+// Preference changed in another tab (Settings → General).
+window.addEventListener("storage", e => {
+  if (e.key === QuickSettings.storageKey) applyQuickSettingsVisibility();
+});
+document.addEventListener("DOMContentLoaded", applyQuickSettingsVisibility);
 
 videoContainer.addEventListener("mousemove", showControlsTemporarily);
 
@@ -933,6 +1263,7 @@ socket.on("setting_rejected", (data) => {
 });
 
 socket.on("error", (data) => {
+    syncQuickSettings();   // a refused change (e.g. during recording): show the real value again
     const key = data.type ? _errorMsgMap[data.type] : null;
     const msg = (key && window.t(key)) || data.message;
     showToast(`<i class="bi bi-exclamation-circle flex-shrink-0"></i><span>${msg}</span>`, "danger");
@@ -1043,6 +1374,7 @@ function stopRecOverlay() {
 
 // Update the record button appearance based on the current recording state
 function updateRecordButton() {
+    updateQuickSettingsDisabled();
     const icon = document.getElementById("recordVideoIcon");
     const text = document.getElementById("recordVideoText");
 

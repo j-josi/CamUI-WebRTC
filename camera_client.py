@@ -251,6 +251,9 @@ class CameraProxy:
     def trigger_autofocus(self) -> bool:
         return self._rpc("trigger_autofocus")
 
+    def get_effective_parameters(self):
+        return self._rpc("get_effective_parameters")
+
 
 # ---------------------------------------------------------------------------
 # CameraManager proxy

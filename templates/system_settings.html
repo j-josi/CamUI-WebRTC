@@ -35,7 +35,7 @@
   <!-- Tab Navigation -->
   <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="tab-appearance-btn" data-bs-toggle="tab" data-bs-target="#tab-appearance" type="button" role="tab" data-i18n="settings.tab_appearance">Appearance</button>
+      <button class="nav-link active" id="tab-appearance-btn" data-bs-toggle="tab" data-bs-target="#tab-appearance" type="button" role="tab" data-i18n="settings.tab_appearance">General</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="tab-camera-audio-btn" data-bs-toggle="tab" data-bs-target="#tab-camera-audio" type="button" role="tab" data-i18n="settings.tab_camera_audio">Camera &amp; Audio</button>
@@ -56,7 +56,7 @@
   <div class="tab-content" id="settingsTabContent">
 
     <!-- ================================================================ -->
-    <!-- Tab: Appearance                                                   -->
+    <!-- Tab: General                                                      -->
     <!-- ================================================================ -->
     <div class="tab-pane fade show active" id="tab-appearance" role="tabpanel">
 
@@ -177,7 +177,31 @@
         </div>
       </div>
 
-      <div class="mb-2">
+      <!-- Camera menu shortcuts (per browser, applied immediately – not part of the Save button) -->
+      <div class="mt-5 mb-2">
+        <h2 class="pb-2 mb-4 border-bottom" data-i18n="settings.quick_title">Camera menu shortcuts</h2>
+        <p class="text-muted small" data-i18n="settings.quick_desc">Choose which camera settings are offered in the gear menu of the live view. These preferences are stored in this browser only and apply immediately – no saving needed.</p>
+        {% set _quick_names = {"streaming_resolution": "Live stream resolution", "recording_resolution": "Recording resolution", "still_capture_resolution": "Photo resolution", "saveRAW": "Save RAW"} %}
+        {% for qid, qname in _quick_names.items() %}
+        <div class="mb-3" role="radiogroup" aria-labelledby="quickTitle_{{ qid }}">
+          <div class="small fw-semibold mb-1" id="quickTitle_{{ qid }}" data-i18n="settings.quick_name_{{ qid }}">{{ qname }}</div>
+          <div class="form-check">
+            <input class="form-check-input quick-setting-radio" type="radio" name="quick_{{ qid }}" id="quick_{{ qid }}_off" value="off" data-quick-id="{{ qid }}">
+            <label class="form-check-label" for="quick_{{ qid }}_off" data-i18n="settings.quick_mode_off">Do not show in the gear menu</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input quick-setting-radio" type="radio" name="quick_{{ qid }}" id="quick_{{ qid }}_both" value="both" data-quick-id="{{ qid }}">
+            <label class="form-check-label" for="quick_{{ qid }}_both" data-i18n="settings.quick_mode_both">Show in the gear menu and keep in Camera Settings</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input quick-setting-radio" type="radio" name="quick_{{ qid }}" id="quick_{{ qid }}_menu" value="menu" data-quick-id="{{ qid }}">
+            <label class="form-check-label" for="quick_{{ qid }}_menu" data-i18n="settings.quick_mode_menu">Show in the gear menu only (remove from Camera Settings)</label>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="mt-4 mb-2">
         <button class="btn btn-primary btn-sm" data-iv-guard="#tab-appearance" onclick="saveAppearanceTab()" data-i18n="general.save">Save</button>
         <div id="appearanceMsg" class="mt-2 small d-none"></div>
       </div>
@@ -800,8 +824,11 @@
   // (including bootstrap.bundle.min.js) have finished executing.
   const _TAB_KEY = 'settingsActiveTab';
   document.addEventListener('DOMContentLoaded', function () {
-    // Restore saved tab
-    const saved = localStorage.getItem(_TAB_KEY);
+    // Restore the saved tab only on a page reload (F5, language switch). Opening
+    // Settings from the navigation always starts at the first (leftmost) tab.
+    let _isReload = false;
+    try { _isReload = (performance.getEntriesByType('navigation')[0] || {}).type === 'reload'; } catch (e) {}
+    const saved = _isReload ? localStorage.getItem(_TAB_KEY) : null;
     if (saved) {
       const target = (saved === '#tab-general' || saved === '#tab-system') ? '#tab-appearance' : saved;
       const btn = document.querySelector(`#settingsTabs button[data-bs-target="${target}"]`);
@@ -1098,6 +1125,14 @@
     if (r.ok) return r.json();
     return r.json().catch(() => ({})).then(body => Promise.reject(Object.assign(new Error(body.error || 'save failed'), { body })));
   }
+
+  // Camera menu shortcuts: per-browser preference, applied immediately (static/js/quick_settings.js).
+  document.querySelectorAll('.quick-setting-radio').forEach(radio => {
+    radio.checked = radio.value === QuickSettings.get(radio.dataset.quickId);
+    radio.addEventListener('change', () => {
+      if (radio.checked) QuickSettings.set(radio.dataset.quickId, radio.value);
+    });
+  });
 
   function saveAppearanceTab() {
     const theme = document.querySelector('input[name="defaultTheme"]:checked')?.value;

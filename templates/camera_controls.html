@@ -26,7 +26,12 @@
 
                 {% for setting in section.settings if setting.enabled %}
 
+                    {# Settings that can also be offered in the gear menu of the live view
+                       (see static/js/quick_settings.js) are wrapped so JS can hide them. #}
+                    {% set _is_quick = setting.id in ["streaming_resolution", "recording_resolution", "still_capture_resolution", "saveRAW"] %}
+                    {% if _is_quick %}<div data-quick-setting="{{ setting.id }}">{% endif %}
                     {% include "settings/" + setting.type + ".html" %}
+                    {% if _is_quick %}</div>{% endif %}
 
                     {% if setting.childsettings %}
                     {% set _group_leader_id = setting.id %}

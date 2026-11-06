@@ -738,6 +738,15 @@ def handle_set_camera_setting(data):
         room=room_name
     )
 
+@socketio.on("get_camera_parameters")
+def handle_get_camera_parameters(data):
+    """Ack-based: return the effective libcamera/picamera2 parameters of a camera."""
+    camera_num = (data or {}).get("camera_num")
+    camera = camera_manager.cameras.get(camera_num)
+    if camera is None:
+        return {"metadata": {}, "configuration": {}}
+    return camera.get_effective_parameters()
+
 @socketio.on("trigger_autofocus")
 def handle_trigger_autofocus(data):
     import gevent as _gevent

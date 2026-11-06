@@ -759,6 +759,52 @@ class Camera:
                 return copy.deepcopy(self.configs.get(name))
             return copy.deepcopy(self.configs)
 
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        """Convert libcamera/picamera2 values (tuples, enums, Rectangles, ...) to JSON types."""
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+        if isinstance(value, dict):
+            return {str(k): Camera._json_safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [Camera._json_safe(v) for v in value]
+        if hasattr(value, "tolist"):
+            try:
+                return Camera._json_safe(value.tolist())
+            except Exception:
+                pass
+        return str(value)
+
+    def _static_camera_parameters(self) -> Dict[str, Any]:
+        """Capabilities of the camera (controls with min/max/default, properties, sensor modes).
+        They do not change at runtime, so they are collected once and cached."""
+        cached = getattr(self, "_static_params_cache", None)
+        if cached is None:
+            cached = {
+                "camera_controls": self._json_safe(self.picam2.camera_controls),
+                "camera_properties": self._json_safe(self.picam2.camera_properties),
+                "sensor_modes": self._json_safe(self.picam2.sensor_modes),
+            }
+            self._static_params_cache = cached
+        return cached
+
+    def get_effective_parameters(self) -> Dict[str, Any]:
+        """
+        Return the parameters the camera is effectively running with:
+        the metadata of the latest frame (values libcamera/the ISP really applied)
+        and the active stream configuration. All values are JSON-serialisable.
+        """
+        result: Dict[str, Any] = {"metadata": {}, "configuration": {}}
+        try:
+            if not getattr(self.picam2, "started", False):
+                return result
+            result["metadata"] = self._json_safe(self.picam2.capture_metadata())
+            result["configuration"] = self._json_safe(self.picam2.camera_configuration() or {})
+            result.update(self._static_camera_parameters())
+        except Exception as exc:
+            logger.warning("get_effective_parameters failed: %s", exc)
+        return result
+
     def get_info(self, name: Optional[str] = None) -> Union[Any, Dict[str, Any]]:
         """Get a single info value by name or all infos as dict if name is None."""
         with self.lock:
