@@ -397,6 +397,7 @@ class CameraManager:
                         cam.name = str(name)
                 except (ValueError, TypeError):
                     pass
+        audio_device_changed_cams: list = []
         if "camera_audio_devices" in data:
             for cam_num_str, device in data["camera_audio_devices"].items():
                 try:
@@ -407,7 +408,10 @@ class CameraManager:
                         # when unchanged prevents disturbing the running stream encoder
                         # when the user merely adjusts volume or delay settings.
                         if new_device != cam._configured_audio_device:
+                            active_before = cam.audio_device
                             self.set_camera_audio_device(cam, new_device)
+                            if cam.audio_device != active_before:
+                                audio_device_changed_cams.append(cam)
                 except (ValueError, TypeError):
                     pass
         deferred_stream_delay_cams: list = []
@@ -435,10 +439,7 @@ class CameraManager:
                     cam.audio_stream_delay_ms = int(cam_delays.get("stream_delay_ms", 0))
                     # Stream delay: restart stream immediately if not recording, else defer
                     if cam.audio_stream_delay_ms != old_stream_delay:
-                        if (cam.states.get("is_video_streaming")
-                                and not cam.states.get("is_video_recording")):
-                            cam.stop_streaming()
-                            cam.start_streaming()
+                        if self._restart_stream_if_idle(cam):
                             restarted_stream_cams.append(cam.camera_num)
                         elif cam.states.get("is_video_recording"):
                             deferred_stream_delay_cams.append(cam.camera_num)
@@ -446,11 +447,27 @@ class CameraManager:
                     if (cam.audio_delay_ms != old_rec_delay
                             and cam.states.get("is_video_recording")):
                         deferred_recording_delay_cams.append(cam.camera_num)
+        # A new microphone reaches the live stream with a restart. While a recording is active the
+        # stream keeps running unchanged; Camera.stop_recording() starts a fresh one afterwards.
+        for cam in audio_device_changed_cams:
+            if cam.camera_num not in restarted_stream_cams and self._restart_stream_if_idle(cam):
+                restarted_stream_cams.append(cam.camera_num)
         # Meta-only — not persisted, only for the HTTP response
         result["_deferred_stream_delay_cams"] = deferred_stream_delay_cams
         result["_deferred_recording_delay_cams"] = deferred_recording_delay_cams
         result["_restarted_stream_cams"] = restarted_stream_cams
         return result
+
+    @staticmethod
+    def _restart_stream_if_idle(camera: Camera) -> bool:
+        """Restart the live stream so that changed audio settings take effect. Returns False when
+        nothing was restarted: the stream is not running, or a recording is active (restarting
+        the stream would stop the recording as well)."""
+        if not camera.states.get("is_video_streaming") or camera.states.get("is_video_recording"):
+            return False
+        camera.stop_streaming()
+        camera.start_streaming()
+        return True
 
     # ------------------------------------------------------------------
     # Audio device management
@@ -500,19 +517,13 @@ class CameraManager:
         self._apply_camera_audio_device(camera, source_name)
 
     def _apply_camera_audio_device(self, camera: Camera, source_name: Optional[str]) -> None:
-        """Set the runtime audio device on a camera. If the stream encoder is already
-        running, updates it in place (takes effect on next stream restart).
-        Also applies saved volume/delay settings for the device."""
+        """Set the runtime audio device on a camera and apply the saved volume/delay settings
+        for it. The live stream uses the device when it (re)starts. A running encoder must not be
+        modified: Picamera2 opens the audio input and starts the audio thread only in
+        Encoder.start(), so changing the encoder's audio flag afterwards makes Encoder.stop() fail."""
         camera.audio_device = source_name or None
         if camera.audio_device:
             self._apply_audio_source_settings_to_camera(camera)
-        if camera.encoder_stream is not None:
-            # Only toggle audio on/off on the running encoder — audio_input and
-            # audio_sync are set fresh in start_streaming() on every restart and
-            # must not be modified while the encoder is running.
-            camera.encoder_stream.audio = bool(camera.audio_device)
-            if camera.audio_device:
-                camera.encoder_stream.audio_output = {"codec_name": "libopus"}
         logger.info("Camera %s audio device set to: %s", camera.camera_num, camera.audio_device)
 
     def _apply_audio_source_settings_to_camera(self, camera: Camera) -> None:
