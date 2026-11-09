@@ -10,7 +10,11 @@ CamUI-WebRTC is a lightweight web interface for the Raspberry Pi camera module. 
 2. **The live stream comes second.** Frame drops or a lowered live stream resolution for one or more clients are acceptable (and, if necessary, unavoidable).
 3. Everything else (UI, statistics, convenience features) comes after that.
 
+Background work (thumbnails, ffmpeg/ffprobe, file scanning, indexing) must never run while a recording is active, or only at the lowest CPU priority: a thumbnail `ffmpeg` on the growing file 5 s after the start made the recording drop frames (fixed). Plain Picamera2 without CamUI reaches ≈ 29.8 fps (≈ 99 %) at 1080p30 on the Pi 4, and connected live-stream readers (MediaMTX/WebRTC) lower the recording fps further, so measure against ≥ 98 % of the configured fps.
+
 When changing the camera pipeline, encoders or streaming, check the effect on the recording: record for at least 30 s under the heaviest supported live stream setup and compare the frame rate of the file (`ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets:format=duration -of default=nw=1 <file>` → packets ÷ duration) with the configured fps. On the Raspberry Pi 4 at most 3 H.264 hardware encodes can run at the same time (recording included), and two 1080p encodes already come close to the limit.
+
+`scripts/bench_cpu.py` automates this check for selectable recording/live resolutions, audio on/off and browser client counts (default: 0 and 3 clients, live resolutions 0 and 2) and writes a log with a hardware/app-version header into `benchmarks/` (see its docstring). [docs/pipeline.md](docs/pipeline.md) describes the media pipeline step by step with the measured CPU cost of each step.
 
 ## Commands
 
@@ -50,6 +54,10 @@ No linter or formatter config is currently set up.
 - `templates/` — Jinja2 HTML templates
 - `static/` — CSS, JS, images; `static/gallery/` is gitignored (runtime data)
 - `config/` — mediamtx, coturn, and systemd service configs
+- `docs/` — developer documentation (`pipeline.md`: media pipeline and CPU cost per step)
+- `scripts/` — benchmarks (`bench_cpu.py` systematic CPU/fps benchmark of the running app, `bench_encoders.py` parallel hardware encoder limits without the app, `bench_common.py` helpers shared by both: result header, file names, reference-result prompt)
+- `benchmarks/` — local, gitignored output of `scripts/bench_cpu.py` and `scripts/bench_encoders.py` (`.txt` log with header, `.json` raw data)
+- `docs/benchmarks/` — curated reference results (see its README for the criteria) and a comparison table
 
 ## Architecture
 
@@ -67,6 +75,24 @@ No linter or formatter config is currently set up.
   ```
 - When downloading an external JS library into `static/`, document it in `THIRD_PARTY.md` (version, path, source URL, license, download date).
 - When adding a data file generated from an external source (e.g. `static/data/`), document it in `THIRD_PARTY.md` (data file path, source URL, license, generation script if any, date). If a generation script exists, reference it under `scripts/`. Do this in the same commit as the data file.
+
+## Code comments
+
+Write comments the way a human developer would, for a reader who opens the file a year from now and has never seen the discussion that led to the change.
+
+- **Comment only what the code cannot say itself:** a non-obvious reason (a hardware or library quirk, a workaround, a deliberate trade-off, an ordering constraint, a unit), or the contract of a non-trivial function. Do not restate what the code does, and do not add a comment to every change.
+- **Before adding a comment, ask:** would a developer reading the surrounding code be confused or misled without it? If not, leave it out.
+- **Describe the code as it is, never how it changed.** No comments about a removed, replaced, moved or added line ("removed X because …", "no longer …", "now …", "fixed", "added for …"). The reason for a change belongs in the commit message. A comment next to a deleted line is wrong by definition — the code is gone, so delete the comment too, and never leave a comment that only explains a missing feature.
+- **Never refer to a prompt, a conversation, a task, an issue discussion, or any Claude/AI-specific file** (`CLAUDE.md`, `CLAUDE.local.md`, plans, memory files) — in comments, docstrings, commit messages, PR descriptions, or any other file in the repo. If a rule matters to human readers too, state the reason itself in a neutral sentence (for example "run at the lowest CPU priority so a running recording keeps its frame rate"); do not point to where it is written down.
+- Keep comments short, factual and in the language of the surrounding code (English). Remove comments that have become outdated while you edit nearby code.
+
+## Writing for external readers
+
+Everything that ends up in the repository — README, docs, docstrings, script help texts, config comments, test names, commit messages, PR descriptions — is written neutrally, for a person who has never talked to Claude and does not know how the change came about.
+
+- State what the thing is, does and how to use it. Do not mention requests, prompts, "as discussed", "as requested", "you asked", earlier iterations, or what was tried before and abandoned.
+- Do not describe the history of a document or file ("new", "updated", "now supports", "previously"). Describe the current state; history lives in git.
+- Measurements and numbers need their context (hardware, app version, date, method) so they stay meaningful without the conversation they came from.
 
 ## i18n
 
@@ -157,6 +183,10 @@ Test files live in `tests/`. Run all tests before any PR:
 python tests/test_filename_gen.py
 python tests/test_system_settings.py
 python tests/test_validation.py
+python tests/test_bench_cpu.py
+python tests/test_bench_common.py
+python tests/test_bench_encoders.py
+python tests/test_camera_manager_audio.py
 ```
 
 | File | What it covers |
@@ -164,6 +194,10 @@ python tests/test_validation.py
 | `tests/test_filename_gen.py` | `CameraManager.generate_media_filename()` — naming, camera suffixes, collision counter |
 | `tests/test_validation.py` | `validation.py` — range/unit checks, camera/profile/file names, system-settings payload |
 | `tests/test_system_settings.py` | `SystemSettings` — first run, load, unknown-key filtering, scalar/dict updates, persistence, `max_recording_duration_s` |
+| `tests/test_bench_cpu.py` | `scripts/bench_cpu.py` — plan building/ordering, argument parsing, process grouping, CPU summary, flags, log rendering, reference table row |
+| `tests/test_bench_common.py` | `scripts/bench_common.py` — result file names, header/table rendering, README table update, throttle flags |
+| `tests/test_bench_encoders.py` | `scripts/bench_encoders.py` — ffmpeg command, progress parsing, real-time verdicts, flags, reference row, log rendering |
+| `tests/test_camera_manager_audio.py` | `CameraManager.update_system_settings()` microphone changes — stream restart rules, running encoder untouched, recording undisturbed |
 
 Both use `unittest` and exit non-zero on failure. `tests/test_filename_gen.py` stubs `picamera2`, `camera`, and `media_gallery` via `sys.modules` so it runs without camera hardware. Each test file adds the repo root to `sys.path` so modules can be imported regardless of working directory.
 
