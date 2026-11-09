@@ -45,7 +45,8 @@ then merged back into `dev`.
 
 ### Pull requests
 
-- Open PRs against `dev`.
+- Open PRs against `dev`. A check rejects PRs against `main`; the only exception is the
+  release merge from `dev`. If GitHub proposes `main` as the base branch, change it to `dev`.
 - Use the PR template — fill in all sections honestly.
 - Run all tests before submitting; all cases must pass:
   ```bash

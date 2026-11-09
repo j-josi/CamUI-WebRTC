@@ -1,3 +1,5 @@
+<!-- Pull requests target the dev branch. If the base branch above says main, change it to dev. -->
+
 ## Summary
 
 <!-- What changed and why? -->
@@ -14,7 +16,7 @@
 
 <!-- What did you test and how? -->
 
-- [ ] `python test_filename_gen.py` passes (all cases)
+- [ ] `make test` passes (all cases)
 
 ## AI disclosure
 

@@ -1,0 +1,25 @@
+name: Check pull request target
+
+# Pull requests must target the dev branch. main only receives the release merge from dev.
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  target-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Allow only the release merge from dev into main
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" = "dev" ] && [ "$HEAD_REPO" = "$BASE_REPO" ]; then
+            exit 0
+          fi
+          echo "::error::Pull requests must target the dev branch. Change the base branch of this pull request to dev (Edit, next to the title)."
+          exit 1
