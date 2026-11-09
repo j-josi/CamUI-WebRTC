@@ -58,6 +58,10 @@ test:
 	python tests/test_filename_gen.py
 	python tests/test_system_settings.py
 	python tests/test_validation.py
+	python tests/test_bench_cpu.py
+	python tests/test_bench_common.py
+	python tests/test_bench_encoders.py
+	python tests/test_camera_manager_audio.py
 
 release:
 ifndef VERSION

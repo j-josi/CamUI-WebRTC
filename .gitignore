@@ -13,3 +13,6 @@ camera_active_profile.json
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Local benchmark runs (curated reference results live in docs/benchmarks/)
+/benchmarks/
