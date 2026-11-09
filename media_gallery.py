@@ -299,9 +299,13 @@ class MediaGallery:
         thumb_filename = os.path.splitext(video_filename)[0] + "_thumb.jpg"
         thumb_path = self._thumb_path(video_filename)
         try:
+            # Lowest CPU priority and one thread: another camera may be recording
+            # right now and the recording must never lose frames to this job.
+            nice = shutil.which("nice")
             subprocess.run(
-                [
+                ([nice, "-n", "19"] if nice else []) + [
                     "ffmpeg", "-y",
+                    "-threads", "1",
                     "-ss", "0",
                     "-i", video_path,
                     "-frames:v", "1",

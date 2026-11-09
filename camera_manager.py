@@ -290,26 +290,10 @@ class CameraManager:
         if state_name == "is_video_recording":
             if camera.states.get("is_video_recording"):
                 self._schedule_duration_timer(camera.camera_num)
-                self._schedule_recording_thumbnail(camera)
             else:
                 self._cancel_duration_timer(camera.camera_num)
         if callable(self.on_camera_setting_changed):
             self.on_camera_setting_changed(camera, state_name)
-
-    def _schedule_recording_thumbnail(self, camera: Camera, delay: float = 5.0) -> None:
-        """Generate a thumbnail a few seconds after recording starts.
-
-        The delay ensures at least one complete fragment has been written so
-        ffmpeg can decode the first frame. The thumbnail is then available in
-        the gallery while the recording is still active.
-        """
-        def _run():
-            import time as _time
-            _time.sleep(delay)
-            fn = camera.filename_recording
-            if fn and camera.states.get("is_video_recording"):
-                self._gallery.generate_video_thumbnail(fn)
-        threading.Thread(target=_run, daemon=True, name="recording-thumb").start()
 
     def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
         cam = self.get_camera(camera_num)
