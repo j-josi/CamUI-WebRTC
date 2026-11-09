@@ -290,20 +290,42 @@ class CameraManager:
         if state_name == "is_video_recording":
             if camera.states.get("is_video_recording"):
                 self._schedule_duration_timer(camera.camera_num)
+                self._schedule_recording_thumbnail(camera)
             else:
                 self._cancel_duration_timer(camera.camera_num)
         if callable(self.on_camera_setting_changed):
             self.on_camera_setting_changed(camera, state_name)
 
+    def _schedule_recording_thumbnail(self, camera: Camera, delay: float = 1.0) -> None:
+        """Take the thumbnail of a recording from the camera pipeline shortly after the start, so the
+        gallery shows it while the recording runs. The frame is copied from the camera and scaled in
+        a thread at the lowest CPU priority; no file is read and no ffmpeg is started."""
+        filename = camera.filename_recording
+
+        def _run():
+            try:
+                os.setpriority(os.PRIO_PROCESS, threading.get_native_id(), 19)
+            except OSError:
+                pass
+            time.sleep(delay)
+            if not filename or camera.filename_recording != filename:
+                return
+            image = camera.grab_frame_image()
+            if image is not None:
+                self._gallery.save_video_thumbnail(filename, image)
+
+        threading.Thread(target=_run, daemon=True, name="recording-thumb").start()
+
     def _handle_media_created(self, camera_num: int, filename: str, w: int, h: int, has_raw: bool = False):
         cam = self.get_camera(camera_num)
         self._gallery.register_media(filename, w, h, has_raw=has_raw, camera_name=cam.name if cam else None)
         if filename.lower().endswith(".mp4"):
-            threading.Thread(
-                target=self._gallery.generate_video_thumbnail,
-                args=(filename,),
-                daemon=True,
-            ).start()
+            if not self._gallery.has_video_thumbnail(filename):
+                threading.Thread(
+                    target=self._gallery.generate_video_thumbnail,
+                    args=(filename,),
+                    daemon=True,
+                ).start()
         elif os.path.splitext(filename)[1].lower() in ('.jpg', '.jpeg'):
             threading.Thread(
                 target=self._gallery.generate_image_thumbnail,

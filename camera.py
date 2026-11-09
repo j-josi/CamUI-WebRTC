@@ -1697,11 +1697,27 @@ class Camera:
             else:
                 return None
 
+    def grab_frame_image(self):
+        """Copy of the current frame of the main stream as a PIL image, or None on failure.
+        The camera buffer is handed back right after the copy so the pipeline never waits for it."""
+        try:
+            request = self.picam2.capture_request()
+            try:
+                return request.make_image("main")
+            finally:
+                request.release()
+        except Exception as e:
+            logger.error("Could not grab a frame: %s", e, exc_info=True)
+            return None
+
     def capture_still_from_feed(self, filename: str) -> Optional[str]:
         try:
             filepath = os.path.join(self.upload_folder, filename)
             request = self.picam2.capture_request()
-            request.save("main", filepath)
+            try:
+                request.save("main", filepath)
+            finally:
+                request.release()
             logger.info("Image captured successfully: %s", filepath)
             return filepath
         except Exception as e:

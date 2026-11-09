@@ -293,6 +293,23 @@ class MediaGallery:
         return os.path.join(self.thumbnails_folder, thumb_filename)
 
 
+    def has_video_thumbnail(self, video_filename: str) -> bool:
+        return os.path.exists(self._thumb_path(video_filename))
+
+    def save_video_thumbnail(self, video_filename: str, image: Image.Image) -> Optional[str]:
+        """Store a frame of the video as its thumbnail (JPEG, max 400px wide)."""
+        thumb_path = self._thumb_path(video_filename)
+        try:
+            image = image.convert("RGB")
+            image.thumbnail((400, 400), Image.LANCZOS)
+            tmp_path = thumb_path + ".tmp"
+            image.save(tmp_path, format="JPEG", quality=82)
+            os.replace(tmp_path, thumb_path)
+            return os.path.basename(thumb_path)
+        except Exception as e:
+            logger.warning("Could not save thumbnail for %s: %s", video_filename, e)
+            return None
+
     def generate_video_thumbnail(self, video_filename: str) -> Optional[str]:
         """Extract and scale the first frame of a video as a JPEG thumbnail (max 400px wide)."""
         video_path = os.path.join(self.upload_folder, video_filename)
