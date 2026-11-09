@@ -793,18 +793,10 @@ paths:
   # my_camera:
   #   source: rtsp://my_camera
 
-  # camera0 video stream (CamUI-WebRTC)
+  # camera0 live stream (CamUI-WebRTC): video, plus audio if a microphone is selected
   cam0:
     source: publisher
-    
-  # camera0 video + audio stream (CamUI-WebRTC)
-  cam0a:
-    source: publisher
 
-  # camera1 video stream (CamUI-WebRTC)
+  # camera1 live stream (CamUI-WebRTC): video, plus audio if a microphone is selected
   cam1:
-    source: publisher
-
-  # camera1 video + audio stream (CamUI-WebRTC)
-  cam1a:
     source: publisher
