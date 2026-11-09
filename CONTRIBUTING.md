@@ -10,7 +10,11 @@ This policy applies to all code changes: new features, bug fixes, refactors, and
 
 ### Branches
 
-Branch from `main`:
+- `main` holds the released versions. It only changes when a release is made.
+- `dev` is the development branch. All changes are merged here first and tested before
+  they are released.
+
+Branch from `dev`:
 
 ```
 feat/<short-description>
@@ -32,14 +36,20 @@ docs: update camui.service path note in README
 chore: bump gunicorn to 23.0.0
 ```
 
+### Releases
+
+A release is made by merging `dev` into `main` (merge commit or fast-forward, no
+squash) and tagging `main` with `make release VERSION=x.y.z`. A fix that cannot wait for
+the next release is made on a branch from `main`, merged into `main` and released, and
+then merged back into `dev`.
+
 ### Pull requests
 
-- Open PRs against `main`.
+- Open PRs against `dev`.
 - Use the PR template — fill in all sections honestly.
 - Run all tests before submitting; all cases must pass:
   ```bash
-  python tests/test_filename_gen.py
-  python tests/test_system_settings.py
+  make test
   ```
 - Keep PRs focused: one logical change per PR.
 
